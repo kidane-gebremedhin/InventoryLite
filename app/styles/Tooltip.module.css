@@ -1,0 +1,26 @@
+.tooltipContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltipContainer::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%; /* Position the tooltip above the element */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #fff;
+  color: grey;
+  padding: 8px 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+  z-index: 10;
+}
+
+.tooltipContainer:hover::after {
+  visibility: visible;
+  opacity: 1;
+}

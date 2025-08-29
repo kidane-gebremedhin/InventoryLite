@@ -1,0 +1,233 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { XMarkIcon } from '@heroicons/react/24/outline'
+import toast from 'react-hot-toast'
+import { fetchCurrentTenantId } from '@/lib/db_queries/DBQuery'
+import { Vendor } from '@/lib/types/Models'
+
+
+const emptyEntry: Vendor = {
+  name: '',
+  email: '',
+  phone: '',
+  address: ''
+}
+
+interface VendorModalProps {
+  isOpen: boolean
+  onClose: () => void
+  vendor: Vendor | null
+  onSave: (vendor: Vendor) => void
+}
+
+interface FormErrors {
+  name?: string
+  email?: string
+  phone?: string
+}
+
+export default function VendorModal({ isOpen, onClose, vendor, onSave }: VendorModalProps) {
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState<Partial<Vendor>>(emptyEntry)
+  const [errors, setErrors] = useState<FormErrors>({})
+
+  useEffect(() => {
+    if (isOpen) {
+      if (vendor) {
+        setFormData({
+          name: vendor.name || '',
+          email: vendor.email || '',
+          phone: vendor.phone || '',
+          address: vendor.address || ''
+        })
+      } else {
+        resetForm()
+      }
+      setErrors({})
+    }
+  }, [isOpen, vendor])
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      address: ''
+    })
+    setErrors({})
+  }
+
+  const validateForm = (): boolean => {
+    return true
+    /*
+    const newErrors: FormErrors = {}
+
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Vendor name is required'
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Vendor name must be at least 2 characters'
+    }
+
+    // Email validation
+    if (formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email address'
+      }
+    }
+
+    // Phone validation
+    if (formData.phone.trim()) {
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/
+      const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '')
+      if (!phoneRegex.test(cleanPhone)) {
+        newErrors.phone = 'Please enter a valid phone number'
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+    */
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form')
+      return
+    }
+
+    if (!formData.name) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    const newVendor: Vendor = {
+      id: vendor?.id,
+      name: formData.name.trim(),
+      email: formData.email?.trim() || '',
+      phone: formData.phone?.trim() || '',
+      address: formData.address?.trim() || '',
+      status: vendor?.status
+    }
+
+    // Clear input values
+    setFormData(emptyEntry)
+
+    onSave(newVendor)
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user starts typing
+    if (errors[field as keyof FormErrors]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">
+            {vendor ? 'Edit Vendor' : 'New Vendor'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Vendor Name *
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              className={`input-field ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+              placeholder="Enter vendor name"
+              required
+            />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className={`input-field ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+              placeholder="vendor@example.com"
+            />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              className={`input-field ${errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+              placeholder="+1 (555) 123-4567"
+            />
+            {errors.phone && (
+              <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address
+            </label>
+            <textarea
+              value={formData.address}
+              onChange={(e) => handleInputChange('address', e.target.value)}
+              className="input-field"
+              rows={3}
+              placeholder="Enter vendor address"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : (vendor ? 'Update Vendor' : 'Create Vendor')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
