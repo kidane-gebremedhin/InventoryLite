@@ -7,19 +7,24 @@ import {
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
-  ArrowUpOnSquareIcon
+  ArrowUpOnSquareIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline'
-import { InventoryItemModal } from '@/components/inventory/InventoryItemModal'
+import { InventoryItemModal } from '@/components/inventory_items/InventoryItemModal'
 import { supabase } from '@/lib/supabase'
 import { Category, InventoryItem } from '@/lib/types/Models';
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { RecordStatus } from '@/lib/Enums'
-import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY } from '@/lib/Constants'
+import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { getRecordStatusColor, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import Tooltip from '@/components/helpers/ToolTip'
 import Pagination from '@/components/Pagination'
-import Loading from '@/components/helpers/Loading'
-import { useUserContext } from '@/components/contextApis/UserProvider'
+import { useUserContext } from '@/components/context_apis/UserProvider'
+import ActionsMenu from '@/components/helpers/ActionsMenu'
+import InventoryItemDetailsModal from '@/components/inventory_items/InventoryItemDetailsModal'
+import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
+import { PostgrestError } from '@supabase/supabase-js'
+import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
+import LowStock from '@/components/helpers/LowStock'
 
 // Constants
 const TABLE_NAME = 'inventory_items'
@@ -34,10 +39,17 @@ export default function InventoryPage() {
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
-  const [loading, setLoading] = useState(true)
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
+  // Record Actions
+  const [currentActiveId, setCurrentActiveId] = useState<string>('')
+  const [isArchiveConfirmationModalOpen, setIsArchiveConfirmationModalOpen] = useState(false)
+  const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] = useState(false)
+  // Global States
+  const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
   useEffect(() => {
@@ -81,7 +93,12 @@ export default function InventoryPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE_NAME).select('*, categories(name)', {count: 'exact', head: false})
+      let query = supabase.from(TABLE_NAME).select(`
+        *,
+        category:categories(*),
+        purchase_order_items:purchase_order_items(*),
+        sales_order_items:sales_order_items(*)
+      `, {count: 'exact', head: false})
       if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus);
       }
@@ -116,50 +133,66 @@ export default function InventoryPage() {
     setIsModalOpen(true)
   }
 
-  const handleEdit = (item: InventoryItem) => {
-    setEditingItem(item)
+  const handleViewDetails = (id: string) => {
+    const order = items.find(item => item.id === id)
+    setSelectedItem(order!)
+    setShowDetailsModal(true)
+  }
+
+  const handleEdit = (id: string) => {
+    const item = items.find(item => item.id === id)
+    setEditingItem(item!)
     setIsModalOpen(true)
   }
 
   const handleArchive = async (id: string) => {
-    if (confirm('Are you sure you want to archive this item?')) {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-      try {
-        const { error } = await supabase
-          .from(TABLE_NAME)
-          .update({status: RecordStatus.ARCHIVED})
-          .eq('id', id)
+    resetModalState()
 
-        if (error) {
-          showErrorToast()
-        } else {
-          showSuccessToast('Record Archived.')
-          setItems(items.filter(item => item.id !== id))
-        }
-      } catch (error: any) {
+    if (!supabase || !await authorseDBAction(currentUser)) return
+    
+    try {
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .update({status: RecordStatus.ARCHIVED})
+        .eq('id', id)
+
+      if (error) {
         showErrorToast()
+      } else {
+        showSuccessToast('Record Archived.')
+        const remainingRecords = items.filter(item => item.id !== id)
+        setItems(remainingRecords)
+        setTotalRecordsCount(remainingRecords.length)
       }
+    } catch (error: any) {
+      showErrorToast()
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleRestore = async (id: string) => {
-    if (confirm('Are you sure you want to restore this item?')) {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-      try {
-        const { error } = await supabase
-          .from(TABLE_NAME)
-          .update({status: RecordStatus.ACTIVE})
-          .eq('id', id)
+    resetModalState()
 
-        if (error) {
-          showErrorToast()
-        } else {
-          showSuccessToast('Record Restored.')
-          setItems(items.filter(item => item.id !== id))
-        }
-      } catch (error: any) {
+    if (!supabase || !await authorseDBAction(currentUser)) return
+    try {
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .update({status: RecordStatus.ACTIVE})
+        .eq('id', id)
+
+      if (error) {
         showErrorToast()
+      } else {
+        showSuccessToast('Record Restored.')
+        const remainingRecords = items.filter(item => item.id !== id)
+        setItems(remainingRecords)
+        setTotalRecordsCount(remainingRecords.length)
       }
+    } catch (error: any) {
+      showErrorToast()
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -174,13 +207,17 @@ export default function InventoryPage() {
         .insert(inventoryItemWithNoId)
 
       if (error) {
-        showErrorToast()
-      } else {
-        showSuccessToast('Record Created.')
-        loadInventoryItems()
+        handleServerError(error)
+        return
       }
+
+      setIsModalOpen(false)
+      showSuccessToast('Record Created.')
+      loadInventoryItems()
     } catch (error: any) {
       showErrorToast()
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -194,25 +231,39 @@ export default function InventoryPage() {
         .eq('id', inventoryItem.id)
 
       if (error) {
-        showErrorToast()
-      } else {
-        showSuccessToast('Record Updated.')
-        loadInventoryItems()
+        handleServerError(error)
+        return
       }
+
+      setIsModalOpen(false)
+      showSuccessToast('Record Updated.')
+      loadInventoryItems()
     } catch (error: any) {
       showErrorToast()
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleTextSearch = () => {
     setCurrentPage(FIRST_PAGE_NUMBER)
-    setSearchTerm(searchTermTemp)
+    setSearchTerm(searchTermTemp.trim())
   }
 
-  // const categories = [ALL_CATEGORIES, ...Array.from(new Set(items.map(item => item.category)))]
+  const resetModalState = () => {
+    setCurrentActiveId('')
+    setIsArchiveConfirmationModalOpen(false)
+    setIsRestoreConfirmationModalOpen(false)
+  }
 
-  if (loading) {
-    return <Loading />
+  const handleServerError = (error: PostgrestError) => {
+    if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
+      const fields = VALIDATION_ERRORS_MAPPING.entities.inventory_item.fields
+      showErrorToast(error.message.includes('sku') ? fields.sku.displayError : fields.name.displayError
+      )
+    } else {
+      showErrorToast()
+    }
   }
 
   return (
@@ -241,6 +292,9 @@ export default function InventoryPage() {
                   Item
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  SKU
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Category
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -252,15 +306,14 @@ export default function InventoryPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Min Quantity
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
-                  Status
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Record Status
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
                 </th>
               </tr>
               <tr className='card'>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th colSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="relative">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <input
@@ -280,7 +333,7 @@ export default function InventoryPage() {
                     />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <select
                     value={selectedCategoryId}
                     onChange={(e) => {
@@ -320,26 +373,29 @@ export default function InventoryPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {items.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                      <div className="text-sm text-gray-500">{item.sku}</div>
-                      <div className="text-xs text-gray-400">{item.description}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-6 py-4">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{item.sku}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900 text-center">
                     {getCategoryName(item.category_id)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     ${item.unit_price.toFixed(2)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 flex">
                     <div className="text-sm text-gray-900">{item.quantity}</div>
                     {item.quantity <= item.min_quantity && (
-                      <div className="text-xs text-red-600">Low stock</div>
+                      <LowStock />
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">{item.min_quantity}</div>
                   </td>
                   <td className="px-6 py-4 text-center">
@@ -348,37 +404,50 @@ export default function InventoryPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2">
-                      {selectedStatus === RecordStatus.ACTIVE ? (
-                        <>
-                        <Tooltip text="Edit?">
-                          <button
-                            onClick={() => handleEdit(item)}
-                            className="text-primary-600 hover:text-primary-900"
-                          >
-                            <PencilIcon className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
-                        <Tooltip text="Archive?">
-                          <button
-                            onClick={() => handleArchive(item.id!)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
-                        </>
-                      ) : (
-                        <Tooltip text="Restore?">
-                          <button
-                            onClick={() => handleRestore(item.id!)}
-                            className="text-yellow-600 hover:text-yellow-900"
-                          >
-                            <ArrowUpOnSquareIcon className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
-                      )}
-                    </div>
+                    <div className="flex justify-center space-x-2 items-center">
+                      <ActionsMenu
+                          actions={[
+                            {
+                              id: item.id!,
+                              hideOption: false,
+                              icon: <EyeIcon className="h-4 w-4" />,
+                              label: 'View Details',
+                              class: "w-full text-primary-600 hover:text-primary-900",
+                              listener: handleViewDetails
+                            },
+                            {
+                              id: item.id!,
+                              hideOption: selectedStatus === RecordStatus.ARCHIVED,
+                              icon: <PencilIcon className="h-4 w-4" />,
+                              label: 'Edit',
+                              class: "w-full text-primary-600 hover:text-primary-900",
+                              listener: handleEdit
+                            },
+                            {
+                              id: item.id!,
+                              hideOption: selectedStatus !== RecordStatus.ACTIVE,
+                              icon: <TrashIcon className="h-4 w-4" />,
+                              label: 'Archive',
+                              class: "w-full text-red-600 hover:text-red-900",
+                              listener: () => {
+                                setCurrentActiveId(item.id!)
+                                setIsArchiveConfirmationModalOpen(true)
+                              }
+                            },
+                            {
+                              id: item.id!,
+                              hideOption: selectedStatus === RecordStatus.ACTIVE,
+                              icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
+                              label: 'Restore',
+                              class: "w-full text-yellow-600 hover:text-yellow-900",
+                              listener: () => {
+                                setCurrentActiveId(item.id!)
+                                setIsRestoreConfirmationModalOpen(true)
+                              }
+                            },
+                          ]}
+                        />
+                      </div>
                   </td>
                 </tr>
               ))}
@@ -392,12 +461,6 @@ export default function InventoryPage() {
             setRecordsPerPage = {setRecordsPerPage}
           />
         </div>
-
-        {items.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No items found matching your criteria.</p>
-          </div>
-        )}
       </div>
 
       {/* Inventory Item Modal */}
@@ -407,13 +470,37 @@ export default function InventoryPage() {
         item={editingItem}
         categories={categories}
         onSave={(item) => {
+          setLoading(true)
           if (editingItem) {
             handleUpdate(item)
           } else {
             handleCreate(item)
           }
-          setIsModalOpen(false)
         }}
+      />
+      
+      <InventoryItemDetailsModal
+        isOpen={showDetailsModal && selectedItem !== null}
+        onClose={() => setShowDetailsModal(false)}
+        item={selectedItem!}
+      />
+      
+      {/* Confirmation Modal for Archive */}
+      <ConfirmationModal
+        isOpen={isArchiveConfirmationModalOpen}
+        id={currentActiveId}
+        message="Are you sure you want to archive this inventory item?"
+        onConfirmationSuccess={handleArchive}
+        onConfirmationFailure={resetModalState}
+      />
+      
+      {/* Confirmation Modal for Restore */}
+      <ConfirmationModal
+        isOpen={isRestoreConfirmationModalOpen}
+        id={currentActiveId}
+        message="Are you sure you want to restore this inventory item?"
+        onConfirmationSuccess={handleRestore}
+        onConfirmationFailure={resetModalState}
       />
     </div>
   )

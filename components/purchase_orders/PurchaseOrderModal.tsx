@@ -3,35 +3,23 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { SalesOrder, SalesOrderItem } from '@/lib/types/Models'
-import { SalesOrderStatus, RecordStatus } from '@/lib/Enums'
+import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier } from '@/lib/types/Models'
+import { PurchaseOrderStatus, RecordStatus } from '@/lib/Enums'
 import { calculateOrderTotalProce, showErrorToast } from '@/lib/helpers/Helper'
+import Tooltip from '../helpers/ToolTip'
+import { PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
 
-interface Customer {
-  id: string
-  name: string
-  email: string
-}
-
-interface InventoryItem {
-  id: string
-  sku: string
-  name: string
-  unit_price: number
-  quantity: number
-}
-
-interface SalesOrderModalProps {
+interface PurchaseOrderModalProps {
   isOpen: boolean
   onClose: () => void
-  order: SalesOrder | null
-  onSave: (order: SalesOrder) => void
+  order: PurchaseOrder | null
+  onSave: (order: PurchaseOrder) => void
 }
 
-const emptyEntry: SalesOrder = {
-  so_number: '',
-  customer_id: '',
-  order_status: SalesOrderStatus.PENDING,
+const emptyEntry: PurchaseOrder = {
+  po_number: '',
+  supplier_id: '',
+  order_status: PurchaseOrderStatus.PENDING,
   expected_date: '',
   tenant_id: '',
   status: RecordStatus.ACTIVE,
@@ -40,42 +28,61 @@ const emptyEntry: SalesOrder = {
   order_items: [],
 }
 
-export default function SalesOrderModal({ isOpen, onClose, order, onSave }: SalesOrderModalProps) {
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: PurchaseOrderModalProps) {
+  const [stores, setStores] = useState<Store[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [inventoryItems, setInventoryItems] = useState<Partial<InventoryItem>[]>([])
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<Partial<SalesOrder>>(emptyEntry)
-  const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([])
+  const [formData, setFormData] = useState<Partial<PurchaseOrder>>(emptyEntry)
+  const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([])
 
   useEffect(() => {
     if (isOpen) {
-      loadCustomers()
+      loadStores()
+      loadSuppliers()
       loadInventoryItems()
       if (order) {
         setFormData({
-          so_number: order.so_number || '',
-          customer_id: order.customer_id || '',
+          po_number: order.po_number || '',
+          supplier_id: order.supplier_id || '',
           expected_date: order.expected_date ? new Date(order.expected_date).toISOString().split('T')[0] : '',
-          order_status: order.order_status || SalesOrderStatus.PENDING
+          order_status: order.order_status || PurchaseOrderStatus.PENDING
         })
-        setSalesOrderItems(order.order_items || [])
+        setPurchaseOrderItems(order.order_items || [])
       } else {
         resetForm()
       }
     }
   }, [isOpen, order])
 
-  const loadCustomers = async () => {
+  const loadStores = async () => {
     if (!supabase) return
 
     try {
       const { data, error } = await supabase
-        .from('customers')
+        .from('stores')
+        .select('id, name, description')
+        .order('name')
+
+      if (error) throw error
+      
+      setStores(data || [])
+    } catch (error: any) {
+      showErrorToast()
+    }
+  }
+
+  const loadSuppliers = async () => {
+    if (!supabase) return
+
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
         .select('id, name, email')
         .order('name')
 
       if (error) throw error
-      setCustomers(data || [])
+      setSuppliers(data || [])
     } catch (error: any) {
       showErrorToast()
     }
@@ -100,79 +107,77 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
   const resetForm = () => {
     setFormData({
-      so_number: '',
-      customer_id: '',
+      po_number: '',
+      supplier_id: '',
       expected_date: '',
-      order_status: SalesOrderStatus.PENDING
+      order_status: PurchaseOrderStatus.PENDING
     })
-    setSalesOrderItems([])
+    setPurchaseOrderItems([])
   }
 
   const addItem = () => {
-    setSalesOrderItems([...salesOrderItems, { inventory_item_id: '', quantity: 1, unit_price: 0 }])
+    setPurchaseOrderItems([...purchaseOrderItems, { store_id: (stores.length >0 ? stores[0].id! : ''), inventory_item_id: '', quantity: 1, unit_price: 0 }])
   }
 
   const removeItem = (index: number) => {
-    setSalesOrderItems(salesOrderItems.filter((_, i) => i !== index))
+    setPurchaseOrderItems(purchaseOrderItems.filter((_, i) => i !== index))
   }
 
-  const updateItem = (index: number, field: keyof SalesOrderItem, value: any) => {
-    const preSelectedItem = salesOrderItems.find(item => item.inventory_item_id === value)
+  const updateItem = (index: number, field: keyof PurchaseOrderItem, value: any) => {
+    const preSelectedItem = purchaseOrderItems.find(item => item.inventory_item_id === value)
     if (preSelectedItem) {
-        alert('item already selected')
+        showErrorToast('Item already selected.')
         return
     }
-    const newItems = [...salesOrderItems]
+    const newItems = [...purchaseOrderItems]
     newItems[index] = { ...newItems[index], [field]: value }
     
     // Auto-fill unit price when item is selected
     if (field === 'inventory_item_id') {
       const selectedItem = inventoryItems.find(item => item.id === value)
       if (selectedItem) {
-        newItems[index].unit_price = selectedItem.unit_price
+        newItems[index].unit_price = selectedItem.unit_price!
       }
     }
     
-    setSalesOrderItems(newItems)
+    setPurchaseOrderItems(newItems)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (salesOrderItems.length === 0) {
+    if (purchaseOrderItems.length === 0) {
       showErrorToast('Please add at least one item')
       return
     }
 
-    if (salesOrderItems.some(item => !item.inventory_item_id)) {
-      showErrorToast('Please select all sales order items')
+    if (purchaseOrderItems.some(item => !item.inventory_item_id)) {
+      showErrorToast('Please select all purchase order items')
       return
     }
 
     try {
-      const itemsToInsert: SalesOrderItem[] = salesOrderItems.map(item => ({
-        sales_order_id: order?.id || '',
+      const itemsToInsert: PurchaseOrderItem[] = purchaseOrderItems.map(item => ({
+        store_id: item?.store_id,
+        purchase_order_id: order?.id || '',
         inventory_item_id: item.inventory_item_id || '',
         quantity: item.quantity || 0,
         unit_price: item.unit_price || 0,
       }))
 
-      const newSalesOrder: SalesOrder = {
+      const newPurchaseOrder: PurchaseOrder = {
         id: order?.id || '',
-        so_number: formData.so_number || '',
-        customer_id: formData.customer_id || '',
+        po_number: formData.po_number || '',
+        supplier_id: formData.supplier_id || '',
         order_status: formData.order_status,
         status: order?.status || RecordStatus.ACTIVE,
         expected_date: formData.expected_date,
         order_items: itemsToInsert
       }
   
-      // Clear input values
-      setFormData(emptyEntry)
-  
-      onSave(newSalesOrder)
+      onSave(newPurchaseOrder)
     } catch (error: any) {
-      showErrorToast('Failed to save sales order')
+      showErrorToast('Failed to save purchase order')
     } finally {
       setLoading(false)
     }
@@ -185,7 +190,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">
-            {order ? 'Edit Sales Order' : 'New Sales Order'}
+            {order ? 'Edit Purchase Order' : 'New Purchase Order'}
           </h2>
           <button
             onClick={onClose}
@@ -200,12 +205,12 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                SO Number *
+                Order Number *
               </label>
               <input
                 type="text"
-                value={formData.so_number}
-                onChange={(e) => setFormData({ ...formData, so_number: e.target.value })}
+                value={formData.po_number}
+                onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
                 className="input-field"
                 required
               />
@@ -213,18 +218,18 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Customer *
+                Supplier *
               </label>
               <select
-                value={formData.customer_id}
-                onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
+                value={formData.supplier_id}
+                onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
                 className="input-field"
                 required
               >
-                <option value="">Select Customer</option>
-                {customers.map(customer => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name}
+                <option value="">Select Supplier</option>
+                {suppliers.map(supplier => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
                   </option>
                 ))}
               </select>
@@ -239,6 +244,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                 value={formData.expected_date}
                 onChange={(e) => setFormData({ ...formData, expected_date: e.target.value })}
                 className="input-field"
+                required
               />
             </div>
           </div>
@@ -253,9 +259,9 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                 onChange={(e) => setFormData({ ...formData, order_status: e.target.value as any })}
                 className="input-field"
               >
-                <option value="pending">Pending</option>
-                <option value="received">Received</option>
-                <option value="cancelled">Cancelled</option>
+                {PURCHASE_ORDER_STATUSES.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
               </select>
             </div>
           )}
@@ -274,14 +280,14 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
               </button>
             </div>
 
-            {salesOrderItems.length === 0 ? (
+            {purchaseOrderItems.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No sales order items added yet. Click "Add Item" to get started.
+                No purchase order items added yet. Click "Add Item" to get started.
               </div>
             ) : (
               <div className="space-y-4">
-                {salesOrderItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
+                {purchaseOrderItems.map((item, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Item *
@@ -289,9 +295,9 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                       <select
                         value={item.inventory_item_id}
                         onChange={(e) => updateItem(index, 'inventory_item_id', e.target.value)}
-                        className={order?.id !== undefined ? 'btn-secondary' : 'input-field'}
+                        className={`input-field ${item?.id !== undefined ? 'btn-secondary' : ''}`}
                         required
-                        disabled={order?.id !== undefined}
+                        disabled={item?.id !== undefined}
                       >
                         <option value="">Select Item</option>
                         {inventoryItems.map(invItem => (
@@ -308,7 +314,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                       </label>
                       <input
                         type="number"
-                        min="1"
+                        min={order?.id ? 0 : 1}
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
                         className="input-field"
@@ -322,8 +328,8 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                       </label>
                       <input
                         type="number"
-                        min="0.01"
-                        step="0.01"
+                        min="1"
+                        step="1"
                         value={item.unit_price}
                         onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
                         className="input-field"
@@ -331,22 +337,43 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                       />
                     </div>
 
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="btn-danger flex items-center"
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Store *
+                      </label>
+                      <select
+                        value={item.store_id}
+                        onChange={(e) => updateItem(index, 'store_id', e.target.value)}
+                        className="input-field"
+                        required
                       >
-                        <TrashIcon className="h-4 w-4 mr-2" />
-                        Remove
-                      </button>
+                        {stores.map(store => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="items-center">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        &nbsp;
+                      </label>
+                      <Tooltip text="Remove">
+                          <button
+                            onClick={() => removeItem(index)}
+                            className="mt-3 text-red-600 hover:text-red-900"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
                     </div>
                   </div>
                 ))}
 
                 <div className="text-right">
                   <p className="text-lg font-medium">
-                    Total: ${calculateOrderTotalProce(salesOrderItems).toFixed(2)}
+                    Total: ${calculateOrderTotalProce(purchaseOrderItems).toFixed(2)}
                   </p>
                 </div>
               </div>

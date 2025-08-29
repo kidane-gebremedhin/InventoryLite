@@ -90,7 +90,7 @@ interface InventoryItem {
 }
 ```
 
-### SalesOrder Interface
+### Sales Order Interface
 ```typescript
 interface SalesOrder {
   id: string
@@ -103,13 +103,13 @@ interface SalesOrder {
 }
 ```
 
-### PurchaseOrder Interface
+### Purchase Order Interface
 ```typescript
 interface PurchaseOrder {
   id: string
   po_number: string
-  vendor_name: string
-  vendor_email: string
+  supplier_name: string
+  supplier_email: string
   status: 'pending' | 'received' | 'cancelled'
   created_at: string
   expected_date: string  // ✅ Now matches database
@@ -166,5 +166,5 @@ Simply run the updated `database_schema.sql` file to create the database with th
 ## Future Considerations
 
 1. **Category Management:** Consider adding a categories table back if you need centralized category management
-3. **Vendor/Customer Names:** Consider if you want to store vendor/customer names directly in orders or always join with the vendors/customers tables
+3. **Supplier/Customer Names:** Consider if you want to store supplier/customer names directly in orders or always join with the suppliers/customers tables
 4. **Audit Trail:** Consider adding audit tables for tracking changes to critical data

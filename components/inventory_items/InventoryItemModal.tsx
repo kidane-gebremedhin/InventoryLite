@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Category, InventoryItem } from '@/lib/types/Models';
+import { showErrorToast } from '@/lib/helpers/Helper';
 
 interface InventoryItemModalProps {
   isOpen: boolean
@@ -31,13 +32,13 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
     } else {
       setFormData(emptyEntry)
     }
-  }, [item])
+  }, [isOpen, item])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!formData.sku || !formData.name || !formData.category_id) {
-      alert('Please fill in all required fields')
+      showErrorToast('Please fill in all required fields.')
       return
     }
 
@@ -54,9 +55,6 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
       created_at: item?.created_at
 
     }
-
-    // Clear input values
-    setFormData(emptyEntry)
 
     onSave(newItem)
   }
@@ -88,19 +86,6 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              SKU *
-            </label>
-            <input
-              type="text"
-              value={formData.sku}
-              onChange={(e) => handleInputChange('sku', e.target.value)}
-              className="input-field"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
               Name *
             </label>
             <input
@@ -114,13 +99,14 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              SKU *
             </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
+            <input
+              type="text"
+              value={formData.sku}
+              onChange={(e) => handleInputChange('sku', e.target.value)}
               className="input-field"
-              rows={3}
+              required
             />
           </div>
 
@@ -134,7 +120,7 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
               className="input-field"
               required
             >
-              <option value="">Select a category</option>
+              <option value="">Select category</option>
               {categories.map(category => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -143,55 +129,52 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Min Quantity
-              </label>
-              <input
-                type="number"
-                value={formData.min_quantity}
-                onChange={(e) => handleInputChange('min_quantity', parseInt(e.target.value))}
-                className="input-field"
-                min="0"
-              />
+          <div>
+            <div className='w-full flex'>
+              <div className='w-1/2'>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Unit Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    value={formData.unit_price}
+                    onChange={(e) => handleInputChange('unit_price', parseFloat(e.target.value))}
+                    className="input-field pl-8"
+                    min="1"
+                    step="1"
+                  />
+                </div>
+              </div>
+              <div className='w-1/2 pl-2'>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Quantity
+                </label>
+                <input
+                  type="number"
+                  value={formData.min_quantity}
+                  onChange={(e) => handleInputChange('min_quantity', parseInt(e.target.value))}
+                  className="input-field"
+                  min="0"
+                />
+              </div>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Unit Price
+              Description
             </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                $
-              </span>
-              <input
-                type="number"
-                value={formData.unit_price}
-                onChange={(e) => handleInputChange('unit_price', parseFloat(e.target.value))}
-                className="input-field pl-8"
-                min="0.01"
-                step="0.01"
-              />
-            </div>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              className="input-field"
+              rows={3}
+            />
           </div>
-
-          {item && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => handleInputChange('status', e.target.value)}
-                className="input-field"
-              >
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <button

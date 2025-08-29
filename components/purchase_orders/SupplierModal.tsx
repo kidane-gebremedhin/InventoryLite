@@ -2,22 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
-import toast from 'react-hot-toast'
-import { Customer } from '@/lib/types/Models'
+import { Supplier } from '@/lib/types/Models'
+import { showErrorToast } from '@/lib/helpers/Helper'
 
 
-const emptyEntry: Customer = {
+const emptyEntry: Supplier = {
   name: '',
   email: '',
   phone: '',
   address: ''
 }
 
-interface CustomerModalProps {
+interface SupplierModalProps {
   isOpen: boolean
   onClose: () => void
-  customer: Customer | null
-  onSave: (customer: Customer) => void
+  supplier: Supplier | null
+  onSave: (supplier: Supplier) => void
 }
 
 interface FormErrors {
@@ -26,26 +26,26 @@ interface FormErrors {
   phone?: string
 }
 
-export default function CustomerModal({ isOpen, onClose, customer, onSave }: CustomerModalProps) {
+export default function SupplierModal({ isOpen, onClose, supplier, onSave }: SupplierModalProps) {
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<Partial<Customer>>(emptyEntry)
+  const [formData, setFormData] = useState<Partial<Supplier>>(emptyEntry)
   const [errors, setErrors] = useState<FormErrors>({})
 
   useEffect(() => {
     if (isOpen) {
-      if (customer) {
+      if (supplier) {
         setFormData({
-          name: customer.name || '',
-          email: customer.email || '',
-          phone: customer.phone || '',
-          address: customer.address || ''
+          name: supplier.name || '',
+          email: supplier.email || '',
+          phone: supplier.phone || '',
+          address: supplier.address || ''
         })
       } else {
         resetForm()
       }
       setErrors({})
     }
-  }, [isOpen, customer])
+  }, [isOpen, supplier])
 
   const resetForm = () => {
     setFormData({
@@ -57,66 +57,24 @@ export default function CustomerModal({ isOpen, onClose, customer, onSave }: Cus
     setErrors({})
   }
 
-  const validateForm = (): boolean => {
-    return true
-    /*
-    const newErrors: FormErrors = {}
-
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Customer name is required'
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Customer name must be at least 2 characters'
-    }
-
-    // Email validation
-    if (formData.email.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email address'
-      }
-    }
-
-    // Phone validation
-    if (formData.phone.trim()) {
-      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/
-      const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '')
-      if (!phoneRegex.test(cleanPhone)) {
-        newErrors.phone = 'Please enter a valid phone number'
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-    */
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) {
-      toast.error('Please fix the errors in the form')
-      return
-    }
-
     if (!formData.name) {
-      alert('Please fill in all required fields')
+      showErrorToast('Please fill in all required fields.')
       return
     }
 
-    const newCustomer: Customer = {
-      id: customer?.id,
+    const newSupplier: Supplier = {
+      id: supplier?.id,
       name: formData.name.trim(),
       email: formData.email?.trim() || '',
       phone: formData.phone?.trim() || '',
       address: formData.address?.trim() || '',
-      status: customer?.status
+      status: supplier?.status
     }
 
-    // Clear input values
-    setFormData(emptyEntry)
-
-    onSave(newCustomer)
+    onSave(newSupplier)
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -134,7 +92,7 @@ export default function CustomerModal({ isOpen, onClose, customer, onSave }: Cus
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">
-            {customer ? 'Edit Customer' : 'New Customer'}
+            {supplier ? 'Edit Supplier' : 'New Supplier'}
           </h2>
           <button
             onClick={onClose}
@@ -147,14 +105,14 @@ export default function CustomerModal({ isOpen, onClose, customer, onSave }: Cus
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Customer Name *
+              Supplier Name *
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               className={`input-field ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="Enter customer name"
+              placeholder="Enter supplier name"
               required
             />
             {errors.name && (
@@ -171,7 +129,7 @@ export default function CustomerModal({ isOpen, onClose, customer, onSave }: Cus
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               className={`input-field ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="customer@example.com"
+              placeholder="supplier@example.com"
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
@@ -203,7 +161,7 @@ export default function CustomerModal({ isOpen, onClose, customer, onSave }: Cus
               onChange={(e) => handleInputChange('address', e.target.value)}
               className="input-field"
               rows={3}
-              placeholder="Enter customer address"
+              placeholder="Enter supplier address"
             />
           </div>
 
@@ -221,7 +179,7 @@ export default function CustomerModal({ isOpen, onClose, customer, onSave }: Cus
               className="btn-primary"
               disabled={loading}
             >
-              {loading ? 'Saving...' : (customer ? 'Update Customer' : 'Create Customer')}
+              {loading ? 'Saving...' : (supplier ? 'Update Supplier' : 'Create Supplier')}
             </button>
           </div>
         </form>

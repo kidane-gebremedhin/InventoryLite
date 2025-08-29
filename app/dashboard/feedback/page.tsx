@@ -4,51 +4,31 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PlusIcon, StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import toast from 'react-hot-toast'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import { FeedbackRating } from '@/components/feedback/FeedbackRating'
-import { AdminFeedbackManager } from '@/components/feedback/AdminFeedbackManager'
-import { fetchCurrentTenantId, currentUserRole } from '@/lib/db_queries/DBQuery'
-import Loading from '@/components/helpers/Loading'
+import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
+import { useUserContext } from '@/components/context_apis/UserProvider'
+import { getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { DEFAULT_USER_ROLE, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES } from '@/lib/Constants'
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus } from '@/lib/Enums'
+import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 
 interface Feedback {
   id: string
-  category: 'bug' | 'feature' | 'improvement' | 'general'
+  category: FeedbackCategory.BUG | FeedbackCategory.FEATURE | FeedbackCategory.IMPROVEMENT | FeedbackCategory.GENERAL
   subject: string
   message: string
-  status: 'open' | 'in_progress' | 'resolved' | 'closed'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: FeedbackStatus.OPEN | FeedbackStatus.IN_PROGRESS | FeedbackStatus.RESOLVED | FeedbackStatus.CLOSED
+  priority: FeedbackPriority.LOW | FeedbackPriority.MEDIUM | FeedbackPriority.HIGH | FeedbackPriority.URGENT
   rating: number | null
   admin_response: string | null
   created_at: string
   updated_at: string
 }
 
-const categories = [
-  { value: 'bug', label: 'Bug Report', color: 'bg-red-100 text-red-800' },
-  { value: 'feature', label: 'Feature Request', color: 'bg-blue-100 text-blue-800' },
-  { value: 'improvement', label: 'Improvement', color: 'bg-green-100 text-green-800' },
-  { value: 'general', label: 'General', color: 'bg-gray-100 text-gray-800' },
-]
-
-const priorities = [
-  { value: 'low', label: 'Low', color: 'bg-gray-100 text-gray-800' },
-  { value: 'medium', label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'high', label: 'High', color: 'bg-orange-100 text-orange-800' },
-  { value: 'urgent', label: 'Urgent', color: 'bg-red-100 text-red-800' },
-]
-
-const statuses = [
-  { value: 'open', label: 'Open', color: 'bg-blue-100 text-blue-800' },
-  { value: 'in_progress', label: 'In Progress', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'resolved', label: 'Resolved', color: 'bg-green-100 text-green-800' },
-  { value: 'closed', label: 'Closed', color: 'bg-gray-100 text-gray-800' },
-]
-
 export default function FeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
-  const [loading, setLoading] = useState(true)
-  const [userRole, setUserRole] = useState<string>('user')
+  const [userRole, setUserRole] = useState<string>(DEFAULT_USER_ROLE)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     category: 'general' as const,
@@ -57,27 +37,18 @@ export default function FeedbackPage() {
     priority: 'medium' as const,
     rating: 0
   })
+  // Global States
+  const {loading, setLoading} = useLoadingContext()
+  const {currentUser, setCurrentUser} = useUserContext()
 
   useEffect(() => {
-    loadUserRole()
     loadFeedbacks()
   }, [])
 
-  const loadUserRole = async () => {
-    if (!supabase) return
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      setUserRole(currentUserRole)
-    } catch (error) {
-      console.error('Error loading user role:', error)
-    }
-  }
-
   const loadFeedbacks = async () => {
-    if (!supabase) return
+    setLoading(true)
+
+    if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
       const { data, error } = await supabase
@@ -88,8 +59,7 @@ export default function FeedbackPage() {
       if (error) throw error
       setFeedbacks(data || [])
     } catch (error: any) {
-      toast.error('Failed to load feedback')
-      console.error('Error loading feedback:', error)
+      showErrorToast()
     } finally {
       setLoading(false)
     }
@@ -97,20 +67,12 @@ export default function FeedbackPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!supabase) return
+    if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        toast.error('You must be logged in to submit feedback')
-        return
-      }
-
       const { error } = await supabase
         .from('feedback')
         .insert({
-          user_id: user.id,
-          tenant_id: await fetchCurrentTenantId(),
           category: formData.category,
           subject: formData.subject,
           message: formData.message,
@@ -120,7 +82,7 @@ export default function FeedbackPage() {
 
       if (error) throw error
 
-      toast.success('Feedback submitted successfully!')
+      showSuccessToast('Feedback submitted successfully!')
       setFormData({
         category: 'general',
         subject: '',
@@ -131,44 +93,10 @@ export default function FeedbackPage() {
       setShowForm(false)
       loadFeedbacks()
     } catch (error: any) {
-      toast.error('Failed to submit feedback')
-      console.error('Error submitting feedback:', error)
+      showErrorToast('Failed to submit feedback')
     }
   }
 
-  const getCategoryLabel = (category: string) => {
-    return categories.find(c => c.value === category)?.label || category
-  }
-
-  const getCategoryColor = (category: string) => {
-    return categories.find(c => c.value === category)?.color || 'bg-gray-100 text-gray-800'
-  }
-
-  const getPriorityColor = (priority: string) => {
-    return priorities.find(p => p.value === priority)?.color || 'bg-gray-100 text-gray-800'
-  }
-
-  const getStatusColor = (status: string) => {
-    return statuses.find(s => s.value === status)?.color || 'bg-gray-100 text-gray-800'
-  }
-
-  if (loading) {
-    return <Loading />
-  }
-
-  // Show admin view for admins and managers
-  if (userRole === 'admin') {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Feedback Management</h1>
-        </div>
-        <AdminFeedbackManager />
-      </div>
-    )
-  }
-
-  // Show user view for regular users
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -210,7 +138,7 @@ export default function FeedbackPage() {
                   className="input-field"
                   required
                 >
-                  {categories.map(category => (
+                  {FEEDBACK_CATEGORIES.map(category => (
                     <option key={category.value} value={category.value}>
                       {category.label}
                     </option>
@@ -254,7 +182,7 @@ export default function FeedbackPage() {
                   className="input-field"
                   required
                 >
-                  {priorities.map(priority => (
+                  {FEEDBACK_PRIORITIES.map(priority => (
                     <option key={priority.value} value={priority.value}>
                       {priority.label}
                     </option>
@@ -316,13 +244,13 @@ export default function FeedbackPage() {
             <div key={feedback.id} className="card">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(feedback.category)}`}>
-                    {getCategoryLabel(feedback.category)}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackCategoryColor(feedback.category)}`}>
+                    {getFeedbackCategoryLabel(feedback.category)}
                   </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(feedback.priority)}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackPriorityColor(feedback.priority)}`}>
                     {feedback.priority}
                   </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(feedback.status)}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackStatusColor(feedback.status)}`}>
                     {feedback.status.replace('_', ' ')}
                   </span>
                 </div>

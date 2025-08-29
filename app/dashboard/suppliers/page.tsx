@@ -7,29 +7,30 @@ import {
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
-  ArrowUpOnSquareIcon,
+  ArrowUpOnSquareIcon
 } from '@heroicons/react/24/outline'
-import { CategoryModal } from '@/components/category/CategoryModal'
 import { supabase } from '@/lib/supabase'
-import { Category } from '@/lib/types/Models'
+import { Supplier } from '@/lib/types/Models'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { RecordStatus } from '@/lib/Enums'
-import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
+import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { getRecordStatusColor, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/Pagination'
+import Loading from '@/components/helpers/Loading'
+import SupplierModal from '@/components/purchase_orders/SupplierModal'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 
-export default function CategoryPage() {
+export default function SupplierPage() {
   const router = useRouter()
   const [searchTermTemp, setSearchTermTemp] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [categories, setCategories] = useState<Category[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [canSeeMore, setCanSeeMore] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
@@ -43,15 +44,15 @@ export default function CategoryPage() {
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
-  const TABLE_NAME = 'categories'
+  const TABLE_NAME = 'suppliers'
 
   useEffect(() => {
     // reset pagination
     router.push(`?page=${currentPage}`)
-    loadCategories()
+    loadSuppliers()
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
-  const loadCategories = async () => {
+  const loadSuppliers = async () => {
     setLoading(true)
 
     if (!supabase || !await authorseDBAction(currentUser)) return
@@ -65,7 +66,7 @@ export default function CategoryPage() {
         query = query.eq('status', selectedStatus)
       }
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%, description.ilike.%${searchTerm}%`)
+        query = query.or(`name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, phone.ilike.%${searchTerm}%, address.ilike.%${searchTerm}%`)
       }
       const { data, count, error } = await query.order('created_at', { ascending: false })
       .range(startIndex, endIndex)
@@ -73,7 +74,7 @@ export default function CategoryPage() {
       if (error) {
         showErrorToast()
       }
-      setCategories(data || [])
+      setSuppliers(data || [])
       setTotalRecordsCount(count || 0)
     } catch (error: any) {
       showErrorToast()
@@ -83,13 +84,13 @@ export default function CategoryPage() {
   }
 
   const handleAdd = () => {
-    setEditingCategory(null)
+    setEditingSupplier(null)
     setIsModalOpen(true)
   }
 
   const handleEdit = (id: string) => {
-    const category = categories.find(category => category.id === id)
-    setEditingCategory(category!)
+    const supplier = suppliers.find(supplier => supplier.id === id)
+    setEditingSupplier(supplier!)
     setIsModalOpen(true)
   }
 
@@ -106,10 +107,11 @@ export default function CategoryPage() {
 
       if (error) {
         showErrorToast()
+        return
       } else {
         showSuccessToast('Record Archived.')
-        const remainingRecords = categories.filter(category => category.id !== id)
-        setCategories(remainingRecords)
+        const remainingRecords = suppliers.filter(supplier => supplier.id !== id)
+        setSuppliers(remainingRecords)
         setTotalRecordsCount(remainingRecords.length)
       }
     } catch (error: any) {
@@ -123,7 +125,6 @@ export default function CategoryPage() {
     resetModalState()
 
     if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await supabase
         .from(TABLE_NAME)
@@ -134,8 +135,8 @@ export default function CategoryPage() {
         showErrorToast()
       } else {
         showSuccessToast('Record Restored.')
-        const remainingRecords = categories.filter(category => category.id !== id)
-        setCategories(remainingRecords)
+        const remainingRecords = suppliers.filter(supplier => supplier.id !== id)
+        setSuppliers(remainingRecords)
         setTotalRecordsCount(remainingRecords.length)
       }
     } catch (error: any) {
@@ -145,15 +146,15 @@ export default function CategoryPage() {
     }
   }
 
-  const handleCreate = async (category: Category) => {
+  const handleCreate = async (supplier: Supplier) => {
     if (!supabase || !await authorseDBAction(currentUser)) return
 
       // Exclude id field while creating new record 
-      const {id, ...categoryWithNoId} = category
+      const {id, ...supplierWithNoId} = supplier
     try {
       const { error } = await supabase
         .from(TABLE_NAME)
-        .insert(categoryWithNoId)
+        .insert(supplierWithNoId)
 
       if (error) {
         handleServerError(error)
@@ -161,9 +162,8 @@ export default function CategoryPage() {
       }
 
       setIsModalOpen(false)
-
       showSuccessToast('Record Created.')
-      loadCategories()
+      loadSuppliers()
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -171,14 +171,14 @@ export default function CategoryPage() {
     }
   }
 
-  const handleUpdate = async (category: Category) => {
+  const handleUpdate = async (supplier: Supplier) => {
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
       const { error } = await supabase
         .from(TABLE_NAME)
-        .update(category)
-        .eq('id', category.id)
+        .update(supplier)
+        .eq('id', supplier.id)
 
       if (error) {
         handleServerError(error)
@@ -187,7 +187,7 @@ export default function CategoryPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      loadCategories()
+      loadSuppliers()
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -208,7 +208,7 @@ export default function CategoryPage() {
 
   const handleServerError = (error: PostgrestError) => {
     if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
-      showErrorToast(VALIDATION_ERRORS_MAPPING.entities.category.fields.name.displayError)
+      showErrorToast(VALIDATION_ERRORS_MAPPING.entities.supplier.fields.name.displayError)
     } else {
       showErrorToast()
     }
@@ -218,43 +218,49 @@ export default function CategoryPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Category Management</h1>
-          <p className="text-gray-600">Manage your categories of items</p>
+          <h1 className="text-2xl font-bold text-gray-900">Supplier Management</h1>
+          <p className="text-gray-600">Manage your suppliers of items</p>
         </div>
         <button
           onClick={handleAdd}
           className="btn-primary flex items-center items-center"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
-          Add Category
+          Add Supplier
         </button>
       </div>
 
-      {/* Category Table */}
+      {/* Supplier Table */}
       <div className="card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  Supplier
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
+                  Email
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Phone
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Address
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
                   Record Status
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 </th>
               </tr>
               <tr>
-                <th colSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th colSpan={4} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="relative">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search by name or description... and press ENTER key"
+                      placeholder="Search by name or email/phone/address... and press ENTER key"
                       value={searchTermTemp}
                       onChange={(e) => {
                         setSearchTermTemp(e.target.value)
@@ -269,53 +275,53 @@ export default function CategoryPage() {
                     />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
-                    <div className='w-full'>
-                        <select
-                        value={selectedStatus}
-                        onChange={(e) => { 
-                          setCurrentPage(FIRST_PAGE_NUMBER)
-                          setSelectedStatus(e.target.value)
-                        }}
-                        className="input-field"
-                      >
-                        {RECORD_STATUSES.map(status => (
-                          <option key={status} value={status}>
-                            {status === ALL_OPTIONS ? 'All Statuses' : status}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs items-center font-medium text-gray-500 uppercase tracking-wider">
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => { 
+                      setCurrentPage(FIRST_PAGE_NUMBER)
+                      setSelectedStatus(e.target.value)
+                    }}
+                    className="input-field"
+                  >
+                    {RECORD_STATUSES.map(status => (
+                      <option key={status} value={status}>
+                        {status === ALL_OPTIONS ? 'All Statuses' : status}
+                      </option>
+                    ))}
+                  </select>
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {categories.map((category) => (
-                <tr key={category.id} className="hover:bg-gray-50">
+              {suppliers.map((supplier) => (
+                <tr key={supplier.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{category.name}</div>
-                    </div>
+                    {supplier.name}
+                  </td>
+                  <td className="px-6 py-4">
+                    {supplier.email}
+                  </td>
+                  <td className="px-6 py-4">
+                    {supplier.phone}
                   </td>
                   <td style={{maxWidth: 200}} className="px-6 py-4 text-sm text-gray-900 o">
-                    {canSeeMore ? shortenText(category.description, MAX_TABLE_TEXT_LENGTH) : category.description}
-                    {category.description.length > MAX_TABLE_TEXT_LENGTH && (
+                    {canSeeMore ? shortenText(supplier.address, MAX_TABLE_TEXT_LENGTH) : supplier.address}
+                    {supplier.address && supplier.address.length > MAX_TABLE_TEXT_LENGTH && (
                       <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(category.status!)}`}>
-                      {category.status}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(supplier.status!)}`}>
+                      {supplier.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2 items-center">                        
+                    <div className="flex justify-center space-x-2 items-center">
                       <ActionsMenu
                         actions={[
                           {
-                            id: category.id!,
+                            id: supplier.id!,
                             hideOption: selectedStatus === RecordStatus.ARCHIVED,
                             icon: <PencilIcon className="h-4 w-4" />,
                             label: 'Edit',
@@ -323,24 +329,24 @@ export default function CategoryPage() {
                             listener: handleEdit
                           },
                           {
-                            id: category.id!,
+                            id: supplier.id!,
                             hideOption: selectedStatus !== RecordStatus.ACTIVE,
                             icon: <TrashIcon className="h-4 w-4" />,
                             label: 'Archive',
                             class: "w-full text-red-600 hover:text-red-900",
                             listener: () => {
-                              setCurrentActiveId(category.id!)
+                              setCurrentActiveId(supplier.id!)
                               setIsArchiveConfirmationModalOpen(true)
                             }
                           },
                           {
-                            id: category.id!,
+                            id: supplier.id!,
                             hideOption: selectedStatus === RecordStatus.ACTIVE,
                             icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
                             label: 'Restore',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
                             listener: () => {
-                              setCurrentActiveId(category.id!)
+                              setCurrentActiveId(supplier.id!)
                               setIsRestoreConfirmationModalOpen(true)
                             }
                           },
@@ -362,17 +368,17 @@ export default function CategoryPage() {
         </div>
       </div>
 
-      {/* Category Modal */}
-      <CategoryModal
+      {/* Supplier Modal */}
+      <SupplierModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        category={editingCategory}
-        onSave={(category) => {
+        supplier={editingSupplier}
+        onSave={(supplier) => {
           setLoading(true)
-          if (editingCategory) {
-            handleUpdate(category)
+          if (editingSupplier) {
+            handleUpdate(supplier)
           } else {
-            handleCreate(category)
+            handleCreate(supplier)
           }
         }}
       />
@@ -381,7 +387,7 @@ export default function CategoryPage() {
       <ConfirmationModal
         isOpen={isArchiveConfirmationModalOpen}
         id={currentActiveId}
-        message="Are you sure you want to archive this category?"
+        message="Are you sure you want to archive this supplier?"
         onConfirmationSuccess={handleArchive}
         onConfirmationFailure={resetModalState}
       />
@@ -390,7 +396,7 @@ export default function CategoryPage() {
       <ConfirmationModal
         isOpen={isRestoreConfirmationModalOpen}
         id={currentActiveId}
-        message="Are you sure you want to restore this category?"
+        message="Are you sure you want to restore this supplier?"
         onConfirmationSuccess={handleRestore}
         onConfirmationFailure={resetModalState}
       />

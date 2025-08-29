@@ -1,5 +1,6 @@
 import { FIRST_PAGE_NUMBER, RECORDS_PER_PAGE_OPTIONS } from "@/lib/Constants"
 import { SetStateAction } from "react"
+import NoRecordsFound from "./helpers/NoRecordsFound"
 
 interface PationationProps {
   currentPage: number
@@ -19,6 +20,8 @@ export default function Pagination({ currentPage, recordsPerPage, totalRecordsCo
     }
 
     const getTotalPages = Math.ceil(totalRecordsCount / recordsPerPage)
+    
+    if (!totalRecordsCount) return <NoRecordsFound />
     
     return (
         <>

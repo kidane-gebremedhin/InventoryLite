@@ -6,7 +6,8 @@ import {
   ShieldCheckIcon, 
   Cog6ToothIcon
 } from '@heroicons/react/24/outline'
-import { useUserContext } from '@/components/contextApis/UserProvider'
+import { useUserContext } from '@/components/context_apis/UserProvider'
+import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 
 const tabs = [
   { name: 'Profile', icon: UserIcon },
@@ -17,6 +18,7 @@ const tabs = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('Profile')
 
+  const {loading, setLoading} = useLoadingContext()
   const { currentUser, setCurrentUser } = useUserContext()
 
   const renderTabContent = () => {

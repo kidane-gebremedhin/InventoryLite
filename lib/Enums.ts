@@ -28,3 +28,28 @@ export enum TransactionDirection {
     OUT = 'out'
 }
 
+export enum FeedbackCategory {
+    BUG = 'bug',
+    FEATURE = 'feature',
+    IMPROVEMENT = 'improvement',
+    GENERAL = 'general'
+}
+
+export enum FeedbackStatus {
+    OPEN = 'open',
+    IN_PROGRESS = 'in_progress',
+    RESOLVED = 'resolved',
+    CLOSED = 'closed'
+}
+
+export enum FeedbackPriority {
+    LOW = 'low',
+    MEDIUM = 'medium',
+    HIGH = 'high',
+    URGENT = 'urgent'
+}
+
+export enum UserRole {
+    ADMIN = 'admin',
+    USER = 'user'
+}

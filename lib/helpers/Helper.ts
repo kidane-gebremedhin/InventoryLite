@@ -1,6 +1,7 @@
 import toast from "react-hot-toast"
 import { PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
 import { PurchaseOrderItem, SalesOrderItem } from "../types/Models"
+import { FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
 
 export const shortenText = (input: string | undefined | null, targetLength: number): string => {
     if (!input) return ''
@@ -97,4 +98,25 @@ export const convertToUTC = (date: Date) => {
 
 export const dateFormat = (dateStr: string): string => {
   return new Date(dateStr).toUTCString()
+}
+
+export const capitalizeFirstLetter = (input: string): string => {
+  return input.charAt(0).toUpperCase() + input.slice(1);
+}
+
+
+export const getFeedbackCategoryLabel = (category: string) => {
+  return FEEDBACK_CATEGORIES.find(c => c.value === category)?.label || category
+}
+
+export const getFeedbackCategoryColor = (category: string) => {
+  return FEEDBACK_CATEGORIES.find(c => c.value === category)?.color || 'bg-gray-100 text-gray-800'
+}
+
+export const getFeedbackPriorityColor = (priority: string) => {
+  return FEEDBACK_PRIORITIES.find(p => p.value === priority)?.color || 'bg-gray-100 text-gray-800'
+}
+
+export const getFeedbackStatusColor = (status: string) => {
+  return FEEDBACK_STATUSES.find(s => s.value === status)?.color || 'bg-gray-100 text-gray-800'
 }

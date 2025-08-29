@@ -14,6 +14,14 @@ export interface Category {
   status?: string
 }
 
+
+export interface Store {
+  id?: string
+  name: string
+  description: string,
+  status?: string
+}
+
 export interface InventoryItem {
   id?: string
   sku: string
@@ -25,9 +33,13 @@ export interface InventoryItem {
   unit_price: number
   status?: string
   created_at?: string
+  updated_at?: string
+  category?: Category
+  purchase_order_items?: PurchaseOrderItem[]
+  sales_order_items?: SalesOrderItem[]
 }
 
-export interface Vendor {
+export interface Supplier {
   id?: string
   name: string
   email?: string
@@ -54,6 +66,7 @@ export interface Customer {
 export interface PurchaseOrderItem {
   id?: string
   purchase_order_id?: string
+  store_id: string
   inventory_item_id: string
   quantity: number
   unit_price: number
@@ -62,11 +75,13 @@ export interface PurchaseOrderItem {
   created_at?: string
   updated_at?: string
   item?: InventoryItem
+  store?: Store
 }
 
 export interface SalesOrderItem {
   id?: string
   sales_order_id?: string
+  store_id: string
   inventory_item_id: string
   quantity: number
   unit_price: number
@@ -75,19 +90,20 @@ export interface SalesOrderItem {
   created_at?: string
   updated_at?: string
   item?: InventoryItem
+  store?: Store
 }
 
 export interface PurchaseOrder {
   id?: string
   po_number: string
-  vendor_id: string
+  supplier_id: string
   order_status?: PurchaseOrderStatus.PENDING
   expected_date?: string
   tenant_id?: string
   status: string
   created_at?: string
   updated_at?: string
-  vendor?: Vendor
+  supplier?: Supplier
   order_items?: PurchaseOrderItem[]
 }
 
@@ -108,18 +124,21 @@ export interface SalesOrder {
 export interface Transaction {
   id?: string
   type: 'in' | 'out'
+  store_id: string
   item_id: string
   quantity: number
+  current_item_quantity?: number
   reference_id: string
   status?: string
   tenant_id?: string
   created_at?: string
   updated_at?: string
   item?: InventoryItem
+  store?: Store
 }
 
 // Legacy interfaces for backward compatibility
-export interface ReceivableOrderItems {
+export interface PurchaseOrderOrderItems {
   id?: string
   purchase_order_id: string
   inventory_item_id: string,
@@ -130,14 +149,20 @@ export interface ReceivableOrderItems {
   updated_at: string
 }
 
-export interface Receivables {
+export interface PurchaseOrders {
   id?: string
   po_number: string
-  vendor_id: string,
+  supplier_id: string,
   status?: string,
   expected_date: Date,
   tenant_id: string,
   created_at: string,
   updated_at: string,
-  items: ReceivableOrderItems[]
+  items: PurchaseOrderOrderItems[]
+}
+
+
+export interface FeedbackStatus {
+    key: string
+    label: string
 }
