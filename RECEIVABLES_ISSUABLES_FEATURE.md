@@ -1,36 +1,36 @@
-# Receivables and Issuables Management Features
+# Purchase Orders and Sales Orders Management Features
 
-This document describes the complete receivables and issuables management features implemented in InventoryLite.
+This document describes the complete purchase_orders and sales_orders management features implemented in InventoryLite.
 
 ## Overview
 
-The receivables and issuables features provide comprehensive order management capabilities for purchase orders (receivables) and sales orders (issuables). These features integrate with the existing inventory system and provide full CRUD operations for managing orders.
+The purchase_orders and sales_orders features provide comprehensive order management capabilities for purchase orders (purchase_orders) and sales orders (sales_orders). These features integrate with the existing inventory system and provide full CRUD operations for managing orders.
 
 ## Features
 
-### Receivables (Purchase Orders)
+### Purchase Orders (Purchase Orders)
 
 #### Core Functionality
 - **Create Purchase Orders**: Add new purchase orders with multiple items
 - **Edit Purchase Orders**: Modify existing purchase orders and their items
-- **View Order Details**: Detailed view of purchase orders with vendor information
+- **View Order Details**: Detailed view of purchase orders with supplier information
 - **Status Management**: Update order status (pending, received, cancelled)
-- **Vendor Management**: Create and manage vendors
+- **Supplier Management**: Create and manage suppliers
 - **Real-time Data**: All data is fetched from and saved to the database
 
 #### Components
 - `PurchaseOrderModal`: Modal for creating/editing purchase orders
 - `OrderDetailsModal`: Modal for viewing order details
-- `VendorModal`: Modal for managing vendors
-- Updated `receivables/page.tsx`: Main page with table view and actions
+- `SupplierModal`: Modal for managing suppliers
+- Updated `purchase_orders/page.tsx`: Main page with table view and actions
 
 #### Database Tables Used
 - `purchase_orders`: Main purchase order records
 - `purchase_order_items`: Individual items in purchase orders
-- `vendors`: Vendor information
+- `suppliers`: Supplier information
 - `inventory_items`: Available inventory items
 
-### Issuables (Sales Orders)
+### Sales Orders (Sales Orders)
 
 #### Core Functionality
 - **Create Sales Orders**: Add new sales orders with multiple items
@@ -43,9 +43,9 @@ The receivables and issuables features provide comprehensive order management ca
 
 #### Components
 - `SalesOrderModal`: Modal for creating/editing sales orders
-- `OrderDetailsModal`: Modal for viewing order details (shared with receivables)
+- `OrderDetailsModal`: Modal for viewing order details (shared with purchase_orders)
 - `CustomerModal`: Modal for managing customers
-- Updated `issuables/page.tsx`: Main page with table view and actions
+- Updated `sales_orders/page.tsx`: Main page with table view and actions
 
 #### Database Tables Used
 - `sales_orders`: Main sales order records
@@ -67,10 +67,10 @@ The receivables and issuables features provide comprehensive order management ca
 - **Price Management**: Unit prices are auto-filled but can be modified
 - **Quantity Tracking**: Track quantities ordered vs available
 
-### 3. Vendor/Customer Management
-- **Contact Information**: Store vendor and customer details
-- **Quick Creation**: Create vendors/customers on-the-fly
-- **Search and Filter**: Find vendors/customers easily
+### 3. Supplier/Customer Management
+- **Contact Information**: Store supplier and customer details
+- **Quick Creation**: Create suppliers/customers on-the-fly
+- **Search and Filter**: Find suppliers/customers easily
 
 ### 4. User Interface
 - **Responsive Design**: Works on desktop and mobile devices
@@ -92,7 +92,7 @@ The receivables and issuables features provide comprehensive order management ca
 purchase_orders (
   id UUID PRIMARY KEY,
   po_number VARCHAR(100) UNIQUE,
-  vendor_id UUID REFERENCES vendors(id),
+  supplier_id UUID REFERENCES suppliers(id),
   status VARCHAR(20) DEFAULT 'pending',
   expected_date DATE,
   tenant_id UUID REFERENCES tenants(id),
@@ -146,11 +146,11 @@ sales_order_items (
 ## API Functions
 
 ### Database Queries (lib/db_queries/DBQuery.ts)
-- `fetchPurchaseOrders()`: Get all purchase orders with vendor info
+- `fetchPurchaseOrders()`: Get all purchase orders with supplier info
 - `fetchPurchaseOrderDetails(orderId)`: Get detailed purchase order data
 - `fetchSalesOrders()`: Get all sales orders with customer info
 - `fetchSalesOrderDetails(orderId)`: Get detailed sales order data
-- `fetchVendors()`: Get all vendors
+- `fetchSuppliers()`: Get all suppliers
 - `fetchCustomers()`: Get all customers
 - `fetchInventoryItems()`: Get active inventory items
 - `updatePurchaseOrderStatus(orderId, status)`: Update PO status
@@ -159,14 +159,14 @@ sales_order_items (
 ## Usage Examples
 
 ### Creating a Purchase Order
-1. Navigate to Receivables page
+1. Navigate to PurchaseOrders page
 2. Click "New Purchase Order"
-3. Fill in PO number, select vendor, set expected date
+3. Fill in PO number, select supplier, set expected date
 4. Add items with quantities and prices
 5. Review total and save
 
 ### Creating a Sales Order
-1. Navigate to Issuables page
+1. Navigate to Sales Orders page
 2. Click "New Sales Order"
 3. Fill in SO number, select customer, set expected date
 4. Add items (system validates stock availability)

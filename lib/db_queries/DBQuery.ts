@@ -1,33 +1,15 @@
-import { useUserContext } from '@/components/contextApis/UserProvider'
 import { supabase } from '@/lib/supabase'
 import { showErrorToast } from '../helpers/Helper'
 import { User } from '../types/Models'
+import { UserRole } from '../Enums'
 
-export const fetchCurrentTenantId = async () => {
-    if (!supabase) return
-    
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    // First try to get existing user profile
-    const { data: currentTenant } = await supabase
-      .from('user_tenant_mappings')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .single()
-
-    return currentTenant?.tenant_id
-}
-
-export const currentUserRole = (): string => {
-      // 'user', 'admin'
-      return 'admin'
+export const getCurrentUserRole = (user: User): string => {
+  return user.email === 'kidane10g.edu@gmail.com' ? UserRole.ADMIN : UserRole.USER
 }
 
 export const authorseDBAction = async (user: User): Promise<User | undefined> => {
   if (!supabase) return
 
-  //const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     showErrorToast('Unauthorised attempt.')
     return
@@ -45,7 +27,7 @@ export const fetchPurchaseOrders = async () => {
       .from('purchase_orders')
       .select(`
         *,
-        vendor:vendors(name, email),
+        supplier:suppliers(name, email),
         items:purchase_order_items(count)
       `)
       .order('created_at', { ascending: false })
@@ -67,7 +49,7 @@ export const fetchPurchaseOrderDetails = async (orderId: string) => {
       .from('purchase_orders')
       .select(`
         *,
-        vendor:vendors(name, email),
+        supplier:suppliers(name, email),
         items:purchase_order_items(
           *,
           item:inventory_items(sku, name, unit_price)
@@ -132,20 +114,20 @@ export const fetchSalesOrderDetails = async (orderId: string) => {
   }
 }
 
-// Vendor and Customer Queries
-export const fetchVendors = async () => {
+// Supplier and Customer Queries
+export const fetchSuppliers = async () => {
   if (!supabase) return []
 
   try {
     const { data, error } = await supabase
-      .from('vendors')
+      .from('suppliers')
       .select('id, name, email')
       .order('name')
 
     if (error) throw error
     return data || []
   } catch (error: any) {
-    console.error('Error fetching vendors:', error)
+    console.error('Error fetching suppliers:', error)
     throw error
   }
 }

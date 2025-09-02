@@ -12,8 +12,10 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { ALL_OPTIONS } from '@/lib/Constants'
+import { ALL_OPTIONS, FEEDBACK_STATUSES } from '@/lib/Constants'
 import Loading from '../helpers/Loading'
+import { FeedbackStatus } from '@/lib/Enums'
+import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 
 interface Feedback {
   id: string
@@ -60,8 +62,7 @@ export function AdminFeedbackManager() {
       if (error) throw error
       setFeedbacks(data || [])
     } catch (error: any) {
-      toast.error('Failed to load feedback')
-      console.error('Error loading feedback:', error)
+      showErrorToast()
     } finally {
       setLoading(false)
     }
@@ -77,11 +78,10 @@ export function AdminFeedbackManager() {
         .eq('id', feedbackId)
 
       if (error) throw error
-      toast.success('Status updated successfully')
+      showSuccessToast('Status updated successfully')
       loadFeedbacks()
     } catch (error: any) {
-      toast.error('Failed to update status')
-      console.error('Error updating status:', error)
+      showErrorToast('Failed to update status')
     }
   }
 
@@ -99,14 +99,13 @@ export function AdminFeedbackManager() {
 
       if (error) throw error
 
-      toast.success('Response submitted successfully')
+      showSuccessToast('Response submitted successfully')
       setShowResponseModal(false)
       setResponseText('')
       setSelectedFeedback(null)
       loadFeedbacks()
     } catch (error: any) {
-      toast.error('Failed to submit response')
-      console.error('Error submitting response:', error)
+      showErrorToast('Failed to submit response')
     }
   }
 
@@ -117,11 +116,11 @@ export function AdminFeedbackManager() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'open':
+      case FeedbackStatus.OPEN:
         return <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
-      case 'in_progress':
+      case FeedbackStatus.IN_PROGRESS:
         return <ClockIcon className="h-4 w-4 text-yellow-500" />
-      case 'resolved':
+      case FeedbackStatus.RESOLVED:
         return <CheckCircleIcon className="h-4 w-4 text-green-500" />
       default:
         return <ChatBubbleLeftRightIcon className="h-4 w-4 text-gray-500" />
@@ -139,10 +138,6 @@ export function AdminFeedbackManager() {
       default:
         return 'bg-gray-100 text-gray-800'
     }
-  }
-
-  if (loading) {
-    return <Loading />
   }
 
   return (
@@ -193,11 +188,9 @@ export function AdminFeedbackManager() {
         onChange={(e) => setFilter(e.target.value)}
         className="input-field max-w-xs"
       >
-        <option value="all">All Feedback</option>
-        <option value="open">Open</option>
-        <option value="in_progress">In Progress</option>
-        <option value="resolved">Resolved</option>
-        <option value="closed">Closed</option>
+        {FEEDBACK_STATUSES.map(status => (
+          <option key={status.value} value={status.value}>{status.label}</option>
+        ))}
       </select>
 
       {/* Feedback List */}
@@ -255,10 +248,9 @@ export function AdminFeedbackManager() {
                   onChange={(e) => handleStatusUpdate(feedback.id, e.target.value)}
                   className="text-sm border border-gray-300 rounded px-2 py-1"
                 >
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
+                  {FEEDBACK_STATUSES.map(status => (
+                    <option key={status.value} value={status.value}>{status.label}</option>
+                  ))}
                 </select>
 
                 <button
@@ -266,7 +258,7 @@ export function AdminFeedbackManager() {
                     setSelectedFeedback(feedback)
                     setShowResponseModal(true)
                   }}
-                  className="btn-primary text-sm"
+                  className="btn-primary text-sm flex"
                 >
                   <EyeIcon className="h-4 w-4 mr-1" />
                   Respond

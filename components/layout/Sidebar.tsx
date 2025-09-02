@@ -19,24 +19,32 @@ import {
   BuildingStorefrontIcon
 } from '@heroicons/react/24/outline'
 import { APP_NAME } from '@/lib/Constants'
-
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Category', href: '/dashboard/category', icon: WindowIcon },
-  { name: 'Inventory', href: '/dashboard/inventory', icon: CubeIcon },
-  { name: 'Vendors', href: '/dashboard/vendors', icon: BuildingStorefrontIcon },
-  { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
-  { name: 'Receivables', href: '/dashboard/receivables', icon: TruckIcon },
-  { name: 'Issuables', href: '/dashboard/issuables', icon: ShoppingCartIcon },
-  { name: 'Transactions', href: '/dashboard/transactions', icon: ShoppingCartIcon },
-  { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
-  { name: 'Feedback', href: '/dashboard/feedback', icon: ChatBubbleLeftRightIcon },
-  { name: 'Settings', href: '/dashboard/settings', icon: Cog6ToothIcon },
-]
+import { FireIcon } from '@heroicons/react/24/solid'
+import { useUserContext } from '@/components/context_apis/UserProvider'
+import { getCurrentUserRole } from '@/lib/db_queries/DBQuery'
+import { UserRole } from '@/lib/Enums'
 
 export function Sidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const {currentUser, setCurrentUser} = useUserContext()
   const pathname = usePathname()
+
+  const navigationOptions = () => {
+    return [
+      { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+      { name: 'Stores', href: '/dashboard/store', icon: BuildingStorefrontIcon },
+      { name: 'Categories', href: '/dashboard/category', icon: WindowIcon },
+      { name: 'Inventory Items', href: '/dashboard/inventory_items', icon: CubeIcon },
+      { name: 'Suppliers', href: '/dashboard/suppliers', icon: BuildingStorefrontIcon },
+      { name: 'Purchase Orders', href: '/dashboard/purchase_orders', icon: TruckIcon },
+      { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
+      { name: 'Sales Orders', href: '/dashboard/sales_orders', icon: ShoppingCartIcon },
+      { name: 'Transactions', href: '/dashboard/transactions', icon: FireIcon },
+      { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
+      { name: 'Feedback', href: (getCurrentUserRole(currentUser) === UserRole.ADMIN ? '/dashboard/feedback_management' : '/dashboard/feedback'), icon: ChatBubbleLeftRightIcon },
+      { name: 'Settings', href: '/dashboard/settings', icon: Cog6ToothIcon },
+    ]
+  }
 
   return (
     <>
@@ -59,7 +67,7 @@ export function Sidebar() {
           </div>
           
           <nav className="flex-1 space-y-1 px-2 py-4">
-            {navigation.map((item) => {
+            {navigationOptions().map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
@@ -88,7 +96,7 @@ export function Sidebar() {
           </div>
           
           <nav className="flex-1 space-y-1 px-2 py-4">
-            {navigation.map((item) => {
+            {navigationOptions().map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link

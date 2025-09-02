@@ -8,14 +8,16 @@ import {
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
 import { FeedbackNotification } from '@/components/feedback/FeedbackNotification'
-import { useUserContext } from '@/components/contextApis/UserProvider'
+import { useUserContext } from '@/components/context_apis/UserProvider'
 import MiniLoading from '../helpers/MiniLoading'
+import { capitalizeFirstLetter } from '@/lib/helpers/Helper'
 
 
 export function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const {currentUser, setCurrentUser} = useUserContext()
   const [loading, setLoading] = useState(false)
+    // Global States
+  const {currentUser, setCurrentUser} = useUserContext()
 
   const handleSignOut = async () => {
     setLoading(true)
@@ -33,7 +35,7 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center">
           <h2 className="text-lg font-semibold text-gray-900">
-            Welcome back, {currentUser.fullName}
+            Welcome back, {capitalizeFirstLetter(currentUser.fullName.split(" ")[0])}.
           </h2>
         </div>
         

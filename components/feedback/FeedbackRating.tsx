@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import { fetchCurrentTenantId } from '@/lib/db_queries/DBQuery'
+import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { supabase } from '@/lib/supabase'
-import toast from 'react-hot-toast'
 import { APP_NAME } from '@/lib/Constants'
+import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { useUserContext } from '../context_apis/UserProvider'
+import { FeedbackPriority } from '@/lib/Enums'
 
 interface FeedbackRatingProps {
   onFeedbackSubmitted?: () => void
@@ -23,6 +25,7 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
     category: 'general' as const
   })
   const [submitting, setSubmitting] = useState(false)
+  const {currentUser, setCurrentUser} = useUserContext()
 
   const handleStarClick = (star: number) => {
     setRating(star)
@@ -37,39 +40,31 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    if (!supabase) return
+    if (!supabase || !await authorseDBAction(currentUser)) return
+
     e.preventDefault()
 
     setSubmitting(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        toast.error('You must be logged in to submit feedback')
-        return
-      }
-
       const { error } = await supabase
         .from('feedback')
         .insert({
-          user_id: user.id,
-          tenant_id: await fetchCurrentTenantId(),
           category: formData.category,
           subject: formData.subject,
           message: formData.message,
-          priority: rating <= 2 ? 'high' : 'medium',
+          priority: rating <= 2 ? FeedbackPriority.HIGH : FeedbackPriority.MEDIUM,
           rating: rating
         })
 
       if (error) throw error
 
-      toast.success('Thank you for your feedback!')
+      showSuccessToast('Thank you for your feedback!')
       setShowForm(false)
       setRating(0)
       setFormData({ subject: '', message: '', category: 'general' })
       onFeedbackSubmitted?.()
     } catch (error: any) {
-      toast.error('Failed to submit feedback')
-      console.error('Error submitting feedback:', error)
+      showErrorToast('Failed to submit feedback')
     } finally {
       setSubmitting(false)
     }

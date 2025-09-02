@@ -22,14 +22,17 @@ import {
   CalendarIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline'
+import { showSuccessToast } from '@/lib/helpers/Helper'
+import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
+import { useUserContext } from '@/components/context_apis/UserProvider'
 
 const monthlyData = [
-  { month: 'Jan', inventory: 1200, receivables: 800, issuables: 600, revenue: 45000 },
-  { month: 'Feb', inventory: 1350, receivables: 900, issuables: 750, revenue: 52000 },
-  { month: 'Mar', inventory: 1100, receivables: 700, issuables: 800, revenue: 48000 },
-  { month: 'Apr', inventory: 1400, receivables: 1000, issuables: 900, revenue: 55000 },
-  { month: 'May', inventory: 1600, receivables: 1200, issuables: 1100, revenue: 62000 },
-  { month: 'Jun', inventory: 1800, receivables: 1400, issuables: 1300, revenue: 68000 },
+  { month: 'Jan', inventory: 1200, purchase_orders: 800, sales_orders: 600, revenue: 45000 },
+  { month: 'Feb', inventory: 1350, purchase_orders: 900, sales_orders: 750, revenue: 52000 },
+  { month: 'Mar', inventory: 1100, purchase_orders: 700, sales_orders: 800, revenue: 48000 },
+  { month: 'Apr', inventory: 1400, purchase_orders: 1000, sales_orders: 900, revenue: 55000 },
+  { month: 'May', inventory: 1600, purchase_orders: 1200, sales_orders: 1100, revenue: 62000 },
+  { month: 'Jun', inventory: 1800, purchase_orders: 1400, sales_orders: 1300, revenue: 68000 },
 ]
 
 const categoryData = [
@@ -58,10 +61,13 @@ const performanceMetrics = [
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState('6months')
   const [reportType, setReportType] = useState('overview')
+    // Global States
+  const {loading, setLoading} = useLoadingContext()
+  const {currentUser, setCurrentUser} = useUserContext()
 
   const handleExport = (type: string) => {
     // Simulate export functionality
-    alert(`${type} report exported successfully!`)
+    showSuccessToast(`${type} report exported successfully!`)
   }
 
   return (
@@ -172,8 +178,8 @@ export default function ReportsPage() {
               <YAxis />
               <Tooltip />
               <Bar dataKey="inventory" fill="#3B82F6" name="Inventory" />
-              <Bar dataKey="receivables" fill="#10B981" name="Receivables" />
-              <Bar dataKey="issuables" fill="#F59E0B" name="Issuables" />
+              <Bar dataKey="purchase_orders" fill="#10B981" name="Purchase Orders" />
+              <Bar dataKey="sales_orders" fill="#F59E0B" name="Sales Orders" />
             </BarChart>
           </ResponsiveContainer>
         </div>

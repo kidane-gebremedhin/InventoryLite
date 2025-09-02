@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { currentUserRole } from '@/lib/db_queries/DBQuery'
 import { 
   CubeIcon, 
   TruckIcon, 
@@ -26,23 +25,24 @@ import {
   Pie,
   Cell
 } from 'recharts'
+import { DEFAULT_USER_ROLE } from '@/lib/Constants'
 
 interface DashboardStats {
   totalItems: number
   lowStockItems: number
-  pendingReceivables: number
-  pendingIssuables: number
+  pendingPurchaseOrders: number
+  pendingSalesOrders: number
   totalValue: number
   monthlyGrowth: number
 }
 
 const monthlyData = [
-  { month: 'Jan', inventory: 1200, receivables: 800, issuables: 600 },
-  { month: 'Feb', inventory: 1350, receivables: 900, issuables: 750 },
-  { month: 'Mar', inventory: 1100, receivables: 700, issuables: 800 },
-  { month: 'Apr', inventory: 1400, receivables: 1000, issuables: 900 },
-  { month: 'May', inventory: 1600, receivables: 1200, issuables: 1100 },
-  { month: 'Jun', inventory: 1800, receivables: 1400, issuables: 1300 },
+  { month: 'Jan', inventory: 1200, purchase_orders: 800, sales_orders: 600 },
+  { month: 'Feb', inventory: 1350, purchase_orders: 900, sales_orders: 750 },
+  { month: 'Mar', inventory: 1100, purchase_orders: 700, sales_orders: 800 },
+  { month: 'Apr', inventory: 1400, purchase_orders: 1000, sales_orders: 900 },
+  { month: 'May', inventory: 1600, purchase_orders: 1200, sales_orders: 1100 },
+  { month: 'Jun', inventory: 1800, purchase_orders: 1400, sales_orders: 1300 },
 ]
 
 const categoryData = [
@@ -57,31 +57,25 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalItems: 0,
     lowStockItems: 0,
-    pendingReceivables: 0,
-    pendingIssuables: 0,
+    pendingPurchaseOrders: 0,
+    pendingSalesOrders: 0,
     totalValue: 0,
     monthlyGrowth: 0
   })
-  const [userRole, setUserRole] = useState<string>('user')
+  const [userRole, setUserRole] = useState<string>(DEFAULT_USER_ROLE)
 
   useEffect(() => {
-    loadUserRole()
-    // Simulate loading dashboard data
     setTimeout(() => {
       setStats({
         totalItems: 1247,
         lowStockItems: 23,
-        pendingReceivables: 8,
-        pendingIssuables: 12,
+        pendingPurchaseOrders: 8,
+        pendingSalesOrders: 12,
         totalValue: 45678.90,
         monthlyGrowth: 12.5
       })
     }, 1000)
   }, [])
-
-  const loadUserRole = async () => {
-        setUserRole(currentUserRole)
-  }
 
   const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
     <div className="card">
@@ -132,14 +126,14 @@ export default function DashboardPage() {
           color="bg-red-500"
         />
         <StatCard
-          title="Pending Receivables"
-          value={stats.pendingReceivables}
+          title="Pending PurchaseOrders"
+          value={stats.pendingPurchaseOrders}
           icon={TruckIcon}
           color="bg-green-500"
         />
         <StatCard
-          title="Pending Issuables"
-          value={stats.pendingIssuables}
+          title="Pending Sales Orders"
+          value={stats.pendingSalesOrders}
           icon={ShoppingCartIcon}
           color="bg-purple-500"
         />
@@ -157,8 +151,8 @@ export default function DashboardPage() {
               <YAxis />
               <Tooltip />
               <Bar dataKey="inventory" fill="#3B82F6" name="Inventory" />
-              <Bar dataKey="receivables" fill="#10B981" name="Receivables" />
-              <Bar dataKey="issuables" fill="#F59E0B" name="Issuables" />
+              <Bar dataKey="purchase_orders" fill="#10B981" name="PurchaseOrders" />
+              <Bar dataKey="sales_orders" fill="#F59E0B" name="SalesOrders" />
             </BarChart>
           </ResponsiveContainer>
         </div>

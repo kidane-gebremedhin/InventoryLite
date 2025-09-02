@@ -111,7 +111,7 @@ export type Database = {
           updated_at?: string
         }
       }
-      vendors: {
+      suppliers: {
         Row: {
           id: string
           name: string
@@ -179,7 +179,7 @@ export type Database = {
         Row: {
           id: string
           po_number: string
-          vendor_id: string
+          supplier_id: string
           status: PurchaseOrderStatus.PENDING
           expected_date: string | null
           tenant_id: string
@@ -189,7 +189,7 @@ export type Database = {
         Insert: {
           id?: string
           po_number: string
-          vendor_id: string
+          supplier_id: string
           status?: PurchaseOrderStatus.PENDING
           expected_date?: string | null
           tenant_id: string
@@ -199,7 +199,7 @@ export type Database = {
         Update: {
           id?: string
           po_number?: string
-          vendor_id?: string
+          supplier_id?: string
           status?: PurchaseOrderStatus.PENDING
           expected_date?: string | null
           tenant_id?: string

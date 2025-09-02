@@ -13,28 +13,30 @@ import {
   EyeIcon,
   BackwardIcon,
 } from '@heroicons/react/24/outline'
-import SalesOrderModal from '@/components/issuables/SalesOrderModal'
-import OrderDetailsModal from '@/components/issuables/OrderDetailsModal'
+import SalesOrderModal from '@/components/sales_orders/SalesOrderModal'
+import OrderDetailsModal from '@/components/sales_orders/OrderDetailsModal'
 import { supabase } from '@/lib/supabase'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { SalesOrderStatus, RecordStatus } from '@/lib/Enums'
-import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, SALES_ORDER_STATUSES, TEXT_SEARCH_TRIGGER_KEY } from '@/lib/Constants'
-import { canShowLoadingScreen, convertToUTC, getRecordStatusColor, setEarliestTimeOfDay, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, SALES_ORDER_STATUSES, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
+import { canShowLoadingScreen, convertToUTC, getOrderStatusColor, getRecordStatusColor, setEarliestTimeOfDay, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/Pagination'
 import Loading from '@/components/helpers/Loading'
 import { SalesOrder, Customer } from '@/lib/types/Models'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
-import { useUserContext } from '@/components/contextApis/UserProvider'
+import { useUserContext } from '@/components/context_apis/UserProvider'
+import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
+import { PostgrestError } from '@supabase/supabase-js'
+import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 
-export default function IssuablePage() {
+export default function SalesOrderPage() {
   const router = useRouter()
   const [searchTermTemp, setSearchTermTemp] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingSalesOrder, setEditingIssuable] = useState<SalesOrder | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [editingSalesOrder, setEditingSalesOrder] = useState<SalesOrder | null>(null)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
@@ -47,6 +49,15 @@ export default function IssuablePage() {
   const [selectedCustomerId, setSelectedCustomer] = useState(ALL_OPTIONS)
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
+  // Record Actions
+  const [currentActiveId, setCurrentActiveId] = useState<string>('')
+  const [isArchiveConfirmationModalOpen, setIsArchiveConfirmationModalOpen] = useState(false)
+  const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] = useState(false)
+  const [isMoveToPendingConfirmationModalOpen, setIsMoveToPendingConfirmationModalOpen] = useState(false)
+  const [isMoveToFulfilledConfirmationModalOpen, setIsMoveToFulfilledConfirmationModalOpen] = useState(false)
+  const [isMoveToCanceledConfirmationModalOpen, setIsMoveToCanceledConfirmationModalOpen] = useState(false)
+  // Global States
+  const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
   const TABLE_NAME = 'sales_orders'
@@ -98,7 +109,8 @@ export default function IssuablePage() {
           customer:customers(*),
           order_items:sales_order_items(
           *,
-          item:inventory_items(*)
+          item:inventory_items(*),
+          store:stores(*)
           )`,
           {count: 'exact', head: false})
       if (selectedOrderStatus !== ALL_OPTIONS) {
@@ -138,59 +150,63 @@ export default function IssuablePage() {
   }
 
   const handleAdd = () => {
-    setEditingIssuable(null)
+    setEditingSalesOrder(null)
     setIsModalOpen(true)
   }
 
   const handleEdit = (id: string) => {
     const order = salesOrders.find(order => order.id === id)
-    setEditingIssuable(order!)
+    setEditingSalesOrder(order!)
     setIsModalOpen(true)
   }
 
   const handleArchive = async (id: string) => {
-    if (confirm('Are you sure you want to cancel this sales order?')) {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-      try {
-        const { error } = await supabase
-          .from(TABLE_NAME)
-          .update({status: RecordStatus.ARCHIVED})
-          .eq('id', id)
+    resetModalState()
 
-        if (error) {
-          showErrorToast()
-        } else {
-          showSuccessToast('Record Archived.')
-          setSalesOrders(salesOrders.filter(salesOrder => salesOrder.id !== id))
-        }
-      } catch (error: any) {
+    if (!supabase || !await authorseDBAction(currentUser)) return
+
+    try {
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .update({status: RecordStatus.ARCHIVED})
+        .eq('id', id)
+
+      if (error) {
         showErrorToast()
-      } finally {
-        setLoading(false)
+      } else {
+        showSuccessToast('Record Archived.')
+        const remainingRecords = salesOrders.filter(salesOrder => salesOrder.id !== id)
+        setSalesOrders(remainingRecords)
+        setTotalRecordsCount(remainingRecords.length)
       }
+    } catch (error: any) {
+      showErrorToast()
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleRestore = async (id: string) => {
-    if (confirm('Are you sure you want to restore this sales order?')) {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-      try {
-        const { error } = await supabase
-          .from(TABLE_NAME)
-          .update({status: RecordStatus.ACTIVE})
-          .eq('id', id)
+    resetModalState()
 
-        if (error) {
-          showErrorToast()
-        } else {
-          showSuccessToast(`Record Restored.`)
-          setSalesOrders(salesOrders.filter(salesOrder => salesOrder.id !== id))
-        }
-      } catch (error: any) {
+    if (!supabase || !await authorseDBAction(currentUser)) return
+
+    try {
+      const { error } = await supabase
+        .from(TABLE_NAME)
+        .update({status: RecordStatus.ACTIVE})
+        .eq('id', id)
+
+      if (error) {
         showErrorToast()
-      } finally {
-        setLoading(false)
+      } else {
+        showSuccessToast(`Record Restored.`)
+        setSalesOrders(salesOrders.filter(salesOrder => salesOrder.id !== id))
       }
+    } catch (error: any) {
+      showErrorToast()
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -201,14 +217,14 @@ export default function IssuablePage() {
     const {id, order_items, ...salesOrderWithNoId} = salesOrder
 
     try {
-      const { data: savedSalesOrder, error: poError } = await supabase
+      const { data: savedSalesOrder, error: soError } = await supabase
         .from(TABLE_NAME)
         .insert(salesOrderWithNoId)
         .select()
         .single()
 
-      if (poError) {
-        showErrorToast()
+      if (soError) {
+        handleServerError(soError)
       } else {
         // Insert order items
         const orderItems = salesOrder.order_items!.map(item => {
@@ -218,11 +234,13 @@ export default function IssuablePage() {
         const { error: orderItemsError } = await supabase.from('sales_order_items').insert(orderItems)
 
         if (orderItemsError) {
-          showErrorToast()
-        } else {
-          showSuccessToast('Record Created.')
-          loadSalesOrders()
+          handleServerError(orderItemsError)
+          return
         }
+
+        setIsModalOpen(false)
+        showSuccessToast('Record Created.')
+        loadSalesOrders()
       }
     } catch (error: any) {
       showErrorToast()
@@ -244,23 +262,24 @@ export default function IssuablePage() {
         .eq('id', salesOrder.id)
 
       if (error) {
-        showErrorToast()
+        handleServerError(error)
         return
       }
 
       // First remove the existing order items of this order
       const { error: orderItemsDeletionError } = await supabase.from('sales_order_items').delete().eq('sales_order_id', salesOrder.id)
       if (orderItemsDeletionError) {
-        showErrorToast()
+        handleServerError(orderItemsDeletionError)
         return
       }
 
       const { error: orderItemsError } = await supabase.from('sales_order_items').insert(salesOrder.order_items)
       if (orderItemsError) {
-        showErrorToast()
+        handleServerError(orderItemsError)
         return
       }
 
+      setIsModalOpen(false)
       showSuccessToast('Record Updated.')
       loadSalesOrders()
     } catch (error: any) {
@@ -272,9 +291,8 @@ export default function IssuablePage() {
 
   const handleTextSearch = () => {
     setCurrentPage(FIRST_PAGE_NUMBER)
-    setSearchTerm(searchTermTemp)
+    setSearchTerm(searchTermTemp.trim())
   }
-
 
   const handleViewDetails = (id: string) => {
     const order = salesOrders.find(order => order.id === id)
@@ -282,20 +300,9 @@ export default function IssuablePage() {
     setShowDetailsModal(true)
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case SalesOrderStatus.PENDING:
-        return 'bg-yellow-100 text-yellow-800'
-      case SalesOrderStatus.FULFILLED:
-        return 'bg-green-100 text-green-800'
-      case SalesOrderStatus.CANCELLED:
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
   const handleOrderStatusChange = async (id: string, status?: string) => {
+    resetModalState()
+
     if (!status || !supabase) return
 
     try {
@@ -330,15 +337,28 @@ export default function IssuablePage() {
     setEndDate(end);
   }
 
-  if (loading) {
-    return <Loading />
+  const resetModalState = () => {
+    setCurrentActiveId('')
+    setIsArchiveConfirmationModalOpen(false)
+    setIsRestoreConfirmationModalOpen(false)
+    setIsMoveToPendingConfirmationModalOpen(false)
+    setIsMoveToFulfilledConfirmationModalOpen(false)
+    setIsMoveToCanceledConfirmationModalOpen(false)
+  }
+
+  const handleServerError = (error: PostgrestError) => {
+    if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
+      showErrorToast(VALIDATION_ERRORS_MAPPING.entities.sales_order.fields.name.displayError)
+    } else {
+      showErrorToast()
+    }
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Issuable Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">SalesOrder Management</h1>
           <p className="text-gray-600">Manage your sales orders from your supplier customers</p>
         </div>
         <button
@@ -346,11 +366,11 @@ export default function IssuablePage() {
           className="btn-primary flex items-center items-center"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
-          Add Issuable
+          Add Sales Order
         </button>
       </div>
 
-      {/* Issuable Table */}
+      {/* Sales Order Table */}
       <div className="card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -470,12 +490,12 @@ export default function IssuablePage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {salesOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{order.so_number}(<i className="text-sm text-gray-500">{order.order_items?.length} items</i>)</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{order.customer?.name}</div>
                     </div>
@@ -483,8 +503,8 @@ export default function IssuablePage() {
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {getTotalOrderPrice(order)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.order_status!)}`}>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getOrderStatusColor(order.order_status!)}`}>
                       {order.order_status}
                     </span>
                   </td>
@@ -496,8 +516,8 @@ export default function IssuablePage() {
                       {order.status}
                     </span>
                   </td>
-                  <td className="relative px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2">                        
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    <div className="flex justify-center space-x-2 items-center">                       
                       <ActionsMenu
                         actions={[
                           {
@@ -510,21 +530,25 @@ export default function IssuablePage() {
                           },
                           {
                             id: order.id!,
-                            status: SalesOrderStatus.PENDING,
                             hideOption: ![SalesOrderStatus.FULFILLED, SalesOrderStatus.CANCELLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <BackwardIcon className="h-4 w-4" />,
                             label: 'Return to Pending',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
-                            listener: handleOrderStatusChange
+                            listener: () => {
+                              setCurrentActiveId(order.id!)
+                              setIsMoveToPendingConfirmationModalOpen(true)
+                            }
                           },
                           {
                             id: order.id!,
-                            status: SalesOrderStatus.FULFILLED,
                             hideOption: ![SalesOrderStatus.PENDING, SalesOrderStatus.CANCELLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <CheckIcon className="h-4 w-4" />,
                             label: 'Mark as Fulfilled',
                             class: "w-full text-green-600 hover:text-green-900",
-                            listener: handleOrderStatusChange
+                            listener: () => {
+                              setCurrentActiveId(order.id!)
+                              setIsMoveToFulfilledConfirmationModalOpen(true)
+                            }
                           },
                           {
                             id: order.id!,
@@ -536,20 +560,25 @@ export default function IssuablePage() {
                           },
                           {
                             id: order.id!,
-                            status: SalesOrderStatus.CANCELLED,
                             hideOption: ![SalesOrderStatus.PENDING, SalesOrderStatus.FULFILLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <XMarkIcon className="h-4 w-4" />,
                             label: 'Cancel Order',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
-                            listener: handleOrderStatusChange
+                            listener: () => {
+                              setCurrentActiveId(order.id!)
+                              setIsMoveToCanceledConfirmationModalOpen(true)
+                            }
                           },
                           {
                             id: order.id!,
                             hideOption: selectedStatus !== RecordStatus.ACTIVE,
                             icon: <TrashIcon className="h-4 w-4" />,
-                            label: 'Archieve',
+                            label: 'Archive',
                             class: "w-full text-red-600 hover:text-red-900",
-                            listener: handleArchive
+                            listener: () => {
+                              setCurrentActiveId(order.id!)
+                              setIsArchiveConfirmationModalOpen(true)
+                            }
                           },
                           {
                             id: order.id!,
@@ -557,7 +586,10 @@ export default function IssuablePage() {
                             icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
                             label: 'Restore',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
-                            listener: handleRestore
+                            listener: () => {
+                              setCurrentActiveId(order.id!)
+                              setIsRestoreConfirmationModalOpen(true)
+                            }
                           },
                         ]}
                       />
@@ -575,26 +607,20 @@ export default function IssuablePage() {
             setRecordsPerPage = {setRecordsPerPage}
           />
         </div>
-
-        {salesOrders.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No sales orders found matching your criteria.</p>
-          </div>
-        )}
       </div>
 
-      {/* Issuable Modal */}
+      {/* SalesOrder Modal */}
       <SalesOrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         order={editingSalesOrder}
         onSave={(order) => {
+          setLoading(true)
           if (editingSalesOrder) {
             handleUpdate(order)
           } else {
             handleCreate(order)
           }
-          setIsModalOpen(false)
         }}
       />
       
@@ -603,6 +629,55 @@ export default function IssuablePage() {
         onClose={() => setShowDetailsModal(false)}
         order={selectedOrder!}
       />
+
+      {/* Confirmation Modal for Archive */}
+      <ConfirmationModal
+        isOpen={isArchiveConfirmationModalOpen}
+        id={currentActiveId}
+        message="Are you sure you want to archive this sales order?"
+        onConfirmationSuccess={handleArchive}
+        onConfirmationFailure={resetModalState}
+      />
+      
+      {/* Confirmation Modal for Restore */}
+      <ConfirmationModal
+        isOpen={isRestoreConfirmationModalOpen}
+        id={currentActiveId}
+        message="Are you sure you want to restore this sales order?"
+        onConfirmationSuccess={handleRestore}
+        onConfirmationFailure={resetModalState}
+      />
+      
+      {/* Confirmation Modal to move order to pending */}
+      <ConfirmationModal
+        isOpen={isMoveToPendingConfirmationModalOpen}
+        id={currentActiveId}
+        orderStatus={SalesOrderStatus.PENDING}
+        message="Are you sure you want to move this order status to pending?"
+        onConfirmationSuccess={handleOrderStatusChange}
+        onConfirmationFailure={resetModalState}
+      />
+      
+      {/* Confirmation Modal to move order to fulfilled */}
+      <ConfirmationModal
+        isOpen={isMoveToFulfilledConfirmationModalOpen}
+        id={currentActiveId}
+        orderStatus={SalesOrderStatus.FULFILLED}
+        message="Are you sure you want to move this order status to fulfilled?"
+        onConfirmationSuccess={handleOrderStatusChange}
+        onConfirmationFailure={resetModalState}
+      />
+      
+      {/* Confirmation Modal to move order to canceled */}
+      <ConfirmationModal
+        isOpen={isMoveToCanceledConfirmationModalOpen}
+        id={currentActiveId}
+        orderStatus={SalesOrderStatus.CANCELLED}
+        message="Are you sure you want to move this order status to canceled?"
+        onConfirmationSuccess={handleOrderStatusChange}
+        onConfirmationFailure={resetModalState}
+      />
     </div>
   )
 }
+

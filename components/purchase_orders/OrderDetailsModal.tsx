@@ -1,7 +1,7 @@
 'use client'
 
 import { XMarkIcon } from '@heroicons/react/24/outline'
-import { SalesOrder } from '@/lib/types/Models'
+import { PurchaseOrder, SalesOrder } from '@/lib/types/Models'
 import { calculateOrderTotalProce, getOrderStatusColor } from '@/lib/helpers/Helper'
 
 interface OrderItem {
@@ -18,10 +18,10 @@ interface OrderItem {
 interface orderModalProps {
   isOpen: boolean
   onClose: () => void
-  order: SalesOrder
+  order: PurchaseOrder
 }
 
-export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
+export default function orderModal({ isOpen, onClose, order }: orderModalProps) {
 
   if (!isOpen) return null
 
@@ -30,7 +30,7 @@ export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">
-            Sales Order Details
+            Purchase Order Details
           </h2>
           <button
             onClick={onClose}
@@ -48,7 +48,7 @@ export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-gray-600">Order Number:</span>
-                  <span className="ml-2 font-medium">{order.so_number}</span>
+                  <span className="ml-2 font-medium">{order.po_number}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Order Status:</span>
@@ -75,16 +75,16 @@ export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
 
             <div className="card">
               <h3 className="font-medium text-gray-900 mb-2">
-                Customer Information
+                Supplier Information
               </h3>
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-gray-600">Name:</span>
-                  <span className="ml-2 font-medium">{order.customer?.name}</span>
+                  <span className="ml-2 font-medium">{order.supplier?.name}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Email:</span>
-                  <span className="ml-2">{order.customer?.email}</span>
+                  <span className="ml-2">{order.supplier?.email}</span>
                 </div>
               </div>
             </div>
@@ -126,6 +126,9 @@ export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Total
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Store
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -145,6 +148,9 @@ export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         ${(orderItem.quantity * orderItem.unit_price).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {orderItem.store?.name}
                       </td>
                     </tr>
                   ))}

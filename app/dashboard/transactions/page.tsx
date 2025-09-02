@@ -6,53 +6,76 @@ import {
 } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus } from '@/lib/Enums'
+import { RecordStatus, TransactionDirection } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TRANSACTION_DIRECTIONS } from '@/lib/Constants'
 import { canShowLoadingScreen, convertToUTC, dateFormat, getRecordStatusColor, getTransactionDirectionColor, setEarliestTimeOfDay, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/Pagination'
 import Loading from '@/components/helpers/Loading'
-import { InventoryItem, Transaction } from '@/lib/types/Models'
+import { InventoryItem, Store, Transaction } from '@/lib/types/Models'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { useUserContext } from '@/components/contextApis/UserProvider'
+import { useUserContext } from '@/components/context_apis/UserProvider'
+import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 
-export default function IssuablePage() {
+export default function SalesOrderPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
+  const [stores, setStores] = useState<Store[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [inventoryItems, setInventoryItems] = useState<Partial<InventoryItem>[]>([])
   const [selectedInventoryItemId, setSelectedInventoryItemId] = useState<string>(ALL_OPTIONS)
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(ALL_OPTIONS)
   const [selectedDirection, setSelectedDirection] = useState<string>(ALL_OPTIONS)
+  // Global States
+  const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
   const TABLE_NAME = 'transactions'
 
-  useEffect(() => {
-    const loadInventoryItems = async () => {
-      if (!supabase) return
+  const loadInventoryItems = async () => {
+    if (!supabase) return
 
-      try {
-        const { data, error } = await supabase
-          .from('inventory_items')
-          .select('id, sku, name, unit_price, quantity')
-          .eq('status', 'active')
-          .order('name')
+    try {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('id, sku, name, unit_price, quantity')
+        .eq('status', 'active')
+        .order('name')
 
-        if (error) throw error
+      if (error) throw error
 
-        const selectableInventoryItems: Partial<InventoryItem>[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
-        setInventoryItems(selectableInventoryItems)
-      } catch (error: any) {
-        showErrorToast()
-      }
+      const selectableInventoryItems: Partial<InventoryItem>[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
+      setInventoryItems(selectableInventoryItems)
+    } catch (error: any) {
+      showErrorToast()
     }
+  }
 
+  const loadStores = async () => {
+    if (!supabase) return
+
+    try {
+      const { data, error } = await supabase
+        .from('stores')
+        .select('id, name, description')
+        .order('name')
+
+      if (error) throw error
+
+      const selectableStores: Store[] = [{id: ALL_OPTIONS, name: '',description: ''}, ...(data || [])]
+      setStores(selectableStores)
+    } catch (error: any) {
+      showErrorToast()
+    }
+  }
+
+  useEffect(() => {
+    loadStores()
     loadInventoryItems()
   }, [])
 
@@ -60,7 +83,7 @@ export default function IssuablePage() {
     // reset pagination
     router.push(`?page=${currentPage}`)
     loadTransactions()
-  }, [selectedInventoryItemId, selectedDirection, selectedStatus, startDate, endDate, recordsPerPage, currentPage])
+  }, [selectedStoreId, selectedInventoryItemId, selectedDirection, selectedStatus, startDate, endDate, recordsPerPage, currentPage])
 
   const loadTransactions = async () => {
     setLoading(canShowLoadingScreen(startDate, endDate))
@@ -73,13 +96,17 @@ export default function IssuablePage() {
     try {
       let query = supabase.from(TABLE_NAME).select(`
         *,
-        item:inventory_items(*)
+        item:inventory_items(*),
+        store:stores(*)
         `, {count: 'exact', head: false})
       if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus)
       }
       if (selectedDirection !== ALL_OPTIONS) {
         query = query.eq('type', selectedDirection);
+      }
+      if (selectedStoreId !== ALL_OPTIONS) {
+        query = query.eq('store_id', selectedStoreId);
       }
       if (selectedInventoryItemId !== ALL_OPTIONS) {
         query = query.eq('item_id', selectedInventoryItemId);
@@ -115,13 +142,9 @@ export default function IssuablePage() {
     setEndDate(end);
   }
 
-  if (loading) {
-    return <Loading />
-  }
-
   return (
     <div className="space-y-6">
-      {/* Issuable Table */}
+      {/* SalesOrder Table */}
       <div className="card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -134,13 +157,16 @@ export default function IssuablePage() {
                   Item
                 </th>
                 <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantity
+                  Txn Quantity
+                </th>
+                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  From/To Store
                 </th>
                 <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date Create/Updated
                 </th>
                 <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Record Status
+                  Available Quantity
                 </th>
               </tr>
               <tr className="card">
@@ -178,6 +204,22 @@ export default function IssuablePage() {
                 </th>
                 <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 </th>
+                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <select
+                    value={selectedStoreId}
+                    onChange={(e) => {
+                      setCurrentPage(FIRST_PAGE_NUMBER)
+                      setSelectedStoreId(e.target.value)
+                    }}
+                    className="input-field"
+                  >
+                    {stores.map(store => (
+                      <option key={store.id} value={store.id}>
+                        {store.id === ALL_OPTIONS ? 'All Stores' : shortenText(store.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                      </option>
+                    ))}
+                  </select>
+                </th>
                 <th style={{maxWidth: 30}} className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <DatePicker
                     selected={startDate}
@@ -192,20 +234,6 @@ export default function IssuablePage() {
                   />
                 </th>
                 <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedStatus(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {RECORD_STATUSES.map(status => (
-                      <option key={status} value={status}>
-                        {status === ALL_OPTIONS ? ALL_OPTIONS : status}
-                      </option>
-                    ))}
-                  </select>
                 </th>
               </tr>
             </thead>
@@ -217,21 +245,20 @@ export default function IssuablePage() {
                       {transaction.type} 
                     </span>
                   </td>
-                  <td className="px-1 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 text-center">{transaction.item?.name}</div>
-                    </div>
+                  <td className="text-sm font-medium text-gray-900 text-center px-1 py-4">
+                    {transaction.item?.name}
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    {transaction.quantity}
+                    {transaction.type === TransactionDirection.IN ? '+' : '-'}{transaction.quantity}
+                  </td>
+                  <td className="px-1 py-4 text-sm text-gray-900 text-center">
+                    {transaction.store?.name} 
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
                     {dateFormat(transaction.created_at!)}
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(transaction.status!)}`}>
-                      {transaction.status}
-                    </span>
+                    <b>{transaction.current_item_quantity}</b>
                   </td>
                 </tr>
               ))}
@@ -245,12 +272,6 @@ export default function IssuablePage() {
             setRecordsPerPage = {setRecordsPerPage}
           />
         </div>
-
-        {transactions.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No sales orders found matching your criteria.</p>
-          </div>
-        )}
       </div>
     </div>
   )

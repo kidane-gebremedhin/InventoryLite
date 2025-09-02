@@ -1,13 +1,13 @@
-# Vendors and Customers Feature Documentation
+# Suppliers and Customers Feature Documentation
 
 ## Overview
 
-The Vendors and Customers features provide comprehensive management capabilities for supplier and client relationships in the InventoryLite system. Both features are fully integrated with the multi-tenant architecture and include advanced filtering, bulk operations, and data validation.
+The Suppliers and Customers features provide comprehensive management capabilities for supplier and client relationships in the InventoryLite system. Both features are fully integrated with the multi-tenant architecture and include advanced filtering, bulk operations, and data validation.
 
 ## Features Implemented
 
 ### Core Functionality
-- ✅ **Full CRUD Operations** - Create, Read, Update, Delete vendors and customers
+- ✅ **Full CRUD Operations** - Create, Read, Update, Delete suppliers and customers
 - ✅ **Multi-tenant Support** - Complete data isolation per tenant
 - ✅ **Real-time Updates** - Immediate UI updates after operations
 - ✅ **Search Functionality** - Search by name, email, or phone
@@ -29,9 +29,9 @@ The Vendors and Customers features provide comprehensive management capabilities
 
 ## Database Schema
 
-### Vendors Table
+### Suppliers Table
 ```sql
-CREATE TABLE vendors (
+CREATE TABLE suppliers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
@@ -61,8 +61,8 @@ CREATE TABLE customers (
 ## Components
 
 ### Pages
-1. **Vendors Page** (`app/dashboard/vendors/page.tsx`)
-   - Main vendor management interface
+1. **Suppliers Page** (`app/dashboard/suppliers/page.tsx`)
+   - Main supplier management interface
    - Statistics cards showing key metrics
    - Advanced filtering and sorting
    - Bulk operations support
@@ -70,22 +70,22 @@ CREATE TABLE customers (
 
 2. **Customers Page** (`app/dashboard/customers/page.tsx`)
    - Main customer management interface
-   - Same features as vendors page
+   - Same features as suppliers page
    - Customer-specific statistics
 
 ### Modals
-1. **VendorModal** (`components/receivables/VendorModal.tsx`)
-   - Form for creating/editing vendors
+1. **SupplierModal** (`components/purchase_orders/SupplierModal.tsx`)
+   - Form for creating/editing suppliers
    - Real-time validation
    - Error handling and user feedback
 
-2. **CustomerModal** (`components/issuables/CustomerModal.tsx`)
+2. **CustomerModal** (`components/sales_orders/CustomerModal.tsx`)
    - Form for creating/editing customers
-   - Same validation and UX as vendor modal
+   - Same validation and UX as supplier modal
 
 ## Form Validation
 
-### Vendor/Customer Name
+### Supplier/Customer Name
 - Required field
 - Minimum 2 characters
 - Trimmed whitespace
@@ -107,11 +107,11 @@ CREATE TABLE customers (
 
 ## Statistics and Metrics
 
-### Vendor Statistics
-- **Total Vendors**: Count of all vendors
-- **With Email**: Vendors that have email addresses
-- **With Phone**: Vendors that have phone numbers
-- **Recently Added**: Vendors added in the last 7 days
+### Supplier Statistics
+- **Total Suppliers**: Count of all suppliers
+- **With Email**: Suppliers that have email addresses
+- **With Phone**: Suppliers that have phone numbers
+- **Recently Added**: Suppliers added in the last 7 days
 
 ### Customer Statistics
 - **Total Customers**: Count of all customers
@@ -147,7 +147,7 @@ CREATE TABLE customers (
 ## Navigation Integration
 
 ### Sidebar Navigation
-- Added "Vendors" link with building storefront icon
+- Added "Suppliers" link with building storefront icon
 - Added "Customers" link with user group icon
 - Proper active state highlighting
 - Responsive mobile navigation
@@ -192,9 +192,9 @@ CREATE TABLE customers (
 ## Integration Points
 
 ### Purchase Orders
-- Vendors are referenced in purchase orders
-- Vendor selection dropdowns in order forms
-- Vendor information display in order details
+- Suppliers are referenced in purchase orders
+- Supplier selection dropdowns in order forms
+- Supplier information display in order details
 
 ### Sales Orders
 - Customers are referenced in sales orders
@@ -202,30 +202,30 @@ CREATE TABLE customers (
 - Customer information display in order details
 
 ### Reports
-- Vendor and customer data available for reporting
+- Supplier and customer data available for reporting
 - Statistics integration with dashboard
 - Export capabilities for analysis
 
 ## Future Enhancements
 
 ### Potential Additions
-1. **Contact History**: Track communication with vendors/customers
-2. **Rating System**: Rate vendor/customer reliability
-3. **Document Management**: Attach files to vendor/customer records
-4. **API Integration**: Connect with external vendor/customer databases
-5. **Advanced Analytics**: Vendor/customer performance metrics
+1. **Contact History**: Track communication with suppliers/customers
+2. **Rating System**: Rate supplier/customer reliability
+3. **Document Management**: Attach files to supplier/customer records
+4. **API Integration**: Connect with external supplier/customer databases
+5. **Advanced Analytics**: Supplier/customer performance metrics
 6. **Communication Tools**: Email/SMS integration
 7. **Import Functionality**: Bulk import from CSV/Excel
-8. **Audit Trail**: Track all changes to vendor/customer records
+8. **Audit Trail**: Track all changes to supplier/customer records
 
 ## Usage Examples
 
-### Creating a New Vendor
-1. Navigate to Vendors page
-2. Click "New Vendor" button
+### Creating a New Supplier
+1. Navigate to Suppliers page
+2. Click "New Supplier" button
 3. Fill in required name field
 4. Optionally add email, phone, and address
-5. Click "Create Vendor"
+5. Click "Create Supplier"
 
 ### Bulk Operations
 1. Use filters to narrow down the list
@@ -294,4 +294,4 @@ CREATE TABLE customers (
 
 ---
 
-This documentation covers the complete implementation of the Vendors and Customers features in InventoryLite. The features are production-ready and provide a solid foundation for vendor and customer relationship management.
+This documentation covers the complete implementation of the Suppliers and Customers features in InventoryLite. The features are production-ready and provide a solid foundation for supplier and customer relationship management.

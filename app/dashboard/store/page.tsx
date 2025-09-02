@@ -9,27 +9,28 @@ import {
   TrashIcon,
   ArrowUpOnSquareIcon,
 } from '@heroicons/react/24/outline'
-import { CategoryModal } from '@/components/category/CategoryModal'
+import { StoreModal } from '@/components/store/StoreModal'
 import { supabase } from '@/lib/supabase'
-import { Category } from '@/lib/types/Models'
+import { Store } from '@/lib/types/Models'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { RecordStatus } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { getRecordStatusColor, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/Pagination'
+import Loading from '@/components/helpers/Loading'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 
-export default function CategoryPage() {
+export default function StorePage() {
   const router = useRouter()
   const [searchTermTemp, setSearchTermTemp] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [categories, setCategories] = useState<Category[]>([])
+  const [stores, setStores] = useState<Store[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [editingStore, setEditingStore] = useState<Store | null>(null)
   const [canSeeMore, setCanSeeMore] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
@@ -43,15 +44,15 @@ export default function CategoryPage() {
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
-  const TABLE_NAME = 'categories'
+  const TABLE_NAME = 'stores'
 
   useEffect(() => {
     // reset pagination
     router.push(`?page=${currentPage}`)
-    loadCategories()
+    loadStores()
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
-  const loadCategories = async () => {
+  const loadStores = async () => {
     setLoading(true)
 
     if (!supabase || !await authorseDBAction(currentUser)) return
@@ -73,7 +74,7 @@ export default function CategoryPage() {
       if (error) {
         showErrorToast()
       }
-      setCategories(data || [])
+      setStores(data || [])
       setTotalRecordsCount(count || 0)
     } catch (error: any) {
       showErrorToast()
@@ -83,13 +84,13 @@ export default function CategoryPage() {
   }
 
   const handleAdd = () => {
-    setEditingCategory(null)
+    setEditingStore(null)
     setIsModalOpen(true)
   }
 
   const handleEdit = (id: string) => {
-    const category = categories.find(category => category.id === id)
-    setEditingCategory(category!)
+    const store = stores.find(store => store.id === id)
+    setEditingStore(store!)
     setIsModalOpen(true)
   }
 
@@ -108,8 +109,8 @@ export default function CategoryPage() {
         showErrorToast()
       } else {
         showSuccessToast('Record Archived.')
-        const remainingRecords = categories.filter(category => category.id !== id)
-        setCategories(remainingRecords)
+        const remainingRecords = stores.filter(store => store.id !== id)
+        setStores(remainingRecords)
         setTotalRecordsCount(remainingRecords.length)
       }
     } catch (error: any) {
@@ -134,8 +135,8 @@ export default function CategoryPage() {
         showErrorToast()
       } else {
         showSuccessToast('Record Restored.')
-        const remainingRecords = categories.filter(category => category.id !== id)
-        setCategories(remainingRecords)
+        const remainingRecords = stores.filter(store => store.id !== id)
+        setStores(remainingRecords)
         setTotalRecordsCount(remainingRecords.length)
       }
     } catch (error: any) {
@@ -145,15 +146,15 @@ export default function CategoryPage() {
     }
   }
 
-  const handleCreate = async (category: Category) => {
+  const handleCreate = async (store: Store) => {
     if (!supabase || !await authorseDBAction(currentUser)) return
 
       // Exclude id field while creating new record 
-      const {id, ...categoryWithNoId} = category
+      const {id, ...storeWithNoId} = store
     try {
       const { error } = await supabase
         .from(TABLE_NAME)
-        .insert(categoryWithNoId)
+        .insert(storeWithNoId)
 
       if (error) {
         handleServerError(error)
@@ -161,9 +162,8 @@ export default function CategoryPage() {
       }
 
       setIsModalOpen(false)
-
       showSuccessToast('Record Created.')
-      loadCategories()
+      loadStores()
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -171,14 +171,14 @@ export default function CategoryPage() {
     }
   }
 
-  const handleUpdate = async (category: Category) => {
+  const handleUpdate = async (store: Store) => {
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
       const { error } = await supabase
         .from(TABLE_NAME)
-        .update(category)
-        .eq('id', category.id)
+        .update(store)
+        .eq('id', store.id)
 
       if (error) {
         handleServerError(error)
@@ -187,7 +187,7 @@ export default function CategoryPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      loadCategories()
+      loadStores()
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -208,7 +208,7 @@ export default function CategoryPage() {
 
   const handleServerError = (error: PostgrestError) => {
     if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
-      showErrorToast(VALIDATION_ERRORS_MAPPING.entities.category.fields.name.displayError)
+      showErrorToast(VALIDATION_ERRORS_MAPPING.entities.store.fields.name.displayError)
     } else {
       showErrorToast()
     }
@@ -218,26 +218,26 @@ export default function CategoryPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Category Management</h1>
-          <p className="text-gray-600">Manage your categories of items</p>
+          <h1 className="text-2xl font-bold text-gray-900">Store Management</h1>
+          <p className="text-gray-600">Manage your stores of items</p>
         </div>
         <button
           onClick={handleAdd}
           className="btn-primary flex items-center items-center"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
-          Add Category
+          Add Store
         </button>
       </div>
 
-      {/* Category Table */}
+      {/* Store Table */}
       <div className="card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  Store
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Description
@@ -292,22 +292,22 @@ export default function CategoryPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {categories.map((category) => (
-                <tr key={category.id} className="hover:bg-gray-50">
+              {stores.map((store) => (
+                <tr key={store.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{category.name}</div>
+                      <div className="text-sm font-medium text-gray-900">{store.name}</div>
                     </div>
                   </td>
                   <td style={{maxWidth: 200}} className="px-6 py-4 text-sm text-gray-900 o">
-                    {canSeeMore ? shortenText(category.description, MAX_TABLE_TEXT_LENGTH) : category.description}
-                    {category.description.length > MAX_TABLE_TEXT_LENGTH && (
+                    {canSeeMore ? shortenText(store.description, MAX_TABLE_TEXT_LENGTH) : store.description}
+                    {store.description.length > MAX_TABLE_TEXT_LENGTH && (
                       <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(category.status!)}`}>
-                      {category.status}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(store.status!)}`}>
+                      {store.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
@@ -315,7 +315,7 @@ export default function CategoryPage() {
                       <ActionsMenu
                         actions={[
                           {
-                            id: category.id!,
+                            id: store.id!,
                             hideOption: selectedStatus === RecordStatus.ARCHIVED,
                             icon: <PencilIcon className="h-4 w-4" />,
                             label: 'Edit',
@@ -323,24 +323,24 @@ export default function CategoryPage() {
                             listener: handleEdit
                           },
                           {
-                            id: category.id!,
+                            id: store.id!,
                             hideOption: selectedStatus !== RecordStatus.ACTIVE,
                             icon: <TrashIcon className="h-4 w-4" />,
                             label: 'Archive',
                             class: "w-full text-red-600 hover:text-red-900",
                             listener: () => {
-                              setCurrentActiveId(category.id!)
+                              setCurrentActiveId(store.id!)
                               setIsArchiveConfirmationModalOpen(true)
                             }
                           },
                           {
-                            id: category.id!,
+                            id: store.id!,
                             hideOption: selectedStatus === RecordStatus.ACTIVE,
                             icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
                             label: 'Restore',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
                             listener: () => {
-                              setCurrentActiveId(category.id!)
+                              setCurrentActiveId(store.id!)
                               setIsRestoreConfirmationModalOpen(true)
                             }
                           },
@@ -362,17 +362,17 @@ export default function CategoryPage() {
         </div>
       </div>
 
-      {/* Category Modal */}
-      <CategoryModal
+      {/* Store Modal */}
+      <StoreModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        category={editingCategory}
-        onSave={(category) => {
+        store={editingStore}
+        onSave={(store) => {
           setLoading(true)
-          if (editingCategory) {
-            handleUpdate(category)
+          if (editingStore) {
+            handleUpdate(store)
           } else {
-            handleCreate(category)
+            handleCreate(store)
           }
         }}
       />
@@ -381,7 +381,7 @@ export default function CategoryPage() {
       <ConfirmationModal
         isOpen={isArchiveConfirmationModalOpen}
         id={currentActiveId}
-        message="Are you sure you want to archive this category?"
+        message="Are you sure you want to archive this store?"
         onConfirmationSuccess={handleArchive}
         onConfirmationFailure={resetModalState}
       />
@@ -390,10 +390,12 @@ export default function CategoryPage() {
       <ConfirmationModal
         isOpen={isRestoreConfirmationModalOpen}
         id={currentActiveId}
-        message="Are you sure you want to restore this category?"
+        message="Are you sure you want to restore this store?"
         onConfirmationSuccess={handleRestore}
         onConfirmationFailure={resetModalState}
       />
     </div>
   )
 }
+
+

@@ -8,7 +8,6 @@ import { Label } from 'recharts';
 // Define the props for this component
 interface Action {
   id: string
-  status?: string
   hideOption: boolean
   label: string
   icon: any
@@ -67,10 +66,10 @@ const ActionsMenu = ({ actions }: ActionsMenuProps) => {
             {/* Added a check to ensure `actions` is a valid array before mapping over it */}
             {Array.isArray(actions) && actions.map((action, index) => (
               !action.hideOption && (
-              <div className='pt-2'>
+              <div className='pt-2' key={index}>
                 <button
                 role="menuitem"
-                onClick={() => action.listener(action.id, action.status)}
+                onClick={() => action.listener(action.id)}
                 className={action.class}
               >
                 <div className="w-full pl-6 flex justify items-center">

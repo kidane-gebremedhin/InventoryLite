@@ -6,6 +6,7 @@ import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 
 declare global {
   interface Window {
@@ -40,7 +41,7 @@ export function Auth() {
   const handleCredentialResponse = async (response: any) => {
     try {
       if (!supabase) {
-        toast.error('Supabase client not initialized')
+        showErrorToast()
         return
       }
 
@@ -53,11 +54,10 @@ export function Auth() {
         throw error
       }
 
-      toast.success('Signed in successfully!')
+      showSuccessToast('Signed in successfully!')
       router.push('/dashboard')
     } catch (error: any) {
-      toast.error(error.message || 'Failed to sign in')
-      console.error('Google sign-in error:', error)
+      showErrorToast()
     }
   }
 

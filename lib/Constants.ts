@@ -1,4 +1,4 @@
-import { PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "./Enums"
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "./Enums"
 
 export const APP_NAME = 'InventoryLite'
 export const APP_MOTO = 'Simplified Inventory Management Software for Modern Businesses'
@@ -9,6 +9,7 @@ export const TEXT_SEARCH_TRIGGER_KEY = 'Enter'
 
 // Auth constants
 export const SIGNED_OUT = 'SIGNED_OUT'
+export const DEFAULT_USER_ROLE = 'user'
 
 export const MAX_TABLE_TEXT_LENGTH = 50
 export const MAX_DROPDOWN_TEXT_LENGTH = 25
@@ -37,5 +38,69 @@ export const TRANSACTION_DIRECTIONS: string[] = [
     TransactionDirection.IN,
     TransactionDirection.OUT
 ]
+
+export const FEEDBACK_STATUSES = [
+    {value: ALL_OPTIONS, label: 'All Feedback', color: 'bg-gray-100 text-gray-800'},
+    {value: FeedbackStatus.OPEN, label: 'Open', color: 'bg-blue-100 text-blue-800'},
+    {value: FeedbackStatus.IN_PROGRESS, label: 'In Progress', color: 'bg-yellow-100 text-yellow-800'},
+    {value: FeedbackStatus.RESOLVED, label: 'Resolved', color: 'bg-green-100 text-green-800'},
+    {value: FeedbackStatus.CLOSED, label: 'Closed', color: 'bg-gray-100 text-gray-800'},
+]
+
+export const FEEDBACK_CATEGORIES = [
+  { value: FeedbackCategory.BUG, label: 'Bug Report', color: 'bg-red-100 text-red-800' },
+  { value: FeedbackCategory.FEATURE, label: 'Feature Request', color: 'bg-blue-100 text-blue-800' },
+  { value: FeedbackCategory.IMPROVEMENT, label: 'Improvement', color: 'bg-green-100 text-green-800' },
+  { value: FeedbackCategory.GENERAL, label: 'General', color: 'bg-gray-100 text-gray-800' },
+]
+
+export const FEEDBACK_PRIORITIES = [
+  { value: FeedbackPriority.LOW, label: 'Low', color: 'bg-gray-100 text-gray-800' },
+  { value: FeedbackPriority.MEDIUM, label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
+  { value: FeedbackPriority.HIGH, label: 'High', color: 'bg-orange-100 text-orange-800' },
+  { value: FeedbackPriority.URGENT, label: 'Urgent', color: 'bg-red-100 text-red-800' },
+]
+
+export const VALIDATION_ERRORS_MAPPING = {
+    serverError: 'violates unique constraint',
+    entities: {
+        store: {
+            fields: {
+                name: {displayError: 'Store name already exists.'},
+            }
+        },
+        category: {
+            fields: {
+                name: {displayError: 'Category already exists.'},
+            }
+        },
+        customer: {
+            fields: {
+                name: {displayError: 'Customer already exists.'},
+            }
+        },
+        inventory_item: {
+            fields: {
+                name: {displayError: 'Item name already exists.'},
+                sku: {displayError: 'SKU already exists.'},
+            }
+        },
+        purchase_order: {
+            fields: {
+                name: {displayError: 'Order number already exists.'},
+            }
+        },
+        sales_order: {
+            fields: {
+                name: {displayError: 'Order number already exists.'},
+            }
+        },
+        supplier: {
+            fields: {
+                name: {displayError: 'Supplier name already exists.'},
+            }
+        },
+    }
+}
 
 export const RECORDS_PER_PAGE_OPTIONS = [2, 5, 10, 25, 50, 100]

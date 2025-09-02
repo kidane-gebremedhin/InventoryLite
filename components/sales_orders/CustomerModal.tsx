@@ -1,25 +1,23 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-import { fetchCurrentTenantId } from '@/lib/db_queries/DBQuery'
-import { Vendor } from '@/lib/types/Models'
+import { Customer } from '@/lib/types/Models'
+import { showErrorToast } from '@/lib/helpers/Helper'
 
-
-const emptyEntry: Vendor = {
+const emptyEntry: Customer = {
   name: '',
   email: '',
   phone: '',
   address: ''
 }
 
-interface VendorModalProps {
+interface CustomerModalProps {
   isOpen: boolean
   onClose: () => void
-  vendor: Vendor | null
-  onSave: (vendor: Vendor) => void
+  customer: Customer | null
+  onSave: (customer: Customer) => void
 }
 
 interface FormErrors {
@@ -28,26 +26,26 @@ interface FormErrors {
   phone?: string
 }
 
-export default function VendorModal({ isOpen, onClose, vendor, onSave }: VendorModalProps) {
+export default function CustomerModal({ isOpen, onClose, customer, onSave }: CustomerModalProps) {
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<Partial<Vendor>>(emptyEntry)
+  const [formData, setFormData] = useState<Partial<Customer>>(emptyEntry)
   const [errors, setErrors] = useState<FormErrors>({})
 
   useEffect(() => {
     if (isOpen) {
-      if (vendor) {
+      if (customer) {
         setFormData({
-          name: vendor.name || '',
-          email: vendor.email || '',
-          phone: vendor.phone || '',
-          address: vendor.address || ''
+          name: customer.name || '',
+          email: customer.email || '',
+          phone: customer.phone || '',
+          address: customer.address || ''
         })
       } else {
         resetForm()
       }
       setErrors({})
     }
-  }, [isOpen, vendor])
+  }, [isOpen, customer])
 
   const resetForm = () => {
     setFormData({
@@ -59,66 +57,24 @@ export default function VendorModal({ isOpen, onClose, vendor, onSave }: VendorM
     setErrors({})
   }
 
-  const validateForm = (): boolean => {
-    return true
-    /*
-    const newErrors: FormErrors = {}
-
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Vendor name is required'
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Vendor name must be at least 2 characters'
-    }
-
-    // Email validation
-    if (formData.email.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email address'
-      }
-    }
-
-    // Phone validation
-    if (formData.phone.trim()) {
-      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/
-      const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '')
-      if (!phoneRegex.test(cleanPhone)) {
-        newErrors.phone = 'Please enter a valid phone number'
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-    */
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) {
-      toast.error('Please fix the errors in the form')
-      return
-    }
-
     if (!formData.name) {
-      alert('Please fill in all required fields')
+      showErrorToast('Please fill in all required fields.')
       return
     }
 
-    const newVendor: Vendor = {
-      id: vendor?.id,
+    const newCustomer: Customer = {
+      id: customer?.id,
       name: formData.name.trim(),
       email: formData.email?.trim() || '',
       phone: formData.phone?.trim() || '',
       address: formData.address?.trim() || '',
-      status: vendor?.status
+      status: customer?.status
     }
 
-    // Clear input values
-    setFormData(emptyEntry)
-
-    onSave(newVendor)
+    onSave(newCustomer)
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -136,7 +92,7 @@ export default function VendorModal({ isOpen, onClose, vendor, onSave }: VendorM
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">
-            {vendor ? 'Edit Vendor' : 'New Vendor'}
+            {customer ? 'Edit Customer' : 'New Customer'}
           </h2>
           <button
             onClick={onClose}
@@ -149,14 +105,14 @@ export default function VendorModal({ isOpen, onClose, vendor, onSave }: VendorM
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Vendor Name *
+              Customer Name *
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               className={`input-field ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="Enter vendor name"
+              placeholder="Enter customer name"
               required
             />
             {errors.name && (
@@ -173,7 +129,7 @@ export default function VendorModal({ isOpen, onClose, vendor, onSave }: VendorM
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               className={`input-field ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="vendor@example.com"
+              placeholder="customer@example.com"
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
@@ -205,7 +161,7 @@ export default function VendorModal({ isOpen, onClose, vendor, onSave }: VendorM
               onChange={(e) => handleInputChange('address', e.target.value)}
               className="input-field"
               rows={3}
-              placeholder="Enter vendor address"
+              placeholder="Enter customer address"
             />
           </div>
 
@@ -223,7 +179,7 @@ export default function VendorModal({ isOpen, onClose, vendor, onSave }: VendorM
               className="btn-primary"
               disabled={loading}
             >
-              {loading ? 'Saving...' : (vendor ? 'Update Vendor' : 'Create Vendor')}
+              {loading ? 'Saving...' : (customer ? 'Update Customer' : 'Create Customer')}
             </button>
           </div>
         </form>

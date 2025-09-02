@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
-import { currentUserRole } from '@/lib/db_queries/DBQuery'
 import Link from 'next/link'
+import { DEFAULT_USER_ROLE } from '@/lib/Constants'
 
 interface FeedbackNotificationProps {
   className?: string
@@ -12,18 +12,13 @@ interface FeedbackNotificationProps {
 
 export function FeedbackNotification({ className = '' }: FeedbackNotificationProps) {
   const [unreadCount, setUnreadCount] = useState(0)
-  const [userRole, setUserRole] = useState<string>('user')
+  const [userRole, setUserRole] = useState<string>(DEFAULT_USER_ROLE)
 
   useEffect(() => {
-    loadUserRole()
     if (userRole === 'admin') {
       loadUnreadCount()
     }
   }, [userRole])
-
-  const loadUserRole = async () => {
-    setUserRole(currentUserRole)
-  }
 
   const loadUnreadCount = async () => {
     if (!supabase) return

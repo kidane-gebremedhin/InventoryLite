@@ -2,51 +2,51 @@
 
 import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
-import { Category } from '@/lib/types/Models';
+import { Store } from '@/lib/types/Models';
 import { showErrorToast } from '@/lib/helpers/Helper';
 
-interface CategoryModalProps {
+interface StoreModalProps {
   isOpen: boolean
   onClose: () => void
-  category: Category | null
-  onSave: (category: Category) => void
+  store: Store | null
+  onSave: (store: Store) => void
 }
 
-const emptyEntry: Category = {
+const emptyEntry: Store = {
   name: '',
   description: ''
 }
 
-export function CategoryModal({ isOpen, onClose, category, onSave }: CategoryModalProps) {
-  const [formData, setFormData] = useState<Partial<Category>>(emptyEntry)
+export function StoreModal({ isOpen, onClose, store, onSave }: StoreModalProps) {
+  const [formData, setFormData] = useState<Partial<Store>>(emptyEntry)
 
   useEffect(() => {
-    if (category) {
-      setFormData(category)
+    if (store) {
+      setFormData(store)
     } else {
       setFormData(emptyEntry)
     }
-  }, [isOpen, category])
+  }, [isOpen, store])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!formData.name) {
-      showErrorToast('Please fill in all required fields')
+      showErrorToast('Please fill in all required fields.')
       return
     }
 
-    const newCategory: Category = {
-      id: category?.id,
+    const newStore: Store = {
+      id: store?.id,
       name: formData.name,
       description: formData.description || '',
-      status: category?.status
+      status: store?.status
     }
 
-    onSave(newCategory)
+    onSave(newStore)
   }
 
-  const handleInputChange = (field: keyof Category, value: any) => {
+  const handleInputChange = (field: keyof Store, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -60,7 +60,7 @@ export function CategoryModal({ isOpen, onClose, category, onSave }: CategoryMod
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">
-            {category ? 'Edit' : 'Add New'}
+            {store ? 'Edit' : 'Add New'}
           </h3>
           <button
             onClick={onClose}
@@ -108,7 +108,7 @@ export function CategoryModal({ isOpen, onClose, category, onSave }: CategoryMod
               type="submit"
               className="btn-primary"
             >
-              {category ? 'Update' : 'Create'}
+              {store ? 'Update' : 'Create'}
             </button>
           </div>
         </form>

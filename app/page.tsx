@@ -1,8 +1,28 @@
+'use client'
+
 import { APP_MOTO, APP_NAME } from '@/lib/Constants';
 import Link from 'next/link';
 import React from 'react';
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 const App = () => {
+  const router = useRouter()
+
+  useEffect(() => {
+    const checkUser = async () => {
+      if (!supabase) return
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard')
+      }
+    }
+    
+    checkUser()
+  }, [router])
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800 antialiased">
       {/* Navbar */}
