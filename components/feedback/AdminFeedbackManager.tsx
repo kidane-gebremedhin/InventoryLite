@@ -13,9 +13,8 @@ import {
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { ALL_OPTIONS, FEEDBACK_STATUSES } from '@/lib/Constants'
-import Loading from '../helpers/Loading'
-import { FeedbackStatus } from '@/lib/Enums'
-import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { FeedbackStatus, TABLE } from '@/lib/Enums'
+import { formatDateToUTC, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 
 interface Feedback {
   id: string
@@ -52,7 +51,7 @@ export function AdminFeedbackManager() {
 
     try {
       const { data, error } = await supabase
-        .from('feedback')
+        .from(TABLE.feedback)
         .select(`
           *,
           tenant:tenants(name, domain)
@@ -73,7 +72,7 @@ export function AdminFeedbackManager() {
 
     try {
       const { error } = await supabase
-        .from('feedback')
+        .from(TABLE.feedback)
         .update({ status: newStatus })
         .eq('id', feedbackId)
 
@@ -90,7 +89,7 @@ export function AdminFeedbackManager() {
 
     try {
       const { error } = await supabase
-        .from('feedback')
+        .from(TABLE.feedback)
         .update({ 
           admin_response: responseText,
           status: 'resolved'
@@ -214,7 +213,7 @@ export function AdminFeedbackManager() {
                   </span>
                 </div>
                 <div className="text-sm text-gray-500">
-                  {new Date(feedback.created_at).toUTCString()}
+                  {formatDateToUTC(feedback.created_at)}
                 </div>
               </div>
 

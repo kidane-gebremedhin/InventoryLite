@@ -12,11 +12,10 @@ import {
 import { supabase } from '@/lib/supabase'
 import { Customer } from '@/lib/types/Models'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus } from '@/lib/Enums'
+import { RecordStatus, TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { getRecordStatusColor, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import Pagination from '@/components/Pagination'
-import Loading from '@/components/helpers/Loading'
+import { getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import Pagination from '@/components/helpers/Pagination'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import CustomerModal from '@/components/sales_orders/CustomerModal'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
@@ -33,6 +32,7 @@ export default function CustomerPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [canSeeMore, setCanSeeMore] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
+  // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
@@ -43,8 +43,6 @@ export default function CustomerPage() {
   // Global States
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
-
-  const TABLE_NAME = 'customers'
 
   useEffect(() => {
     // reset pagination
@@ -61,7 +59,7 @@ export default function CustomerPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE_NAME).select('*', {count: 'exact', head: false})
+      let query = supabase.from(TABLE.customers).select('*', {count: 'exact', head: false})
       if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus)
       }
@@ -72,7 +70,7 @@ export default function CustomerPage() {
       .range(startIndex, endIndex)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       }
       setCustomers(data || [])
       setTotalRecordsCount(count || 0)
@@ -101,12 +99,12 @@ export default function CustomerPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.customers)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Archived.')
         const remainingRecords = customers.filter(customer => customer.id !== id)
@@ -127,12 +125,12 @@ export default function CustomerPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.customers)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Restored.')
         const remainingRecords = customers.filter(customer => customer.id !== id)
@@ -153,7 +151,7 @@ export default function CustomerPage() {
       const {id, ...customerWithNoId} = customer
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.customers)
         .insert(customerWithNoId)
 
       if (error) {
@@ -176,7 +174,7 @@ export default function CustomerPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.customers)
         .update(customer)
         .eq('id', customer.id)
 
@@ -210,7 +208,7 @@ export default function CustomerPage() {
     if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
       showErrorToast(VALIDATION_ERRORS_MAPPING.entities.customer.fields.name.displayError)
     } else {
-      showErrorToast()
+      showServerErrorToast(error.message)
     }
   }
 
@@ -368,14 +366,14 @@ export default function CustomerPage() {
               ))}
             </tbody>
           </table>
-          <Pagination
-            currentPage = {currentPage}
-            recordsPerPage = {recordsPerPage}
-            totalRecordsCount = {totalRecordsCount}
-            setCurrentPage = {setCurrentPage}
-            setRecordsPerPage = {setRecordsPerPage}
-          />
         </div>
+        <Pagination
+          currentPage = {currentPage}
+          recordsPerPage = {recordsPerPage}
+          totalRecordsCount = {totalRecordsCount}
+          setCurrentPage = {setCurrentPage}
+          setRecordsPerPage = {setRecordsPerPage}
+        />
       </div>
 
       {/* Customer Modal */}

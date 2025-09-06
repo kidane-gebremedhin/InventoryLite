@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { APP_NAME } from '@/lib/Constants'
 import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { useUserContext } from '../context_apis/UserProvider'
-import { FeedbackPriority } from '@/lib/Enums'
+import { FeedbackPriority, TABLE } from '@/lib/Enums'
 
 interface FeedbackRatingProps {
   onFeedbackSubmitted?: () => void
@@ -47,7 +47,7 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
     setSubmitting(true)
     try {
       const { error } = await supabase
-        .from('feedback')
+        .from(TABLE.feedback)
         .insert({
           category: formData.category,
           subject: formData.subject,

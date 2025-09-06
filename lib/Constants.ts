@@ -24,13 +24,13 @@ export const RECORD_STATUSES: string[] = [
 export const PURCHASE_ORDER_STATUSES: string[] = [
     PurchaseOrderStatus.PENDING,
     PurchaseOrderStatus.RECEIVED,
-    PurchaseOrderStatus.CANCELLED
+    PurchaseOrderStatus.CANCELED
 ]
 
 export const SALES_ORDER_STATUSES: string[] = [
     SalesOrderStatus.PENDING,
     SalesOrderStatus.FULFILLED,
-    SalesOrderStatus.CANCELLED
+    SalesOrderStatus.CANCELED
 ]
 
 export const TRANSACTION_DIRECTIONS: string[] = [
@@ -103,4 +103,24 @@ export const VALIDATION_ERRORS_MAPPING = {
     }
 }
 
-export const RECORDS_PER_PAGE_OPTIONS = [2, 5, 10, 25, 50, 100]
+export const CUSTOM_SERVER_ERRORS = [
+    'Insufficient inventory'
+]
+
+export const MONTH_NAME_MAPPING = new Map([
+    ['01', 'Jan'],
+    ['02', 'Feb'],
+    ['03', 'Mar'],
+    ['04', 'Apr'],
+    ['05', 'May'],
+    ['06', 'Jun'],
+    ['07', 'Jul'],
+    ['08', 'Aug'],
+    ['09', 'Sep'],
+    ['10', 'Oct'],
+    ['11', 'Nov'],
+    ['12', 'Dec']
+])
+
+export const RECORDS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
+export const REPORTS_PER_PAGE_OPTIONS = [25, 50, 100, 200, 500, 1000]

@@ -10,6 +10,8 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline'
 import MiniLoading from '../helpers/MiniLoading'
+import { getCurrentDateTimeUTC } from '@/lib/helpers/Helper'
+import { TABLE } from '@/lib/Enums'
 
 interface FeedbackSummaryProps {
   className?: string
@@ -42,7 +44,7 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
 
     try {
       const { data, error } = await supabase
-        .from('feedback')
+        .from(TABLE.feedback)
         .select('*')
 
       if (error) throw error
@@ -58,9 +60,9 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
         : 0
 
       // Recent feedback (last 7 days)
-      const weekAgo = new Date()
+      const weekAgo = getCurrentDateTimeUTC()
       weekAgo.setDate(weekAgo.getDate() - 7)
-      const recentCount = feedbacks.filter(f => new Date(f.created_at) > weekAgo).length
+      const recentCount = feedbacks.filter(f => getCurrentDateTimeUTC(f.created_at) > weekAgo).length
 
       setStats({
         total,

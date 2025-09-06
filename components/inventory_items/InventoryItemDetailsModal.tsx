@@ -1,6 +1,6 @@
 'use client'
 
-import { getRecordStatusColor } from '@/lib/helpers/Helper'
+import { formatDateToUTC, getRecordStatusColor } from '@/lib/helpers/Helper'
 import { InventoryItem } from '@/lib/types/Models'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import CloseModal from '../helpers/CloseModal'
@@ -51,7 +51,7 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                 </div>
                 <div>
                   <span className="text-gray-600">Unit Price:</span>
-                  <span className="ml-2 font-medium">${item.unit_price.toFixed(2)}</span>
+                  <span className="ml-2 font-medium">{item.unit_price.toFixed(2)}</span>
                 </div>
                 <div className='flex'>
                   <span className="text-gray-600">Available Quantity:</span>
@@ -76,11 +76,11 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                 </div>
                 <div>
                   <span className="text-gray-600">Created:</span>
-                  <span className="ml-2">{new Date(item.created_at!).toUTCString()}</span>
+                  <span className="ml-2">{formatDateToUTC(item.created_at!)}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Updated:</span>
-                  <span className="ml-2">{new Date(item.updated_at!).toUTCString()}</span>
+                  <span className="ml-2">{formatDateToUTC(item.updated_at!)}</span>
                 </div>
               </div>
             </div>

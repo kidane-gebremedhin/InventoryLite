@@ -17,14 +17,15 @@ import SalesOrderModal from '@/components/sales_orders/SalesOrderModal'
 import OrderDetailsModal from '@/components/sales_orders/OrderDetailsModal'
 import { supabase } from '@/lib/supabase'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { SalesOrderStatus, RecordStatus } from '@/lib/Enums'
+import { SalesOrderStatus, RecordStatus, RPC_FUNCTION, TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, SALES_ORDER_STATUSES, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { canShowLoadingScreen, convertToUTC, getOrderStatusColor, getRecordStatusColor, setEarliestTimeOfDay, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import Pagination from '@/components/Pagination'
-import Loading from '@/components/helpers/Loading'
+import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getCurrentDateTimeUTC, getDateWithoutTime, getOrderStatusColor, getRecordStatusColor, isCustomServerError, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import Pagination from '@/components/helpers/Pagination'
 import { SalesOrder, Customer } from '@/lib/types/Models'
+// DatePicker both are required
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
+
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
@@ -38,9 +39,11 @@ export default function SalesOrderPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSalesOrder, setEditingSalesOrder] = useState<SalesOrder | null>(null)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
+  // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
+  
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([])
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null)
@@ -49,6 +52,8 @@ export default function SalesOrderPage() {
   const [selectedCustomerId, setSelectedCustomer] = useState(ALL_OPTIONS)
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
+  const [fulfilledDateStart, setFulfilledDateStart] = useState<Date | null>(null)
+  const [fulfilledDateEnd, setFulfilledDateEnd] = useState<Date | null>(null)
   // Record Actions
   const [currentActiveId, setCurrentActiveId] = useState<string>('')
   const [isArchiveConfirmationModalOpen, setIsArchiveConfirmationModalOpen] = useState(false)
@@ -60,21 +65,19 @@ export default function SalesOrderPage() {
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
-  const TABLE_NAME = 'sales_orders'
-
   useEffect(() => {
     const loadCustomers = async () => {
       if (!supabase || !await authorseDBAction(currentUser)) return
 
       try {
         const { data, error } = await supabase
-          .from('customers')
+          .from(TABLE.customers)
           .select('*')
           .eq('status', RecordStatus.ACTIVE)
-          .order('created_at', { ascending: false })
+          .order('name')
 
         if (error) {
-          showErrorToast()
+          showServerErrorToast(error.message)
         }
 
         const selectableCustomers: Customer[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
@@ -93,10 +96,10 @@ export default function SalesOrderPage() {
     // reset pagination
     router.push(`?page=${currentPage}`)
     loadSalesOrders()
-  }, [searchTerm, selectedCustomerId, selectedOrderStatus, selectedStatus, startDate, endDate, recordsPerPage, currentPage])
+  }, [searchTerm, selectedCustomerId, selectedOrderStatus, selectedStatus, startDate, endDate, fulfilledDateStart, fulfilledDateEnd, recordsPerPage, currentPage])
 
   const loadSalesOrders = async () => {
-    setLoading(canShowLoadingScreen(startDate, endDate))
+    setLoading(canShowLoadingScreen(startDate, endDate, fulfilledDateStart, fulfilledDateEnd))
 
     if (!supabase || !await authorseDBAction(currentUser)) return
 
@@ -104,7 +107,7 @@ export default function SalesOrderPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE_NAME).select(`
+      let query = supabase.from(TABLE.sales_orders).select(`
           *,
           customer:customers(*),
           order_items:sales_order_items(
@@ -130,14 +133,22 @@ export default function SalesOrderPage() {
         query = query.gte('expected_date', startDateUTC.toUTCString())
       }
       if (endDate) {
-        const endDateUTC = convertToUTC(setEarliestTimeOfDay(endDate))
+        const endDateUTC = convertToUTC(setLatestTimeOfDay(endDate))
         query = query.lte('expected_date', endDateUTC.toUTCString())
+      }
+      if (fulfilledDateStart) {
+        const fulfilledDateStartUTC = convertToUTC(setEarliestTimeOfDay(fulfilledDateStart))
+        query = query.gte('fulfilled_date', fulfilledDateStartUTC.toUTCString())
+      }
+      if (fulfilledDateEnd) {
+        const fulfilledDateEndUTC = convertToUTC(setLatestTimeOfDay(fulfilledDateEnd))
+        query = query.lte('fulfilled_date', fulfilledDateEndUTC.toUTCString())
       }
       const { data, count, error } = await query.order('created_at', { ascending: false })
       .range(startIndex, endIndex)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       }
 
       setSalesOrders(data || [])
@@ -167,12 +178,12 @@ export default function SalesOrderPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.sales_orders)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Archived.')
         const remainingRecords = salesOrders.filter(salesOrder => salesOrder.id !== id)
@@ -193,12 +204,12 @@ export default function SalesOrderPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.sales_orders)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showErrorToast(error.name)
       } else {
         showSuccessToast(`Record Restored.`)
         setSalesOrders(salesOrders.filter(salesOrder => salesOrder.id !== id))
@@ -217,31 +228,19 @@ export default function SalesOrderPage() {
     const {id, order_items, ...salesOrderWithNoId} = salesOrder
 
     try {
-      const { data: savedSalesOrder, error: soError } = await supabase
-        .from(TABLE_NAME)
-        .insert(salesOrderWithNoId)
-        .select()
-        .single()
-
+     const { data, error: soError } = await supabase
+               .rpc(RPC_FUNCTION.TRANSACTION_SALES_ORDER_HANDLER, {
+                  sales_order_data: salesOrderWithNoId,
+                  sales_order_items_data: salesOrder.order_items,
+                })
       if (soError) {
         handleServerError(soError)
-      } else {
-        // Insert order items
-        const orderItems = salesOrder.order_items!.map(item => {
-          item.sales_order_id = savedSalesOrder.id
-          return item
-        })
-        const { error: orderItemsError } = await supabase.from('sales_order_items').insert(orderItems)
-
-        if (orderItemsError) {
-          handleServerError(orderItemsError)
-          return
-        }
-
-        setIsModalOpen(false)
-        showSuccessToast('Record Created.')
-        loadSalesOrders()
+        return
       }
+
+      setIsModalOpen(false)
+      showSuccessToast('Record Created.')
+      loadSalesOrders()
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -253,29 +252,17 @@ export default function SalesOrderPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     // Exclude id field while creating new record 
-    const {order_items, ...salesOrderWithNoId} = salesOrder
+    const {order_items, ...salesOrderWithNoOrderItems} = salesOrder
 
     try {
-      const { error } = await supabase
-        .from(TABLE_NAME)
-        .update(salesOrderWithNoId)
-        .eq('id', salesOrder.id)
-
-      if (error) {
-        handleServerError(error)
-        return
-      }
-
-      // First remove the existing order items of this order
-      const { error: orderItemsDeletionError } = await supabase.from('sales_order_items').delete().eq('sales_order_id', salesOrder.id)
-      if (orderItemsDeletionError) {
-        handleServerError(orderItemsDeletionError)
-        return
-      }
-
-      const { error: orderItemsError } = await supabase.from('sales_order_items').insert(salesOrder.order_items)
-      if (orderItemsError) {
-        handleServerError(orderItemsError)
+     const { data, error: soError } = await supabase
+               .rpc(RPC_FUNCTION.TRANSACTION_SALES_ORDER_HANDLER, {
+                  sales_order_data: salesOrderWithNoOrderItems,
+                  sales_order_items_data: salesOrder.order_items,
+                  is_for_update: true
+                })
+      if (soError) {
+        handleServerError(soError)
         return
       }
 
@@ -307,15 +294,20 @@ export default function SalesOrderPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
-        .update({ order_status: status })
+        .from(TABLE.sales_orders)
+        .update({order_status: status})
         .eq('id', id)
 
-      if (error) throw error
+      if (error) {
+        setLoading(false)
+        showServerErrorToast(error.message)
+        return
+      }
 
       showSuccessToast(`Order status updated to ${status}`)
       loadSalesOrders()
     } catch (error: any) {
+      setLoading(false)
       showErrorToast()
     }
   }
@@ -337,6 +329,13 @@ export default function SalesOrderPage() {
     setEndDate(end);
   }
 
+  const onFulfilledDateRangeChange = (dates: any) => {
+    const [start, end] = dates;
+
+    setFulfilledDateStart(start);
+    setFulfilledDateEnd(end);
+  }
+
   const resetModalState = () => {
     setCurrentActiveId('')
     setIsArchiveConfirmationModalOpen(false)
@@ -350,7 +349,7 @@ export default function SalesOrderPage() {
     if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
       showErrorToast(VALIDATION_ERRORS_MAPPING.entities.sales_order.fields.name.displayError)
     } else {
-      showErrorToast()
+      showServerErrorToast(error.message)
     }
   }
 
@@ -358,7 +357,7 @@ export default function SalesOrderPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">SalesOrder Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Sales Order Management</h1>
           <p className="text-gray-600">Manage your sales orders from your supplier customers</p>
         </div>
         <button
@@ -383,13 +382,16 @@ export default function SalesOrderPage() {
                   Customer
                 </th>
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
+                  Value
                 </th>
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Order Status
                 </th>
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Expected Date
+                </th>
+                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Fulfilled Date
                 </th>
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Record Status
@@ -439,18 +441,18 @@ export default function SalesOrderPage() {
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className='w-full'>
                       <select
-                      value={selectedOrderStatus}
-                      onChange={(e) => { 
-                        setCurrentPage(FIRST_PAGE_NUMBER)
-                        setSelectedOrderStatus(e.target.value)
-                      }}
-                      className="input-field"
-                    >
-                      {getSalesOrderStatusOptions().map(status => (
-                        <option key={status} value={status}>
-                          {status === ALL_OPTIONS ? 'All Statuses' : status}
-                        </option>
-                      ))}
+                        value={selectedOrderStatus}
+                        onChange={(e) => { 
+                          setCurrentPage(FIRST_PAGE_NUMBER)
+                          setSelectedOrderStatus(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {getSalesOrderStatusOptions().map(status => (
+                          <option key={status} value={status}>
+                            {status === ALL_OPTIONS ? 'All Statuses' : status}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </th>
@@ -460,6 +462,19 @@ export default function SalesOrderPage() {
                     onChange={onDateRangeChange}
                     startDate={startDate}
                     endDate={endDate}
+                    selectsRange
+                    monthsShown={2}
+                    placeholderText="Select date range"
+                    isClearable={true}
+                    className="input-field"
+                  />
+                </th>
+                <th style={{maxWidth: 30}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <DatePicker
+                    selected={fulfilledDateStart}
+                    onChange={onFulfilledDateRangeChange}
+                    startDate={fulfilledDateStart}
+                    endDate={fulfilledDateEnd}
                     selectsRange
                     monthsShown={2}
                     placeholderText="Select date range"
@@ -509,7 +524,10 @@ export default function SalesOrderPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {order.expected_date ? new Date(order.expected_date).toUTCString() : '-'}
+                    {getDateWithoutTime(formatDateToUTC(order.expected_date))}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {formatDateToUTC(order.fulfilled_date)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(order.status!)}`}>
@@ -530,7 +548,7 @@ export default function SalesOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: ![SalesOrderStatus.FULFILLED, SalesOrderStatus.CANCELLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                            hideOption: ![SalesOrderStatus.CANCELED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <BackwardIcon className="h-4 w-4" />,
                             label: 'Return to Pending',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
@@ -541,7 +559,7 @@ export default function SalesOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: ![SalesOrderStatus.PENDING, SalesOrderStatus.CANCELLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                            hideOption: ![SalesOrderStatus.PENDING, SalesOrderStatus.CANCELED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <CheckIcon className="h-4 w-4" />,
                             label: 'Mark as Fulfilled',
                             class: "w-full text-green-600 hover:text-green-900",
@@ -552,7 +570,7 @@ export default function SalesOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: selectedStatus === RecordStatus.ARCHIVED,
+                            hideOption: [SalesOrderStatus.FULFILLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <PencilIcon className="h-4 w-4" />,
                             label: 'Edit',
                             class: "w-full text-primary-600 hover:text-primary-900",
@@ -560,7 +578,7 @@ export default function SalesOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: ![SalesOrderStatus.PENDING, SalesOrderStatus.FULFILLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                            hideOption: ![SalesOrderStatus.PENDING].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <XMarkIcon className="h-4 w-4" />,
                             label: 'Cancel Order',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
@@ -571,7 +589,7 @@ export default function SalesOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: selectedStatus !== RecordStatus.ACTIVE,
+                            hideOption: [SalesOrderStatus.FULFILLED].includes(order.order_status!) || selectedStatus !== RecordStatus.ACTIVE,
                             icon: <TrashIcon className="h-4 w-4" />,
                             label: 'Archive',
                             class: "w-full text-red-600 hover:text-red-900",
@@ -599,14 +617,14 @@ export default function SalesOrderPage() {
               ))}
             </tbody>
           </table>
-          <Pagination
-            currentPage = {currentPage}
-            recordsPerPage = {recordsPerPage}
-            totalRecordsCount = {totalRecordsCount}
-            setCurrentPage = {setCurrentPage}
-            setRecordsPerPage = {setRecordsPerPage}
-          />
         </div>
+        <Pagination
+          currentPage = {currentPage}
+          recordsPerPage = {recordsPerPage}
+          totalRecordsCount = {totalRecordsCount}
+          setCurrentPage = {setCurrentPage}
+          setRecordsPerPage = {setRecordsPerPage}
+        />
       </div>
 
       {/* SalesOrder Modal */}
@@ -663,7 +681,7 @@ export default function SalesOrderPage() {
         isOpen={isMoveToFulfilledConfirmationModalOpen}
         id={currentActiveId}
         orderStatus={SalesOrderStatus.FULFILLED}
-        message="Are you sure you want to move this order status to fulfilled?"
+        message="Are you sure you want to move this order status to fulfilled? No edits are permitted after submission."
         onConfirmationSuccess={handleOrderStatusChange}
         onConfirmationFailure={resetModalState}
       />
@@ -672,7 +690,7 @@ export default function SalesOrderPage() {
       <ConfirmationModal
         isOpen={isMoveToCanceledConfirmationModalOpen}
         id={currentActiveId}
-        orderStatus={SalesOrderStatus.CANCELLED}
+        orderStatus={SalesOrderStatus.CANCELED}
         message="Are you sure you want to move this order status to canceled?"
         onConfirmationSuccess={handleOrderStatusChange}
         onConfirmationFailure={resetModalState}

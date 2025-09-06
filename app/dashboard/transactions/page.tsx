@@ -6,23 +6,26 @@ import {
 } from '@heroicons/react/24/outline'
 import { supabase } from '@/lib/supabase'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, TransactionDirection } from '@/lib/Enums'
-import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TRANSACTION_DIRECTIONS } from '@/lib/Constants'
-import { canShowLoadingScreen, convertToUTC, dateFormat, getRecordStatusColor, getTransactionDirectionColor, setEarliestTimeOfDay, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import Pagination from '@/components/Pagination'
-import Loading from '@/components/helpers/Loading'
+import { RecordStatus, TABLE, TransactionDirection } from '@/lib/Enums'
+import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORDS_PER_PAGE, TRANSACTION_DIRECTIONS } from '@/lib/Constants'
+import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getTransactionDirectionColor, setEarliestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import Pagination from '@/components/helpers/Pagination'
 import { InventoryItem, Store, Transaction } from '@/lib/types/Models'
+// DatePicker both are required
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
+
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 
 export default function SalesOrderPage() {
   const router = useRouter()
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
+  // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
+  
   const [stores, setStores] = useState<Store[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [inventoryItems, setInventoryItems] = useState<Partial<InventoryItem>[]>([])
@@ -35,17 +38,16 @@ export default function SalesOrderPage() {
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
-  const TABLE_NAME = 'transactions'
-
   const loadInventoryItems = async () => {
     if (!supabase) return
 
     try {
       const { data, error } = await supabase
-        .from('inventory_items')
+        .from(TABLE.inventory_items)
         .select('id, sku, name, unit_price, quantity')
-        .eq('status', 'active')
+        .eq('status', RecordStatus.ACTIVE)
         .order('name')
+
 
       if (error) throw error
 
@@ -61,8 +63,9 @@ export default function SalesOrderPage() {
 
     try {
       const { data, error } = await supabase
-        .from('stores')
+        .from(TABLE.stores)
         .select('id, name, description')
+        .eq('status', RecordStatus.ACTIVE)
         .order('name')
 
       if (error) throw error
@@ -86,7 +89,7 @@ export default function SalesOrderPage() {
   }, [selectedStoreId, selectedInventoryItemId, selectedDirection, selectedStatus, startDate, endDate, recordsPerPage, currentPage])
 
   const loadTransactions = async () => {
-    setLoading(canShowLoadingScreen(startDate, endDate))
+    setLoading(canShowLoadingScreen(startDate, endDate, null, null))
 
     if (!supabase || !await authorseDBAction(currentUser)) return
 
@@ -94,7 +97,7 @@ export default function SalesOrderPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE_NAME).select(`
+      let query = supabase.from(TABLE.transactions).select(`
         *,
         item:inventory_items(*),
         store:stores(*)
@@ -123,7 +126,7 @@ export default function SalesOrderPage() {
       .range(startIndex, endIndex)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       }
 
       setTransactions(data || [])
@@ -255,7 +258,7 @@ export default function SalesOrderPage() {
                     {transaction.store?.name} 
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    {dateFormat(transaction.created_at!)}
+                    {formatDateToUTC(transaction.created_at!)}
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
                     <b>{transaction.current_item_quantity}</b>
@@ -264,14 +267,14 @@ export default function SalesOrderPage() {
               ))}
             </tbody>
           </table>
-          <Pagination
-            currentPage = {currentPage}
-            recordsPerPage = {recordsPerPage}
-            totalRecordsCount = {totalRecordsCount}
-            setCurrentPage = {setCurrentPage}
-            setRecordsPerPage = {setRecordsPerPage}
-          />
         </div>
+        <Pagination
+          currentPage = {currentPage}
+          recordsPerPage = {recordsPerPage}
+          totalRecordsCount = {totalRecordsCount}
+          setCurrentPage = {setCurrentPage}
+          setRecordsPerPage = {setRecordsPerPage}
+        />
       </div>
     </div>
   )

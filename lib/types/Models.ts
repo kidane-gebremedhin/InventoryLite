@@ -99,6 +99,7 @@ export interface PurchaseOrder {
   supplier_id: string
   order_status?: PurchaseOrderStatus.PENDING
   expected_date?: string
+  received_date?: string
   tenant_id?: string
   status: string
   created_at?: string
@@ -113,6 +114,7 @@ export interface SalesOrder {
   customer_id: string
   order_status?: SalesOrderStatus.PENDING
   expected_date?: string
+  fulfilled_date?: string
   tenant_id?: string
   status: string
   created_at?: string
@@ -131,6 +133,7 @@ export interface Transaction {
   reference_id: string
   status?: string
   tenant_id?: string
+  received_date?: string
   created_at?: string
   updated_at?: string
   item?: InventoryItem
@@ -165,4 +168,41 @@ export interface PurchaseOrders {
 export interface FeedbackStatus {
     key: string
     label: string
+}
+
+export interface InventoryTurnoverReport {
+  item_id: string
+  item_name: string
+  sold_quantity: number
+}
+
+export interface PendingOrdersReport {
+  item_id: string
+  item_name: string
+  total_ordered_quantity: number
+  order_status: string
+}
+
+export interface InventoryAgingReport {
+  item_id: string
+  item_name: string
+  item_quantity: number
+  order_id: string
+  order_number: string
+  order_received_date: string
+  days_in_stock: number
+}
+
+export interface PurchaseOrderMonthlyTrendsData {
+  month_name: string
+  ordered_quantity: number
+  canceled_quantity: number
+  received_quantity: number
+}
+
+export interface SalesOrderMonthlyTrendsData {
+  month_name: string
+  ordered_quantity: number
+  canceled_quantity: number
+  fulfilled_quantity: number
 }

@@ -1,7 +1,7 @@
 import toast from "react-hot-toast"
 import { PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
 import { PurchaseOrderItem, SalesOrderItem } from "../types/Models"
-import { FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
+import { CUSTOM_SERVER_ERRORS, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
 
 export const shortenText = (input: string | undefined | null, targetLength: number): string => {
     if (!input) return ''
@@ -15,6 +15,15 @@ export const showSuccessToast = (message: string) => {
 
 export const showErrorToast = (message?: string) => {
     toast.error(message ? message: 'Oops, Something went wrong.')
+}
+
+export const showServerErrorToast = (message: string) => {
+    if(isCustomServerError(message)) {
+      toast.error(message)
+      return
+    }
+    
+    showErrorToast()
 }
 
 export const getRecordStatusColor = (status: string): string => {
@@ -36,8 +45,8 @@ export const getOrderStatusColor = (status: string): string => {
       case PurchaseOrderStatus.RECEIVED:
       case SalesOrderStatus.FULFILLED:
         return 'bg-green-100 text-green-800'
-      case PurchaseOrderStatus.CANCELLED:
-      case SalesOrderStatus.CANCELLED:
+      case PurchaseOrderStatus.CANCELED:
+      case SalesOrderStatus.CANCELED:
         return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
@@ -59,14 +68,13 @@ export const calculateOrderTotalProce = (orderItems: PurchaseOrderItem[] | Sales
     return orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
 }
 
-
-export const canShowLoadingScreen = (startDateSet: Date | null, endDateSet: Date | null): boolean => {
+export const canShowLoadingScreen = (startDateSet: Date | null, endDateSet: Date | null, receivedDateStart: Date | null, receivedDateEnd: Date | null): boolean => {
   /**
    * Only show the loading screen on the following conditions not to close the datepicker when user is trying to set endEdate 
    * 1. both dates are null (user cleared the field)
    * 2. if startDate is set, check if endDate is also set
    */ 
-  return !(startDateSet  && !endDateSet)
+  return (startDateSet == null || endDateSet !== null) && (receivedDateStart == null || receivedDateEnd !== null)
 }
 
 export const setEarliestTimeOfDay = (date: Date): Date => {
@@ -96,8 +104,30 @@ export const convertToUTC = (date: Date) => {
   return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds()));
 }
 
-export const dateFormat = (dateStr: string): string => {
+
+export const formatDateToUTC = (dateStr?: string): string => {
+  if (!dateStr) return ''
+
+
   return new Date(dateStr).toUTCString()
+}
+
+export const formatDateToYYMMDD = (date: Date | null): string => {
+  if (!date) return ''
+
+  const utcDate = new Date(date.toUTCString())
+  return `${utcDate.getDate()}-${utcDate.getMonth()}-${utcDate.getFullYear()}`
+}
+
+export const getCurrentDateTimeUTC = (date?: Date): Date => {
+  const dateTmp = date ? date : new Date()
+  return new Date(dateTmp.toUTCString())
+}
+
+export const getDateWithoutTime = (dateStr?: string): string => {
+  if (!dateStr) return ''
+
+  return `${dateStr.split(' ').slice(0, 4).join(' ').toString()} ${dateStr.split(' ').reverse()[0]}` 
 }
 
 export const capitalizeFirstLetter = (input: string): string => {
@@ -119,4 +149,11 @@ export const getFeedbackPriorityColor = (priority: string) => {
 
 export const getFeedbackStatusColor = (status: string) => {
   return FEEDBACK_STATUSES.find(s => s.value === status)?.color || 'bg-gray-100 text-gray-800'
+}
+
+export const isCustomServerError = (message: string): boolean => {
+  for (const customError of CUSTOM_SERVER_ERRORS) {
+    if (message.includes(customError)) return true
+  }
+  return false
 }

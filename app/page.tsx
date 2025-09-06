@@ -6,6 +6,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getCurrentDateTimeUTC } from '@/lib/helpers/Helper';
 
 const App = () => {
   const router = useRouter()
@@ -211,7 +212,7 @@ const App = () => {
       {/* Footer */}
       <footer className="bg-gray-800 text-gray-300 py-8">
         <div className="container mx-auto px-4 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} SwiftStock. All rights reserved.</p>
+          <p>&copy; {getCurrentDateTimeUTC().getFullYear()} {APP_NAME}. All rights reserved.</p>
           <div className="mt-2 space-x-4">
             <a href="#" className="hover:text-white">Privacy Policy</a>
             <a href="#" className="hover:text-white">Terms of Service</a>

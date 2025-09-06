@@ -212,7 +212,7 @@ export type Database = {
           id: string
           so_number: string
           customer_id: string
-          status: 'pending' | 'fulfilled' | 'cancelled'
+          status: 'pending' | 'fulfilled' | 'canceled'
           expected_date: string | null
           tenant_id: string
           created_at: string
@@ -222,7 +222,7 @@ export type Database = {
           id?: string
           so_number: string
           customer_id: string
-          status?: 'pending' | 'fulfilled' | 'cancelled'
+          status?: 'pending' | 'fulfilled' | 'canceled'
           expected_date?: string | null
           tenant_id: string
           created_at?: string
@@ -232,7 +232,7 @@ export type Database = {
           id?: string
           so_number?: string
           customer_id?: string
-          status?: 'pending' | 'fulfilled' | 'cancelled'
+          status?: 'pending' | 'fulfilled' | 'canceled'
           expected_date?: string | null
           tenant_id?: string
           created_at?: string

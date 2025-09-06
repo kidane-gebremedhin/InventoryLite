@@ -8,7 +8,7 @@ import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import { showErrorToast } from '@/lib/helpers/Helper'
 import { DEFAULT_USER_ROLE } from '@/lib/Constants'
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus } from '@/lib/Enums'
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, TABLE } from '@/lib/Enums'
 
 interface Feedback {
   id: string
@@ -41,7 +41,7 @@ export default function FeedbackPage() {
 
     try {
       const { data, error } = await supabase
-        .from('feedback')
+        .from(TABLE.feedback)
         .select('*')
         .order('created_at', { ascending: false })
 

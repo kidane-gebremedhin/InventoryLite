@@ -2,7 +2,7 @@
 
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { SalesOrder } from '@/lib/types/Models'
-import { calculateOrderTotalProce, getOrderStatusColor } from '@/lib/helpers/Helper'
+import { calculateOrderTotalProce, formatDateToUTC, getDateWithoutTime, getOrderStatusColor } from '@/lib/helpers/Helper'
 
 interface orderModalProps {
   isOpen: boolean
@@ -45,20 +45,26 @@ export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
                     {order.order_status}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-600">Created:</span>
-                  <span className="ml-2">{new Date(order.created_at!).toUTCString()}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Updated:</span>
-                  <span className="ml-2">{new Date(order.updated_at!).toUTCString()}</span>
-                </div>
                 {order.expected_date && (
                   <div>
                     <span className="text-gray-600">Expected Date:</span>
-                    <span className="ml-2">{new Date(order.expected_date).toUTCString()}</span>
+                    <span className="ml-2">{getDateWithoutTime(formatDateToUTC(order.expected_date))}</span>
                   </div>
                 )}
+                {order.fulfilled_date && (
+                  <div>
+                    <span className="text-gray-600">Fulfilled Date:</span>
+                    <span className="ml-2">{formatDateToUTC(order.fulfilled_date)}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-600">Created:</span>
+                  <span className="ml-2">{formatDateToUTC(order.created_at!)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Updated:</span>
+                  <span className="ml-2">{formatDateToUTC(order.updated_at!)}</span>
+                </div>
               </div>
             </div>
 
@@ -82,7 +88,7 @@ export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
               <h3 className="font-medium text-gray-900 mb-2">Financial Summary</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-gray-600">Total Amount:</span>
+                  <span className="text-gray-600">Total Value:</span>
                   <span className="ml-2 font-medium text-lg">{calculateOrderTotalProce(order.order_items!)}</span>
                 </div>
                 <div>
@@ -133,10 +139,10 @@ export default function orderModal({ isOpen, onClose, order}: orderModalProps) {
                         {orderItem.quantity}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        ${orderItem.unit_price.toFixed(2)}
+                        {orderItem.unit_price.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        ${(orderItem.quantity * orderItem.unit_price).toFixed(2)}
+                        {(orderItem.quantity * orderItem.unit_price).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         {orderItem.store?.name}

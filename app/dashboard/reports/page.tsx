@@ -1,335 +1,475 @@
 'use client'
 
-import { useState } from 'react'
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area
-} from 'recharts'
-import { 
-  ArrowDownTrayIcon,
-  CalendarIcon,
-  ChartBarIcon
-} from '@heroicons/react/24/outline'
-import { showSuccessToast } from '@/lib/helpers/Helper'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { useUserContext } from '@/components/context_apis/UserProvider'
+import RecordsPerPage from '@/components/helpers/RecordsPerPage'
+import { ALL_OPTIONS, MAX_DROPDOWN_TEXT_LENGTH, REPORTS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY } from '@/lib/Constants'
+import { authorseDBAction } from '@/lib/db_queries/DBQuery'
+import { OrderStatus, RecordStatus, ReportType, RPC_FUNCTION, SalesOrderStatus, TABLE } from '@/lib/Enums'
+import { canShowLoadingScreen, convertToUTC, formatDateToUTC, formatDateToYYMMDD, getCurrentDateTimeUTC, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast } from '@/lib/helpers/Helper'
+import { supabase } from '@/lib/supabase'
+import { InventoryAgingReport, PendingOrdersReport, InventoryItem, InventoryTurnoverReport } from '@/lib/types/Models'
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import clsx from 'clsx'
+import Link from 'next/link'
+import React, { useState, useEffect } from 'react'
+// DatePicker both are required
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 
-const monthlyData = [
-  { month: 'Jan', inventory: 1200, purchase_orders: 800, sales_orders: 600, revenue: 45000 },
-  { month: 'Feb', inventory: 1350, purchase_orders: 900, sales_orders: 750, revenue: 52000 },
-  { month: 'Mar', inventory: 1100, purchase_orders: 700, sales_orders: 800, revenue: 48000 },
-  { month: 'Apr', inventory: 1400, purchase_orders: 1000, sales_orders: 900, revenue: 55000 },
-  { month: 'May', inventory: 1600, purchase_orders: 1200, sales_orders: 1100, revenue: 62000 },
-  { month: 'Jun', inventory: 1800, purchase_orders: 1400, sales_orders: 1300, revenue: 68000 },
-]
-
-const categoryData = [
-  { name: 'Electronics', value: 35, color: '#3B82F6' },
-  { name: 'Clothing', value: 25, color: '#10B981' },
-  { name: 'Books', value: 20, color: '#F59E0B' },
-  { name: 'Home & Garden', value: 15, color: '#EF4444' },
-  { name: 'Sports', value: 5, color: '#8B5CF6' },
-]
-
-const topProducts = [
-  { name: 'Wireless Headphones', sales: 245, revenue: 22050 },
-  { name: 'Gaming Mouse', sales: 189, revenue: 11340 },
-  { name: 'Laptop Stand', sales: 156, revenue: 7800 },
-  { name: 'USB-C Cable', sales: 134, revenue: 2680 },
-  { name: 'Wireless Charger', sales: 98, revenue: 4900 },
-]
-
-const performanceMetrics = [
-  { metric: 'Inventory Turnover', value: '4.2x', change: '+12%', positive: true },
-  { metric: 'Order Fulfillment Rate', value: '96.8%', change: '+2.1%', positive: true },
-  { metric: 'Average Order Value', value: '$245', change: '-3.2%', positive: false },
-  { metric: 'Stock Accuracy', value: '98.5%', change: '+0.8%', positive: true },
-]
-
-export default function ReportsPage() {
-  const [dateRange, setDateRange] = useState('6months')
-  const [reportType, setReportType] = useState('overview')
-    // Global States
+// === Main App Component ===
+export default function App() {
+  const [selectedReport, setSelectedReport] = useState<ReportType>(ReportType.INVENTORY_TURNOVER)
+  const [inventoryTurnoverReport, setInventoryTurnoverReport] = useState<InventoryTurnoverReport[]>([])
+  const [pendingOrdersReport, setPendingOrdersReport] = useState<PendingOrdersReport[]>([])
+  const [inventoryAgingReport, setInventoryAgingReport] = useState<InventoryAgingReport[]>([])
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [selectedInventoryItemId, setSelectedInventoryItem] = useState(ALL_OPTIONS)
+  const [orderNumber, setOrderNumber] = useState('')
+  const [orderNumberTmp, setOrderNumberTmp] = useState('')
+  const [fulfilledDateStart, setFulfilledDateStart] = useState<Date | null>(getCurrentDateTimeUTC())
+  const [fulfilledDateEnd, setFulfilledDateEnd] = useState<Date | null>(getCurrentDateTimeUTC())
+  const [expectedDateStart, setExpectedDateStart] = useState<Date | null>(null)
+  const [expectedDateEnd, setExpectedDateEnd] = useState<Date | null>(null)
+  const [receivedDateStart, setReceivedDateStart] = useState<Date | null>(getCurrentDateTimeUTC())
+  const [receivedDateEnd, setReceivedDateEnd] = useState<Date | null>(getCurrentDateTimeUTC())
+  // Pagination
+  const [recordsPerPage, setRecordsPerPage] = useState(REPORTS_PER_PAGE_OPTIONS[0])
+  // Global States
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
-  const handleExport = (type: string) => {
-    // Simulate export functionality
-    showSuccessToast(`${type} report exported successfully!`)
+  const reportTypes = [
+    { name: 'Inventory Turnover', type: ReportType.INVENTORY_TURNOVER },
+    { name: 'Unfulfilled Demand', type: ReportType.PENDING_SALES_ORDERS },
+    { name: 'Canceled Sales Orders', type: ReportType.CANCELED_SALES_ORDERS },
+    { name: 'Unreceived Purchase Orders', type: ReportType.PENDING_PURCHASE_ORDERS },
+    { name: 'Canceled Purchase Orders', type: ReportType.CANCELED_PURCHASE_ORDERS },
+    { name: 'Inventory Aging Report', type: ReportType.INVENTORY_AGING }
+  ]
+  
+  useEffect(() => {
+    if (selectedReport !== ReportType.INVENTORY_TURNOVER) {
+      return
+    }
+
+    const loadInventoryTurnoverReport = async () => {
+      setLoading(canShowLoadingScreen(null, null, fulfilledDateStart, fulfilledDateEnd))
+
+      if (!supabase || !await authorseDBAction(currentUser)) return
+
+      try {
+        const searchParams = {
+          records_per_page: recordsPerPage,
+          ...selectedInventoryItemId && {selected_item_id: selectedInventoryItemId},
+          ...fulfilledDateStart && {fulfilled_date_start: convertToUTC(setEarliestTimeOfDay(fulfilledDateStart))},
+          ...fulfilledDateEnd && {fulfilled_date_end: convertToUTC(setLatestTimeOfDay(fulfilledDateEnd))}
+        }
+        // RPC call
+        const { data, error } = await supabase
+          .rpc(RPC_FUNCTION.INVENTORY_TURNOVER, searchParams)
+        if (error) {
+          showServerErrorToast(error.message)
+          return;
+        }
+        setInventoryTurnoverReport(data)
+      } catch (error: any) {
+          showErrorToast()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadInventoryTurnoverReport()
+  }, [selectedReport, selectedInventoryItemId, fulfilledDateStart, fulfilledDateEnd, recordsPerPage])
+
+  useEffect(() => {
+    const outstandingOrderPeports = [
+      ReportType.PENDING_SALES_ORDERS, 
+      ReportType.CANCELED_SALES_ORDERS,
+      ReportType.PENDING_PURCHASE_ORDERS, 
+      ReportType.CANCELED_PURCHASE_ORDERS
+    ]
+    if (!outstandingOrderPeports.includes(selectedReport)) {
+      return
+    }
+
+    const orderStatus = [ReportType.PENDING_SALES_ORDERS, ReportType.PENDING_PURCHASE_ORDERS].includes(selectedReport) ? OrderStatus.PENDING : OrderStatus.CANCELED;
+    const rpcFunctionName = [ReportType.PENDING_SALES_ORDERS, ReportType.CANCELED_SALES_ORDERS]
+      .includes(selectedReport) ? RPC_FUNCTION.UNFULFILLED_SALES_ORDERS : RPC_FUNCTION.UNRECEIVED_PURCHASE_ORDERS
+
+    const loadOutstandingOrdersReport = async () => {
+      setLoading(canShowLoadingScreen(expectedDateStart, expectedDateEnd, null, null))
+
+      if (!supabase || !await authorseDBAction(currentUser)) return
+
+      try {
+        const searchParams = {
+          target_order_status: orderStatus,
+          records_per_page: recordsPerPage,
+          ...selectedInventoryItemId && {selected_item_id: selectedInventoryItemId},
+          ...expectedDateStart && {expected_date_start: convertToUTC(setEarliestTimeOfDay(expectedDateStart))},
+          ...expectedDateEnd && {expected_date_end: convertToUTC(setLatestTimeOfDay(expectedDateEnd))}
+        }
+        // RPC call
+        const { data, error } = await supabase
+          .rpc(rpcFunctionName, searchParams)
+        if (error) {
+          showErrorToast()
+          return;
+        }
+        setPendingOrdersReport(data)
+      } catch (error: any) {
+          showErrorToast()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadOutstandingOrdersReport()
+  }, [selectedReport, selectedInventoryItemId, expectedDateStart, expectedDateEnd, recordsPerPage])
+
+  useEffect(() => {
+    if (selectedReport !== ReportType.INVENTORY_AGING) {
+      return
+    }
+
+    const loadInventoryAgingReport = async () => {
+      setLoading(canShowLoadingScreen(null, null, receivedDateStart, receivedDateEnd))
+
+      if (!supabase || !await authorseDBAction(currentUser)) return
+
+      try {
+        const searchParams = {
+          records_per_page: recordsPerPage,
+          ...selectedInventoryItemId && {selected_item_id: selectedInventoryItemId},
+          ...orderNumber && {selected_order_number: orderNumber},
+          ...receivedDateStart && {received_date_start: convertToUTC(setEarliestTimeOfDay(receivedDateStart))},
+          ...receivedDateEnd && {received_date_end: convertToUTC(setLatestTimeOfDay(receivedDateEnd))}
+        }
+        // RPC call
+        const { data, error } = await supabase
+          .rpc(RPC_FUNCTION.INVENTORY_AGING, searchParams)
+        if (error) {
+          showErrorToast()
+          return;
+        }
+        setInventoryAgingReport(data)
+      } catch (error: any) {
+          showErrorToast()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadInventoryAgingReport()
+  }, [selectedReport, selectedInventoryItemId, orderNumber, receivedDateStart, receivedDateEnd, recordsPerPage])
+
+  useEffect(() => {
+    const loadInventoryItems = async () => {
+      if (!supabase || !await authorseDBAction(currentUser)) return
+
+      try {
+        const { data, error } = await supabase
+          .from(TABLE.inventory_items)
+          .select('*')
+          .eq('status', RecordStatus.ACTIVE)
+          .order('name')
+
+        if (error) {
+          showServerErrorToast(error.message)
+        }
+
+        const selectableInventoryItems: InventoryItem[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
+        setInventoryItems(selectableInventoryItems)
+      } catch (error: any) {
+          showErrorToast()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadInventoryItems()
+  }, [])
+
+  const onFulfilledDateRangeChange = (dates: any) => {
+    const [start, end] = dates;
+
+    setFulfilledDateStart(start);
+    setFulfilledDateEnd(end);
+  }
+
+  const onExpectedDateRangeChange = (dates: any) => {
+    const [start, end] = dates;
+
+    setExpectedDateStart(start);
+    setExpectedDateEnd(end);
+  }
+
+  const onReceivedDateRangeChange = (dates: any) => {
+    const [start, end] = dates;
+
+    setReceivedDateStart(start);
+    setReceivedDateEnd(end);
+  }
+
+  const handleTextSearch = () => {
+    setOrderNumber(orderNumberTmp.trim())
+  }
+
+  const getReportComponent = () => {
+    switch (selectedReport) {
+      case ReportType.INVENTORY_TURNOVER:
+        return (
+          <div>
+            <div className="overflow-x-auto">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">Inventory Turnover Report</h2>
+              <p className="mb-6 text-gray-600">Items sorted by sale frequency (highest first). {fulfilledDateStart && (<span><b>Date:</b> <u>{formatDateToYYMMDD(fulfilledDateStart)}</u></span>)} {fulfilledDateEnd && (<span><b>to</b> <u>{formatDateToYYMMDD(fulfilledDateEnd)}</u></span>)}</p>
+              <table className="min-w-full bg-white rounded-lg shadow-md">
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Frequency/Fulfilled Date</th>
+                  </tr>
+                  <tr className="card">
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedInventoryItemId}
+                        onChange={(e) => {
+                          setSelectedInventoryItem(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {inventoryItems.map(inventoryItem => (
+                          <option key={inventoryItem.id} value={inventoryItem.id}>
+                            {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th style={{maxWidth: 30}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <DatePicker
+                        selected={fulfilledDateStart}
+                        onChange={onFulfilledDateRangeChange}
+                        startDate={fulfilledDateStart}
+                        endDate={fulfilledDateEnd}
+                        selectsRange
+                        monthsShown={2}
+                        placeholderText="Select date range"
+                        isClearable={true}
+                        className="input-field"
+                      />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {inventoryTurnoverReport.map((report, index) => {
+                    return (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.item_name}</td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900`}>{report.sold_quantity}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <RecordsPerPage  actualRecords={inventoryTurnoverReport.length} recordsPerPage = {recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
+          </div>
+        )
+      case ReportType.PENDING_SALES_ORDERS:
+      case ReportType.CANCELED_SALES_ORDERS:
+      case ReportType.PENDING_PURCHASE_ORDERS:
+      case ReportType.CANCELED_PURCHASE_ORDERS:
+        return (
+          <div>
+            <div className="overflow-x-auto">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">
+                {reportTypes.find(reportType => reportType.type.toString() === selectedReport)?.name}
+              </h2>
+              <p className="mb-6 text-gray-600">Items sorted by {selectedReport === ReportType.PENDING_SALES_ORDERS ? 'demand' : ''} quantity (highest first). {expectedDateStart && (<span><b>Date:</b> <u>{formatDateToYYMMDD(expectedDateStart)}</u></span>)} {expectedDateEnd && (<span><b>to</b> <u>{formatDateToYYMMDD(expectedDateEnd)}</u></span>)}</p>
+              <table className="min-w-full bg-white rounded-lg shadow-md">
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Date</th>
+                  </tr>
+                  <tr className="card">
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedInventoryItemId}
+                        onChange={(e) => {
+                          setSelectedInventoryItem(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {inventoryItems.map(inventoryItem => (
+                          <option key={inventoryItem.id} value={inventoryItem.id}>
+                            {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th colSpan={2} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <DatePicker
+                        selected={expectedDateStart}
+                        onChange={onExpectedDateRangeChange}
+                        startDate={expectedDateStart}
+                        endDate={expectedDateEnd}
+                        selectsRange
+                        monthsShown={2}
+                        placeholderText="Select date range"
+                        isClearable={true}
+                        className="input-field"
+                      />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pendingOrdersReport.map((report, index) => {
+                    return (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.item_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.total_ordered_quantity}</td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900`}>{report.order_status}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <RecordsPerPage actualRecords={pendingOrdersReport.length} recordsPerPage = {recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
+          </div>
+        )
+      case ReportType.INVENTORY_AGING:
+        return (
+          <div>
+            <div className="overflow-x-auto">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">Inventory Aging Report</h2>
+              <p className="mb-6 text-gray-600">Items sorted by days in stock (oldest first). {receivedDateStart && (<span><b>Date:</b> <u>{formatDateToYYMMDD(receivedDateStart)}</u></span>)} {receivedDateEnd && (<span><b>to</b> <u>{formatDateToYYMMDD(receivedDateEnd)}</u></span>)}</p>
+              <table className="min-w-full bg-white rounded-lg shadow-md">
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Number</th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days in Stock</th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received Date</th>
+                  </tr>
+                  <tr className="card">
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedInventoryItemId}
+                        onChange={(e) => {
+                          setSelectedInventoryItem(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {inventoryItems.map(inventoryItem => (
+                          <option key={inventoryItem.id} value={inventoryItem.id}>
+                            {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search & Press ENTER"
+                          value={orderNumberTmp}
+                          onChange={(e) => {
+                            setOrderNumberTmp(e.target.value)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                              handleTextSearch();
+                            }
+                          }}
+                          onBlur={handleTextSearch}
+                          className="input-field pl-10"
+                        />
+                      </div>
+                    </th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </th>
+                    <th style={{maxWidth: 300}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <DatePicker
+                        selected={receivedDateStart}
+                        onChange={onReceivedDateRangeChange}
+                        startDate={receivedDateStart}
+                        endDate={receivedDateEnd}
+                        selectsRange
+                        monthsShown={2}
+                        placeholderText="Select date range"
+                        isClearable={true}
+                        className="input-field"
+                      />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {inventoryAgingReport.map((report, index) => {
+                    return (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.item_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.order_number}</td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900`}>{report.item_quantity}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full  bg-yellow-100 text-gray-600">
+                            {report.days_in_stock}
+                        </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDateToUTC(report.order_received_date)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <RecordsPerPage actualRecords={inventoryAgingReport.length} recordsPerPage = {recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
+          </div>
+        )
+      default:
+        return null
+    }
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="md:flex min-h-screen bg-white-900 text-gray-900">
+      {/* Sidebar */}
+      <div className='w-full md:w-1/5'>
+        <div className="w-full text-6xl text-center pt-5 font-serif">
+          KPI's
+        </div>
+        <nav className="flex-1 space-y-1 px-0 pt-6">
+            {reportTypes.map((report) => {
+              const isActive = selectedReport === report.type
+              return (
+                <Link
+                  key={report.name}
+                  className={clsx(
+                    'sidebar-link',
+                    isActive && 'bg-primary-100 text-primary-700 border-primary-500'
+                  )}
+                  onClick={() => setSelectedReport(report.type)} href={''}                >
+                  {report.name}
+                </Link>
+              )
+            })}
+          </nav>
+      </div>
+      {/* Main Content */}
+      <main className="flex-1 p-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="text-gray-600">Comprehensive insights into your inventory performance</p>
+          {getReportComponent()}
         </div>
-        <div className="flex space-x-3">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="input-field"
-          >
-            <option value="1month">Last Month</option>
-            <option value="3months">Last 3 Months</option>
-            <option value="6months">Last 6 Months</option>
-            <option value="1year">Last Year</option>
-          </select>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="btn-secondary flex items-center"
-          >
-            <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-            Export PDF
-          </button>
-          <button
-            onClick={() => handleExport('excel')}
-            className="btn-primary flex items-center"
-          >
-            <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-            Export Excel
-          </button>
-        </div>
-      </div>
-
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {performanceMetrics.map((metric, index) => (
-          <div key={index} className="card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{metric.metric}</p>
-                <p className="text-2xl font-bold text-gray-900">{metric.value}</p>
-                <div className="flex items-center mt-1">
-                  <span className={`text-sm ${metric.positive ? 'text-green-600' : 'text-red-600'}`}>
-                    {metric.change}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-1">vs last period</span>
-                </div>
-              </div>
-              <div className={`p-3 rounded-lg ${metric.positive ? 'bg-green-500' : 'bg-red-500'}`}>
-                <ChartBarIcon className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Trend */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Revenue']} />
-              <Area type="monotone" dataKey="revenue" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Category Distribution */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Distribution</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={categoryData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {categoryData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Inventory vs Orders */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Inventory vs Orders</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="inventory" fill="#3B82F6" name="Inventory" />
-              <Bar dataKey="purchase_orders" fill="#10B981" name="Purchase Orders" />
-              <Bar dataKey="sales_orders" fill="#F59E0B" name="Sales Orders" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Top Products */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Products by Sales</h3>
-          <div className="space-y-4">
-            {topProducts.map((product, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-semibold text-sm">
-                    {index + 1}
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                    <p className="text-xs text-gray-500">{product.sales} units sold</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">${product.revenue.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">Revenue</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Detailed Reports */}
-      <div className="card">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Detailed Reports</h3>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setReportType('overview')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                reportType === 'overview' 
-                  ? 'bg-primary-100 text-primary-700' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setReportType('inventory')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                reportType === 'inventory' 
-                  ? 'bg-primary-100 text-primary-700' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Inventory
-            </button>
-            <button
-              onClick={() => setReportType('orders')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                reportType === 'orders' 
-                  ? 'bg-primary-100 text-primary-700' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Orders
-            </button>
-            <button
-              onClick={() => setReportType('performance')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                reportType === 'performance' 
-                  ? 'bg-primary-100 text-primary-700' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Performance
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {reportType === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">1,247</p>
-                <p className="text-sm text-gray-600">Total Items</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">$456,789</p>
-                <p className="text-sm text-gray-600">Total Value</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">23</p>
-                <p className="text-sm text-gray-600">Low Stock Items</p>
-              </div>
-            </div>
-          )}
-
-          {reportType === 'inventory' && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-900">Inventory Summary</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600">Stock Levels</p>
-                  <p className="text-lg font-semibold text-gray-900">Optimal</p>
-                  <p className="text-xs text-gray-500">98.5% of items above minimum threshold</p>
-                </div>
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600">Turnover Rate</p>
-                  <p className="text-lg font-semibold text-gray-900">4.2x</p>
-                  <p className="text-xs text-gray-500">Average annual inventory turnover</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {reportType === 'orders' && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-900">Order Summary</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600">Purchase Orders</p>
-                  <p className="text-lg font-semibold text-gray-900">8 Pending</p>
-                  <p className="text-xs text-gray-500">$12,450 total value</p>
-                </div>
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600">Sales Orders</p>
-                  <p className="text-lg font-semibold text-gray-900">12 Pending</p>
-                  <p className="text-xs text-gray-500">$28,900 total value</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {reportType === 'performance' && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-900">Performance Metrics</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600">Fulfillment Rate</p>
-                  <p className="text-lg font-semibold text-gray-900">96.8%</p>
-                  <p className="text-xs text-gray-500">Orders fulfilled on time</p>
-                </div>
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <p className="text-sm font-medium text-gray-600">Accuracy</p>
-                  <p className="text-lg font-semibold text-gray-900">98.5%</p>
-                  <p className="text-xs text-gray-500">Inventory count accuracy</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      </main>
     </div>
   )
 }
+

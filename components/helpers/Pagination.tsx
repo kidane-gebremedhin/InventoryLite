@@ -1,8 +1,8 @@
 import { FIRST_PAGE_NUMBER, RECORDS_PER_PAGE_OPTIONS } from "@/lib/Constants"
 import { SetStateAction } from "react"
-import NoRecordsFound from "./helpers/NoRecordsFound"
+import NoRecordsFound from "./NoRecordsFound"
 
-interface PationationProps {
+interface PaginationProps {
   currentPage: number
   recordsPerPage: number
   totalRecordsCount: number
@@ -10,7 +10,7 @@ interface PationationProps {
   setRecordsPerPage: (perPage: number) => void
 }
 
-export default function Pagination({ currentPage, recordsPerPage, totalRecordsCount, setCurrentPage, setRecordsPerPage }: PationationProps) {
+export default function Pagination({ currentPage, recordsPerPage, totalRecordsCount, setCurrentPage, setRecordsPerPage }: PaginationProps) {
     const handlePrevPage = () => {
         setCurrentPage(current => Math.max(FIRST_PAGE_NUMBER, current - 1))
     }
@@ -26,8 +26,8 @@ export default function Pagination({ currentPage, recordsPerPage, totalRecordsCo
     return (
         <>
         <div className='w-full mt-16 mb-3' style={{height: '0.5px', backgroundColor: '#7393B3'}}></div>
-        <div className='w-full flex justify-end'>
-          <div className='w-1/5'>
+        <div className='w-full md:flex justify-end'>
+          <div className='w-full md:w-1/3 lg:w-2/9 '>
             <span className='px-2'>Records per page:</span>
             <select
               value={recordsPerPage}
@@ -35,7 +35,7 @@ export default function Pagination({ currentPage, recordsPerPage, totalRecordsCo
                 setCurrentPage(FIRST_PAGE_NUMBER)
                 setRecordsPerPage(parseInt(e.target.value))
               }}
-              style={{color: 'blue'}}
+              className='text-blue-500'
             >
               {RECORDS_PER_PAGE_OPTIONS.map(perPage => (
                 <option key={perPage} value={perPage}>
@@ -44,7 +44,7 @@ export default function Pagination({ currentPage, recordsPerPage, totalRecordsCo
               ))}
             </select>
           </div>
-          <div className='w-1/4 flex justify-end'>
+          <div className='w-full md:w-1/3 lg:w-1/4 flex md:justify-end'>
             <button className={currentPage > 1 ? 'text-primary-600 hover:text-primary-900' : ''} onClick={handlePrevPage} disabled={currentPage <= 1}>
               <u>Previous</u>
             </button>

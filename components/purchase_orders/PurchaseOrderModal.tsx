@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier } from '@/lib/types/Models'
-import { PurchaseOrderStatus, RecordStatus } from '@/lib/Enums'
-import { calculateOrderTotalProce, showErrorToast } from '@/lib/helpers/Helper'
+import { PurchaseOrderStatus, RecordStatus, TABLE } from '@/lib/Enums'
+import { calculateOrderTotalProce, formatDateToUTC, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
 import { PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
 
@@ -37,6 +37,9 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([])
 
   useEffect(() => {
+    // reset form
+    setFormData(emptyEntry)
+
     if (isOpen) {
       loadStores()
       loadSuppliers()
@@ -45,7 +48,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
         setFormData({
           po_number: order.po_number || '',
           supplier_id: order.supplier_id || '',
-          expected_date: order.expected_date ? new Date(order.expected_date).toISOString().split('T')[0] : '',
+          expected_date: order.expected_date ? order.expected_date : '',
           order_status: order.order_status || PurchaseOrderStatus.PENDING
         })
         setPurchaseOrderItems(order.order_items || [])
@@ -60,8 +63,9 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
     try {
       const { data, error } = await supabase
-        .from('stores')
+        .from(TABLE.stores)
         .select('id, name, description')
+        .eq('status', RecordStatus.ACTIVE)
         .order('name')
 
       if (error) throw error
@@ -77,12 +81,18 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
     try {
       const { data, error } = await supabase
-        .from('suppliers')
+        .from(TABLE.suppliers)
         .select('id, name, email')
+        .eq('status', RecordStatus.ACTIVE)
         .order('name')
 
       if (error) throw error
+      
       setSuppliers(data || [])
+      // When single option, select it by default
+      if (!order && data.length == 1) {
+        setFormData({...formData, supplier_id: data[0].id})
+      }
     } catch (error: any) {
       showErrorToast()
     }
@@ -93,9 +103,9 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
     try {
       const { data, error } = await supabase
-        .from('inventory_items')
+        .from(TABLE.inventory_items)
         .select('id, sku, name, unit_price, quantity')
-        .eq('status', 'active')
+        .eq('status', RecordStatus.ACTIVE)
         .order('name')
 
       if (error) throw error
@@ -116,7 +126,8 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   }
 
   const addItem = () => {
-    setPurchaseOrderItems([...purchaseOrderItems, { store_id: (stores.length >0 ? stores[0].id! : ''), inventory_item_id: '', quantity: 1, unit_price: 0 }])
+    const unitPrice = inventoryItems.length === 1 ? inventoryItems[0].unit_price! : 0
+    setPurchaseOrderItems([...purchaseOrderItems, { inventory_item_id: '', quantity: 1, unit_price: unitPrice, store_id: (stores.length === 1 ? stores[0].id! : '') }])
   }
 
   const removeItem = (index: number) => {
@@ -125,6 +136,10 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
   const updateItem = (index: number, field: keyof PurchaseOrderItem, value: any) => {
     const preSelectedItem = purchaseOrderItems.find(item => item.inventory_item_id === value)
+    if (preSelectedItem) {
+        showErrorToast('Item already selected.')
+        return
+    }
     if (preSelectedItem) {
         showErrorToast('Item already selected.')
         return
@@ -158,6 +173,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
     try {
       const itemsToInsert: PurchaseOrderItem[] = purchaseOrderItems.map(item => ({
+        ...item.id && {id: item.id},
         store_id: item?.store_id,
         purchase_order_id: order?.id || '',
         inventory_item_id: item.inventory_item_id || '',
@@ -193,6 +209,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
             {order ? 'Edit Purchase Order' : 'New Purchase Order'}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
@@ -200,7 +217,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -302,7 +319,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                         <option value="">Select Item</option>
                         {inventoryItems.map(invItem => (
                           <option key={invItem.id} value={invItem.id}>
-                            {invItem.sku} - {invItem.name} (${invItem.unit_price})
+                            {invItem.sku} - {invItem.name} ({invItem.unit_price})
                           </option>
                         ))}
                       </select>
@@ -314,7 +331,8 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                       </label>
                       <input
                         type="number"
-                        min={order?.id ? 0 : 1}
+                        min={1}
+                        step={1}
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
                         className="input-field"
@@ -347,6 +365,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                         className="input-field"
                         required
                       >
+                        <option value="">Select Store</option>
                         {stores.map(store => (
                           <option key={store.id} value={store.id}>
                             {store.name}
@@ -361,6 +380,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                       </label>
                       <Tooltip text="Remove">
                           <button
+                            type="button"
                             onClick={() => removeItem(index)}
                             className="mt-3 text-red-600 hover:text-red-900"
                           >
@@ -373,7 +393,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
                 <div className="text-right">
                   <p className="text-lg font-medium">
-                    Total: ${calculateOrderTotalProce(purchaseOrderItems).toFixed(2)}
+                    Total: {calculateOrderTotalProce(purchaseOrderItems).toFixed(2)}
                   </p>
                 </div>
               </div>

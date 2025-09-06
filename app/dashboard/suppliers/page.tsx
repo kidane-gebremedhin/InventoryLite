@@ -12,11 +12,10 @@ import {
 import { supabase } from '@/lib/supabase'
 import { Supplier } from '@/lib/types/Models'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus } from '@/lib/Enums'
+import { RecordStatus, TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { getRecordStatusColor, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import Pagination from '@/components/Pagination'
-import Loading from '@/components/helpers/Loading'
+import { getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import Pagination from '@/components/helpers/Pagination'
 import SupplierModal from '@/components/purchase_orders/SupplierModal'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
@@ -33,6 +32,7 @@ export default function SupplierPage() {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [canSeeMore, setCanSeeMore] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
+  // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
@@ -43,8 +43,6 @@ export default function SupplierPage() {
   // Global States
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
-
-  const TABLE_NAME = 'suppliers'
 
   useEffect(() => {
     // reset pagination
@@ -61,7 +59,7 @@ export default function SupplierPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE_NAME).select('*', {count: 'exact', head: false})
+      let query = supabase.from(TABLE.suppliers).select('*', {count: 'exact', head: false})
       if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus)
       }
@@ -72,7 +70,7 @@ export default function SupplierPage() {
       .range(startIndex, endIndex)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       }
       setSuppliers(data || [])
       setTotalRecordsCount(count || 0)
@@ -101,12 +99,12 @@ export default function SupplierPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.suppliers)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
         return
       } else {
         showSuccessToast('Record Archived.')
@@ -127,12 +125,12 @@ export default function SupplierPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.suppliers)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Restored.')
         const remainingRecords = suppliers.filter(supplier => supplier.id !== id)
@@ -153,7 +151,7 @@ export default function SupplierPage() {
       const {id, ...supplierWithNoId} = supplier
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.suppliers)
         .insert(supplierWithNoId)
 
       if (error) {
@@ -176,7 +174,7 @@ export default function SupplierPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.suppliers)
         .update(supplier)
         .eq('id', supplier.id)
 
@@ -210,7 +208,7 @@ export default function SupplierPage() {
     if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
       showErrorToast(VALIDATION_ERRORS_MAPPING.entities.supplier.fields.name.displayError)
     } else {
-      showErrorToast()
+      showServerErrorToast(error.message)
     }
   }
 
@@ -358,14 +356,14 @@ export default function SupplierPage() {
               ))}
             </tbody>
           </table>
-          <Pagination
-            currentPage = {currentPage}
-            recordsPerPage = {recordsPerPage}
-            totalRecordsCount = {totalRecordsCount}
-            setCurrentPage = {setCurrentPage}
-            setRecordsPerPage = {setRecordsPerPage}
-          />
         </div>
+        <Pagination
+          currentPage = {currentPage}
+          recordsPerPage = {recordsPerPage}
+          totalRecordsCount = {totalRecordsCount}
+          setCurrentPage = {setCurrentPage}
+          setRecordsPerPage = {setRecordsPerPage}
+        />
       </div>
 
       {/* Supplier Modal */}

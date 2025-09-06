@@ -17,14 +17,15 @@ import PurchaseOrderModal from '@/components/purchase_orders/PurchaseOrderModal'
 import OrderDetailsModal from '@/components/purchase_orders/OrderDetailsModal'
 import { supabase } from '@/lib/supabase'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { PurchaseOrderStatus, RecordStatus } from '@/lib/Enums'
+import { PurchaseOrderStatus, RecordStatus, RPC_FUNCTION, TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, PURCHASE_ORDER_STATUSES, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { canShowLoadingScreen, convertToUTC, getRecordStatusColor, setEarliestTimeOfDay, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import Pagination from '@/components/Pagination'
-import Loading from '@/components/helpers/Loading'
+import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getCurrentDateTimeUTC, getDateWithoutTime, getRecordStatusColor, isCustomServerError, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import Pagination from '@/components/helpers/Pagination'
 import { PurchaseOrder, Supplier } from '@/lib/types/Models'
+// DatePicker both are required
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
+
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
@@ -38,9 +39,11 @@ export default function PurchaseOrderPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPurchaseOrder, setEditingPurchaseOrder] = useState<PurchaseOrder | null>(null)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
+  // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
+  
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null)
@@ -49,6 +52,8 @@ export default function PurchaseOrderPage() {
   const [selectedSupplierId, setSelectedSupplier] = useState(ALL_OPTIONS)
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
+  const [receivedDateStart, setReceivedDateStart] = useState<Date | null>(null)
+  const [receivedDateEnd, setReceivedDateEnd] = useState<Date | null>(null)
   // Record Actions
   const [currentActiveId, setCurrentActiveId] = useState<string>('')
   const [isArchiveConfirmationModalOpen, setIsArchiveConfirmationModalOpen] = useState(false)
@@ -60,21 +65,19 @@ export default function PurchaseOrderPage() {
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
-  const TABLE_NAME = 'purchase_orders'
-
   useEffect(() => {
     const loadSuppliers = async () => {
       if (!supabase || !await authorseDBAction(currentUser)) return
 
       try {
         const { data, error } = await supabase
-          .from('suppliers')
+          .from(TABLE.suppliers)
           .select('*')
           .eq('status', RecordStatus.ACTIVE)
-          .order('created_at', { ascending: false })
+          .order('name')
 
         if (error) {
-          showErrorToast()
+          showServerErrorToast(error.message)
         }
 
         const selectableSuppliers: Supplier[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
@@ -93,10 +96,10 @@ export default function PurchaseOrderPage() {
     // reset pagination
     router.push(`?page=${currentPage}`)
     loadPurchaseOrders()
-  }, [searchTerm, selectedSupplierId, selectedOrderStatus, selectedStatus, startDate, endDate, recordsPerPage, currentPage])
+  }, [searchTerm, selectedSupplierId, selectedOrderStatus, selectedStatus, startDate, endDate, receivedDateStart, receivedDateEnd, recordsPerPage, currentPage])
 
   const loadPurchaseOrders = async () => {
-    setLoading(canShowLoadingScreen(startDate, endDate))
+    setLoading(canShowLoadingScreen(startDate, endDate, receivedDateStart, receivedDateEnd))
 
     if (!supabase || !await authorseDBAction(currentUser)) return
 
@@ -104,7 +107,7 @@ export default function PurchaseOrderPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE_NAME).select(`
+      let query = supabase.from(TABLE.purchase_orders).select(`
           *,
           supplier:suppliers(*),
           order_items:purchase_order_items(
@@ -130,14 +133,22 @@ export default function PurchaseOrderPage() {
         query = query.gte('expected_date', startDateUTC.toUTCString())
       }
       if (endDate) {
-        const endDateUTC = convertToUTC(setEarliestTimeOfDay(endDate))
+        const endDateUTC = convertToUTC(setLatestTimeOfDay(endDate))
         query = query.lte('expected_date', endDateUTC.toUTCString())
+      }
+      if (receivedDateStart) {
+        const receivedDateStartUTC = convertToUTC(setEarliestTimeOfDay(receivedDateStart))
+        query = query.gte('received_date', receivedDateStartUTC.toUTCString())
+      }
+      if (receivedDateEnd) {
+        const receivedDateEndUTC = convertToUTC(setLatestTimeOfDay(receivedDateEnd))
+        query = query.lte('received_date', receivedDateEndUTC.toUTCString())
       }
       const { data, count, error } = await query.order('created_at', { ascending: false })
       .range(startIndex, endIndex)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       }
 
       setPurchaseOrders(data || [])
@@ -166,12 +177,12 @@ export default function PurchaseOrderPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.purchase_orders)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Archived.')
         const remainingRecords = purchaseOrders.filter(purchaseOrder => purchaseOrder.id !== id)
@@ -191,12 +202,12 @@ export default function PurchaseOrderPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.purchase_orders)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast(`Record Restored.`)
         const remainingRecords = purchaseOrders.filter(purchaseOrder => purchaseOrder.id !== id)
@@ -217,31 +228,20 @@ export default function PurchaseOrderPage() {
     const {id, order_items, ...purchaseOrderWithNoId} = purchaseOrder
 
     try {
-      const { data: savedPurchaseOrder, error: poError } = await supabase
-        .from(TABLE_NAME)
-        .insert(purchaseOrderWithNoId)
-        .select()
-        .single()
+      const { data, error: poError } = await supabase
+          .rpc(RPC_FUNCTION.TRANSACTION_PURCHASE_ORDER_HANDLER, {
+            purchase_order_data: purchaseOrderWithNoId,
+            purchase_order_items_data: purchaseOrder.order_items,
+          })
 
       if (poError) {
         handleServerError(poError)
-      } else {
-        // Insert order items
-        const orderItems = purchaseOrder.order_items!.map(item => {
-          item.purchase_order_id = savedPurchaseOrder.id
-          return item
-        })
-        const { error: orderItemsError } = await supabase.from('purchase_order_items').insert(orderItems)
-
-        if (orderItemsError) {
-          handleServerError(orderItemsError)
-          return
-        }
-
-        setIsModalOpen(false)
-        showSuccessToast('Record Created.')
-        loadPurchaseOrders()
+        return
       }
+
+      setIsModalOpen(false)
+      showSuccessToast('Record Created.')
+      loadPurchaseOrders()
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -253,29 +253,17 @@ export default function PurchaseOrderPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     // Exclude id field while creating new record 
-    const {order_items, ...purchaseOrderWithNoId} = purchaseOrder
+    const {order_items, ...purchaseOrderWithNoOrderItems} = purchaseOrder
 
     try {
-      const { error } = await supabase
-        .from(TABLE_NAME)
-        .update(purchaseOrderWithNoId)
-        .eq('id', purchaseOrder.id)
-
-      if (error) {
-        handleServerError(error)
-        return
-      }
-
-      // First remove the existing order items of this order
-      const { error: orderItemsDeletionError } = await supabase.from('purchase_order_items').delete().eq('purchase_order_id', purchaseOrder.id)
-      if (orderItemsDeletionError) {
-        handleServerError(orderItemsDeletionError)
-        return
-      }
-
-      const { error: orderItemsError } = await supabase.from('purchase_order_items').insert(purchaseOrder.order_items)
-      if (orderItemsError) {
-        handleServerError(orderItemsError)
+      const { data, error: poError } = await supabase
+                .rpc(RPC_FUNCTION.TRANSACTION_PURCHASE_ORDER_HANDLER, {
+                  purchase_order_data: purchaseOrderWithNoOrderItems,
+                  purchase_order_items_data: purchaseOrder.order_items,
+                  is_for_update: true
+                })
+      if (poError) {
+        handleServerError(poError)
         return
       }
 
@@ -294,7 +282,6 @@ export default function PurchaseOrderPage() {
     setSearchTerm(searchTermTemp.trim())
   }
 
-
   const handleViewDetails = (id: string) => {
     const order = purchaseOrders.find(order => order.id === id)
     setSelectedOrder(order!)
@@ -307,7 +294,7 @@ export default function PurchaseOrderPage() {
         return 'bg-yellow-100 text-yellow-800'
       case PurchaseOrderStatus.RECEIVED:
         return 'bg-green-100 text-green-800'
-      case PurchaseOrderStatus.CANCELLED:
+      case PurchaseOrderStatus.CANCELED:
         return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
@@ -321,7 +308,7 @@ export default function PurchaseOrderPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.purchase_orders)
         .update({ order_status: status })
         .eq('id', id)
 
@@ -351,6 +338,13 @@ export default function PurchaseOrderPage() {
     setEndDate(end);
   }
 
+  const onReceivedDateRangeChange = (dates: any) => {
+    const [start, end] = dates;
+
+    setReceivedDateStart(start);
+    setReceivedDateEnd(end);
+  }
+
   const resetModalState = () => {
     setCurrentActiveId('')
     setIsArchiveConfirmationModalOpen(false)
@@ -364,7 +358,7 @@ export default function PurchaseOrderPage() {
     if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
       showErrorToast(VALIDATION_ERRORS_MAPPING.entities.purchase_order.fields.name.displayError)
     } else {
-      showErrorToast()
+      showServerErrorToast(error.message)
     }
   }
 
@@ -372,7 +366,7 @@ export default function PurchaseOrderPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">PurchaseOrder Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Purchase Order Management</h1>
           <p className="text-gray-600">Manage your purchase orders from your supplier suppliers</p>
         </div>
         <button
@@ -397,13 +391,16 @@ export default function PurchaseOrderPage() {
                   Supplier
                 </th>
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
+                  Value
                 </th>
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Order Status
                 </th>
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Expected Date
+                </th>
+                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Received Date
                 </th>
                 <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Record Status
@@ -481,6 +478,19 @@ export default function PurchaseOrderPage() {
                     className="input-field"
                   />
                 </th>
+                <th style={{maxWidth: 30}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <DatePicker
+                    selected={receivedDateStart}
+                    onChange={onReceivedDateRangeChange}
+                    startDate={receivedDateStart}
+                    endDate={receivedDateEnd}
+                    selectsRange
+                    monthsShown={2}
+                    placeholderText="Select date range"
+                    isClearable={true}
+                    className="input-field"
+                  />
+                </th>
                 <th className="px-1 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <select
                     value={selectedStatus}
@@ -523,7 +533,10 @@ export default function PurchaseOrderPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {order.expected_date ? new Date(order.expected_date).toUTCString() : '-'}
+                    {getDateWithoutTime(formatDateToUTC(order.expected_date))}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {formatDateToUTC(order.received_date)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(order.status!)}`}>
@@ -544,7 +557,7 @@ export default function PurchaseOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: ![PurchaseOrderStatus.RECEIVED, PurchaseOrderStatus.CANCELLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                            hideOption: ![PurchaseOrderStatus.CANCELED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <BackwardIcon className="h-4 w-4" />,
                             label: 'Return to Pending',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
@@ -555,7 +568,7 @@ export default function PurchaseOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: ![PurchaseOrderStatus.PENDING, PurchaseOrderStatus.CANCELLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                            hideOption: ![PurchaseOrderStatus.PENDING, PurchaseOrderStatus.CANCELED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <CheckIcon className="h-4 w-4" />,
                             label: 'Mark as Received',
                             class: "w-full text-green-600 hover:text-green-900",
@@ -566,7 +579,7 @@ export default function PurchaseOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: selectedStatus === RecordStatus.ARCHIVED,
+                            hideOption: [PurchaseOrderStatus.RECEIVED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <PencilIcon className="h-4 w-4" />,
                             label: 'Edit',
                             class: "w-full text-primary-600 hover:text-primary-900",
@@ -574,7 +587,7 @@ export default function PurchaseOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: ![PurchaseOrderStatus.PENDING, PurchaseOrderStatus.RECEIVED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                            hideOption: ![PurchaseOrderStatus.PENDING].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
                             icon: <XMarkIcon className="h-4 w-4" />,
                             label: 'Cancel Order',
                             class: "w-full text-yellow-600 hover:text-yellow-900",
@@ -585,7 +598,7 @@ export default function PurchaseOrderPage() {
                           },
                           {
                             id: order.id!,
-                            hideOption: selectedStatus !== RecordStatus.ACTIVE,
+                            hideOption: [PurchaseOrderStatus.RECEIVED].includes(order.order_status!) || selectedStatus !== RecordStatus.ACTIVE,
                             icon: <TrashIcon className="h-4 w-4" />,
                             label: 'Archive',
                             class: "w-full text-red-600 hover:text-red-900",
@@ -613,14 +626,14 @@ export default function PurchaseOrderPage() {
               ))}
             </tbody>
           </table>
-          <Pagination
-            currentPage = {currentPage}
-            recordsPerPage = {recordsPerPage}
-            totalRecordsCount = {totalRecordsCount}
-            setCurrentPage = {setCurrentPage}
-            setRecordsPerPage = {setRecordsPerPage}
-          />
         </div>
+        <Pagination
+          currentPage = {currentPage}
+          recordsPerPage = {recordsPerPage}
+          totalRecordsCount = {totalRecordsCount}
+          setCurrentPage = {setCurrentPage}
+          setRecordsPerPage = {setRecordsPerPage}
+        />
       </div>
 
       {/* PurchaseOrder Modal */}
@@ -677,7 +690,7 @@ export default function PurchaseOrderPage() {
         isOpen={isMoveToReceivedConfirmationModalOpen}
         id={currentActiveId}
         orderStatus={PurchaseOrderStatus.RECEIVED}
-        message="Are you sure you want to move this order status to received?"
+        message="Are you sure you want to move this order status to received? No edits are permitted after submission."
         onConfirmationSuccess={handleOrderStatusChange}
         onConfirmationFailure={resetModalState}
       />
@@ -686,7 +699,7 @@ export default function PurchaseOrderPage() {
       <ConfirmationModal
         isOpen={isMoveToCanceledConfirmationModalOpen}
         id={currentActiveId}
-        orderStatus={PurchaseOrderStatus.CANCELLED}
+        orderStatus={PurchaseOrderStatus.CANCELED}
         message="Are you sure you want to move this order status to canceled?"
         onConfirmationSuccess={handleOrderStatusChange}
         onConfirmationFailure={resetModalState}

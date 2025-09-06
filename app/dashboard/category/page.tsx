@@ -12,11 +12,11 @@ import {
 import { CategoryModal } from '@/components/category/CategoryModal'
 import { supabase } from '@/lib/supabase'
 import { Category } from '@/lib/types/Models'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus } from '@/lib/Enums'
+import { authorseDBAction, insertSeedData } from '@/lib/db_queries/DBQuery'
+import { RecordStatus, TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { getRecordStatusColor, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import Pagination from '@/components/Pagination'
+import { getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import Pagination from '@/components/helpers/Pagination'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
@@ -32,6 +32,7 @@ export default function CategoryPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [canSeeMore, setCanSeeMore] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
+  // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
@@ -42,8 +43,6 @@ export default function CategoryPage() {
   // Global States
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
-
-  const TABLE_NAME = 'categories'
 
   useEffect(() => {
     // reset pagination
@@ -60,7 +59,7 @@ export default function CategoryPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE_NAME).select('*', {count: 'exact', head: false})
+      let query = supabase.from(TABLE.categories).select('*', {count: 'exact', head: false})
       if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus)
       }
@@ -71,8 +70,9 @@ export default function CategoryPage() {
       .range(startIndex, endIndex)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       }
+
       setCategories(data || [])
       setTotalRecordsCount(count || 0)
     } catch (error: any) {
@@ -100,12 +100,12 @@ export default function CategoryPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.categories)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Archived.')
         const remainingRecords = categories.filter(category => category.id !== id)
@@ -126,12 +126,12 @@ export default function CategoryPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.categories)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Restored.')
         const remainingRecords = categories.filter(category => category.id !== id)
@@ -152,7 +152,7 @@ export default function CategoryPage() {
       const {id, ...categoryWithNoId} = category
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.categories)
         .insert(categoryWithNoId)
 
       if (error) {
@@ -176,7 +176,7 @@ export default function CategoryPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.categories)
         .update(category)
         .eq('id', category.id)
 
@@ -210,24 +210,26 @@ export default function CategoryPage() {
     if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
       showErrorToast(VALIDATION_ERRORS_MAPPING.entities.category.fields.name.displayError)
     } else {
-      showErrorToast()
+      showServerErrorToast(error.message)
     }
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="md:flex md:justify-between md:items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Category Management</h1>
           <p className="text-gray-600">Manage your categories of items</p>
         </div>
-        <button
-          onClick={handleAdd}
-          className="btn-primary flex items-center items-center"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Category
-        </button>
+        <div>
+          <button
+            onClick={handleAdd}
+            className="w-full btn-primary flex items-center"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Add Category
+          </button>
+        </div>
       </div>
 
       {/* Category Table */}
@@ -352,14 +354,14 @@ export default function CategoryPage() {
               ))}
             </tbody>
           </table>
-          <Pagination
-            currentPage = {currentPage}
-            recordsPerPage = {recordsPerPage}
-            totalRecordsCount = {totalRecordsCount}
-            setCurrentPage = {setCurrentPage}
-            setRecordsPerPage = {setRecordsPerPage}
-          />
         </div>
+        <Pagination
+          currentPage = {currentPage}
+          recordsPerPage = {recordsPerPage}
+          totalRecordsCount = {totalRecordsCount}
+          setCurrentPage = {setCurrentPage}
+          setRecordsPerPage = {setRecordsPerPage}
+        />
       </div>
 
       {/* Category Modal */}

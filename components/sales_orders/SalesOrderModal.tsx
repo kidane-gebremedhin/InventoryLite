@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { Customer, InventoryItem, SalesOrder, SalesOrderItem, Store } from '@/lib/types/Models'
-import { SalesOrderStatus, RecordStatus } from '@/lib/Enums'
-import { calculateOrderTotalProce, showErrorToast } from '@/lib/helpers/Helper'
+import { SalesOrderStatus, RecordStatus, TABLE } from '@/lib/Enums'
+import { calculateOrderTotalProce, formatDateToUTC, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
 import { SALES_ORDER_STATUSES } from '@/lib/Constants'
 
@@ -37,6 +37,9 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
   const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([])
 
   useEffect(() => {
+    // reset form
+    setFormData(emptyEntry)
+
     if (isOpen) {
       loadStores()
       loadCustomers()
@@ -45,7 +48,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
         setFormData({
           so_number: order.so_number || '',
           customer_id: order.customer_id || '',
-          expected_date: order.expected_date ? new Date(order.expected_date).toISOString().split('T')[0] : '',
+          expected_date: order.expected_date ? order.expected_date : '',
           order_status: order.order_status || SalesOrderStatus.PENDING
         })
         setSalesOrderItems(order.order_items || [])
@@ -60,8 +63,9 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
     try {
       const { data, error } = await supabase
-        .from('stores')
+        .from(TABLE.stores)
         .select('id, name, description')
+        .eq('status', RecordStatus.ACTIVE)
         .order('name')
 
       if (error) throw error
@@ -77,12 +81,17 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
     try {
       const { data, error } = await supabase
-        .from('customers')
+        .from(TABLE.customers)
         .select('id, name, email')
+        .eq('status', RecordStatus.ACTIVE)
         .order('name')
 
       if (error) throw error
       setCustomers(data || [])
+      // When single option, select it by default
+      if (!order && data.length == 1) {
+        setFormData({...formData, customer_id: data[0].id})
+      }
     } catch (error: any) {
       showErrorToast()
     }
@@ -93,9 +102,9 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
     try {
       const { data, error } = await supabase
-        .from('inventory_items')
+        .from(TABLE.inventory_items)
         .select('id, sku, name, unit_price, quantity')
-        .eq('status', 'active')
+        .eq('status', RecordStatus.ACTIVE)
         .order('name')
 
       if (error) throw error
@@ -116,7 +125,8 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
   }
 
   const addItem = () => {
-    setSalesOrderItems([...salesOrderItems, { store_id: (stores.length >0 ? stores[0].id! : ''), inventory_item_id: '', quantity: 1, unit_price: 0 }])
+    const unitPrice = inventoryItems.length === 1 ? inventoryItems[0].unit_price! : 0
+    setSalesOrderItems([...salesOrderItems, { inventory_item_id: '', quantity: 1, unit_price: unitPrice, store_id: (stores.length === 1 ? stores[0].id! : '') }])
   }
 
   const removeItem = (index: number) => {
@@ -158,6 +168,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
     try {
       const itemsToInsert: SalesOrderItem[] = salesOrderItems.map(item => ({
+        ...item.id && {id: item.id},
         store_id: item.store_id,
         sales_order_id: order?.id || '',
         inventory_item_id: item.inventory_item_id || '',
@@ -193,14 +204,14 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
             {order ? 'Edit Sales Order' : 'New Sales Order'}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -302,7 +313,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                         <option value="">Select Item</option>
                         {inventoryItems.map(invItem => (
                           <option key={invItem.id} value={invItem.id}>
-                            {invItem.sku} - {invItem.name} (${invItem.unit_price})
+                            {invItem.sku} - {invItem.name} ({invItem.unit_price})
                           </option>
                         ))}
                       </select>
@@ -314,7 +325,8 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                       </label>
                       <input
                         type="number"
-                        min="1"
+                        min={1}
+                        step={1}
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
                         className="input-field"
@@ -361,6 +373,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                       </label>
                       <Tooltip text="Remove">
                           <button
+                            type="button"
                             onClick={() => removeItem(index)}
                             className="mt-3 text-red-600 hover:text-red-900"
                           >
@@ -373,7 +386,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
                 <div className="text-right">
                   <p className="text-lg font-medium">
-                    Total: ${calculateOrderTotalProce(salesOrderItems).toFixed(2)}
+                    Total: {calculateOrderTotalProce(salesOrderItems).toFixed(2)}
                   </p>
                 </div>
               </div>

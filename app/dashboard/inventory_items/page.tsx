@@ -14,10 +14,10 @@ import { InventoryItemModal } from '@/components/inventory_items/InventoryItemMo
 import { supabase } from '@/lib/supabase'
 import { Category, InventoryItem } from '@/lib/types/Models';
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus } from '@/lib/Enums'
+import { RecordStatus, TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { getRecordStatusColor, shortenText, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import Pagination from '@/components/Pagination'
+import { getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import Pagination from '@/components/helpers/Pagination'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import InventoryItemDetailsModal from '@/components/inventory_items/InventoryItemDetailsModal'
@@ -25,9 +25,6 @@ import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import LowStock from '@/components/helpers/LowStock'
-
-// Constants
-const TABLE_NAME = 'inventory_items'
 
 export default function InventoryPage() {
   const router = useRouter()
@@ -39,9 +36,11 @@ export default function InventoryPage() {
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
+  // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
+  
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   // Record Actions
@@ -58,13 +57,13 @@ export default function InventoryPage() {
 
       try {
         const { data, error } = await supabase
-          .from('categories')
+          .from(TABLE.categories)
           .select('*')
           .eq('status', RecordStatus.ACTIVE)
-          .order('created_at', { ascending: false })
+          .order('name')
 
         if (error) {
-          showErrorToast()
+          showServerErrorToast(error.message)
         }
 
         setCategories(data || [])
@@ -93,7 +92,7 @@ export default function InventoryPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE_NAME).select(`
+      let query = supabase.from(TABLE.inventory_items).select(`
         *,
         category:categories(*),
         purchase_order_items:purchase_order_items(*),
@@ -112,7 +111,7 @@ export default function InventoryPage() {
       .range(startIndex, endIndex)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       }
       setItems(data || [])
       setTotalRecordsCount(count || 0)
@@ -152,12 +151,12 @@ export default function InventoryPage() {
     
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.inventory_items)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Archived.')
         const remainingRecords = items.filter(item => item.id !== id)
@@ -177,12 +176,12 @@ export default function InventoryPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.inventory_items)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
       if (error) {
-        showErrorToast()
+        showServerErrorToast(error.message)
       } else {
         showSuccessToast('Record Restored.')
         const remainingRecords = items.filter(item => item.id !== id)
@@ -203,7 +202,7 @@ export default function InventoryPage() {
       // Exclude id when creating new records
       const {id, ...inventoryItemWithNoId} = inventoryItem
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.inventory_items)
         .insert(inventoryItemWithNoId)
 
       if (error) {
@@ -226,7 +225,7 @@ export default function InventoryPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE_NAME)
+        .from(TABLE.inventory_items)
         .update(inventoryItem)
         .eq('id', inventoryItem.id)
 
@@ -262,7 +261,7 @@ export default function InventoryPage() {
       showErrorToast(error.message.includes('sku') ? fields.sku.displayError : fields.name.displayError
       )
     } else {
-      showErrorToast()
+      showServerErrorToast(error.message)
     }
   }
 
@@ -387,7 +386,7 @@ export default function InventoryPage() {
                     {getCategoryName(item.category_id)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    ${item.unit_price.toFixed(2)}
+                    {item.unit_price.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 flex">
                     <div className="text-sm text-gray-900">{item.quantity}</div>
@@ -453,14 +452,14 @@ export default function InventoryPage() {
               ))}
             </tbody>
           </table>
-          <Pagination
-            currentPage = {currentPage}
-            recordsPerPage = {recordsPerPage}
-            totalRecordsCount = {totalRecordsCount}
-            setCurrentPage = {setCurrentPage}
-            setRecordsPerPage = {setRecordsPerPage}
-          />
         </div>
+        <Pagination
+          currentPage = {currentPage}
+          recordsPerPage = {recordsPerPage}
+          totalRecordsCount = {totalRecordsCount}
+          setCurrentPage = {setCurrentPage}
+          setRecordsPerPage = {setRecordsPerPage}
+        />
       </div>
 
       {/* Inventory Item Modal */}

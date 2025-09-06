@@ -24,6 +24,10 @@ const emptyEntry: InventoryItem = {
 }
 
 export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }: InventoryItemModalProps) {
+  // When single option, select it by default
+  if (categories.length == 1) {
+    emptyEntry.category_id = categories[0].id!
+  }
   const [formData, setFormData] = useState<Partial<InventoryItem>>(emptyEntry)
 
   useEffect(() => {
@@ -136,9 +140,6 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
                   Unit Price
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                    $
-                  </span>
                   <input
                     type="number"
                     value={formData.unit_price}

@@ -7,7 +7,8 @@ import {
   ShoppingCartIcon,
   ExclamationTriangleIcon,
   ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon
+  ArrowTrendingDownIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline'
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 import { FeedbackSummary } from '@/components/feedback/FeedbackSummary'
@@ -25,57 +26,137 @@ import {
   Pie,
   Cell
 } from 'recharts'
-import { DEFAULT_USER_ROLE } from '@/lib/Constants'
+import { DEFAULT_USER_ROLE, MONTH_NAME_MAPPING } from '@/lib/Constants'
+import { authorseDBAction } from '@/lib/db_queries/DBQuery'
+import { useUserContext } from '@/components/context_apis/UserProvider'
+import { supabase } from '@/lib/supabase'
+import { RPC_FUNCTION } from '@/lib/Enums'
+import { showServerErrorToast, showErrorToast } from '@/lib/helpers/Helper'
+import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
+import { PurchaseOrderMonthlyTrendsData, SalesOrderMonthlyTrendsData } from '@/lib/types/Models'
+import { CheckmarkIcon } from 'react-hot-toast'
 
 interface DashboardStats {
   totalItems: number
   lowStockItems: number
   pendingPurchaseOrders: number
+  receivedPurchaseOrders: number
   pendingSalesOrders: number
+  fulfilledSalesOrders: number
   totalValue: number
   monthlyGrowth: number
 }
-
-const monthlyData = [
-  { month: 'Jan', inventory: 1200, purchase_orders: 800, sales_orders: 600 },
-  { month: 'Feb', inventory: 1350, purchase_orders: 900, sales_orders: 750 },
-  { month: 'Mar', inventory: 1100, purchase_orders: 700, sales_orders: 800 },
-  { month: 'Apr', inventory: 1400, purchase_orders: 1000, sales_orders: 900 },
-  { month: 'May', inventory: 1600, purchase_orders: 1200, sales_orders: 1100 },
-  { month: 'Jun', inventory: 1800, purchase_orders: 1400, sales_orders: 1300 },
-]
-
-const categoryData = [
-  { name: 'Electronics', value: 35, color: '#3B82F6' },
-  { name: 'Clothing', value: 25, color: '#10B981' },
-  { name: 'Books', value: 20, color: '#F59E0B' },
-  { name: 'Home & Garden', value: 15, color: '#EF4444' },
-  { name: 'Sports', value: 5, color: '#8B5CF6' },
-]
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalItems: 0,
     lowStockItems: 0,
     pendingPurchaseOrders: 0,
+    receivedPurchaseOrders: 0,
     pendingSalesOrders: 0,
+    fulfilledSalesOrders: 0,
     totalValue: 0,
     monthlyGrowth: 0
   })
   const [userRole, setUserRole] = useState<string>(DEFAULT_USER_ROLE)
+  const [purchaseOrderMonthlyTrendsData, setPurchaseOrderMonthlyTrendsData] = useState<PurchaseOrderMonthlyTrendsData[]>([])
+  const [salesOrderMonthlyTrendsData, setSalesOrderMonthlyTrendsData] = useState<SalesOrderMonthlyTrendsData[]>([])
+  const {loading, setLoading} = useLoadingContext()
+  const {currentUser, setCurrentUser} = useUserContext()
 
   useEffect(() => {
-    setTimeout(() => {
-      setStats({
-        totalItems: 1247,
-        lowStockItems: 23,
-        pendingPurchaseOrders: 8,
-        pendingSalesOrders: 12,
-        totalValue: 45678.90,
-        monthlyGrowth: 12.5
-      })
-    }, 1000)
+    const loadDashboardStats = async () => {
+      setLoading(true)
+      if (!supabase || !await authorseDBAction(currentUser)) return
+  
+      try {
+        const { data, error } = await supabase
+          .rpc(RPC_FUNCTION.DASHBOARD_STATS);
+  
+        if (error) {
+          showServerErrorToast(error.message)
+          setLoading(false)
+          return
+        }
+        setStats(data)
+      } catch (error: any) {
+          showErrorToast()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    
+    const loadOrderMonthlyTrends = async () => {
+      setLoading(true)
+      if (!supabase || !await authorseDBAction(currentUser)) return
+  
+      try {
+        const { data: poData, error: poError } = await supabase
+          .rpc(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS);
+  
+        if (poError) {
+          showServerErrorToast(poError.message)
+          setLoading(false)
+          return
+        }
+
+        const podataProcessed: PurchaseOrderMonthlyTrendsData[] = poData.map((item: PurchaseOrderMonthlyTrendsData) => { 
+          item.month_name = MONTH_NAME_MAPPING.get(item.month_name.split('-')[1])!
+          return item
+        })
+        setPurchaseOrderMonthlyTrendsData(podataProcessed)
+        
+        const { data: soData, error: soError } = await supabase
+          .rpc(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS);
+  
+        if (soError) {
+          showServerErrorToast(soError.message)
+          setLoading(false)
+          return
+        }
+        
+        const soDataProcessed: SalesOrderMonthlyTrendsData[] = soData.map((item: SalesOrderMonthlyTrendsData) => { 
+          item.month_name = MONTH_NAME_MAPPING.get(item.month_name.split('-')[1])!
+          return item
+        })
+        setSalesOrderMonthlyTrendsData(soDataProcessed)
+      } catch (error: any) {
+          showErrorToast()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboardStats()
+    loadOrderMonthlyTrends()
   }, [])
+
+  const orderReceiveRate = () => {
+    if (!stats.receivedPurchaseOrders || !stats.pendingPurchaseOrders) {
+      return '0%'
+    }
+
+    const rate = ((stats.receivedPurchaseOrders/(stats.receivedPurchaseOrders + stats.pendingPurchaseOrders)) * 100).toFixed(2)
+    return `${rate}%`
+  }
+  
+  const orderFulfillmentRate = () => {
+    if (!stats.fulfilledSalesOrders || !stats.pendingSalesOrders) {
+      return '0%'
+    }
+
+    const rate = ((stats.fulfilledSalesOrders/(stats.fulfilledSalesOrders + stats.pendingSalesOrders)) * 100).toFixed(2)
+    return `${rate}%`
+  }
+
+  const inventoryInsightData = () => {
+    return [
+      { name: 'Expected sales', value: stats.pendingSalesOrders, color: '#10B981' },
+      { name: 'Incomming Items', value: stats.pendingPurchaseOrders, color: '#3B82F6' },
+      { name: 'Available Items', value: stats.totalItems, color: '#F59E0B' }
+    ]
+  }
 
   const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
     <div className="card">
@@ -120,21 +201,45 @@ export default function DashboardPage() {
           trend={stats.monthlyGrowth}
         />
         <StatCard
+          title="Pending Purchase Orders"
+          value={stats.pendingPurchaseOrders}
+          icon={TruckIcon}
+          color="bg-purple-500"
+        />
+        <StatCard
+          title="Received Orders"
+          value={stats.receivedPurchaseOrders}
+          icon={TruckIcon}
+          color="bg-green-500"
+        />
+        <StatCard
+          title="Receive Rate"
+          value={orderReceiveRate()}
+          icon={CheckmarkIcon}
+          color="bg-purple-500"
+        />
+        <StatCard
           title="Low Stock Items"
           value={stats.lowStockItems}
           icon={ExclamationTriangleIcon}
           color="bg-red-500"
         />
         <StatCard
-          title="Pending PurchaseOrders"
-          value={stats.pendingPurchaseOrders}
-          icon={TruckIcon}
-          color="bg-green-500"
-        />
-        <StatCard
           title="Pending Sales Orders"
           value={stats.pendingSalesOrders}
           icon={ShoppingCartIcon}
+          color="bg-purple-500"
+        />
+        <StatCard
+          title="Fulfilled Orders"
+          value={stats.fulfilledSalesOrders}
+          icon={ShoppingCartIcon}
+          color="bg-green-500"
+        />
+        <StatCard
+          title="Fulfillment Rate"
+          value={orderFulfillmentRate()}
+          icon={CheckmarkIcon}
           color="bg-purple-500"
         />
       </div>
@@ -143,36 +248,51 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Trends */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Trends</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Purchase Order Monthly Trends <small>(Last 6 months)</small></h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyData}>
+            <BarChart data={purchaseOrderMonthlyTrendsData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
+              <XAxis dataKey="month_name" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="inventory" fill="#3B82F6" name="Inventory" />
-              <Bar dataKey="purchase_orders" fill="#10B981" name="PurchaseOrders" />
-              <Bar dataKey="sales_orders" fill="#F59E0B" name="SalesOrders" />
+              <Bar dataKey="ordered_quantity" fill="#3B82F6" name="Ordered Quantity" />
+              <Bar dataKey="canceled_quantity" fill="#F59E0B" name="Canceled Quantity" />
+              <Bar dataKey="received_quantity" fill="#10B981" name="Received Quantity" />
             </BarChart>
           </ResponsiveContainer>
         </div>
-
-        {/* Category Distribution */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Distribution</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Order Monthly Trends <small>(Last 6 months)</small></h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={salesOrderMonthlyTrendsData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month_name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="ordered_quantity" fill="#3B82F6" name="Ordered Quantity" />
+              <Bar dataKey="canceled_quantity" fill="#F59E0B" name="Canceled Quantity" />
+              <Bar dataKey="fulfilled_quantity" fill="#10B981" name="Fulfilled Quantity" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Inventory Summary</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={categoryData}
+                data={inventoryInsightData()}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(2)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {categoryData.map((entry, index) => (
+                {inventoryInsightData().map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -183,43 +303,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Activity and Feedback */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  <span className="text-sm text-gray-700">New inventory item added: "Wireless Headphones"</span>
-                </div>
-                <span className="text-xs text-gray-500">2 hours ago</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                  <span className="text-sm text-gray-700">Purchase order #PO-2024-001 received</span>
-                </div>
-                <span className="text-xs text-gray-500">4 hours ago</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
-                  <span className="text-sm text-gray-700">Sales order #SO-2024-015 fulfilled</span>
-                </div>
-                <span className="text-xs text-gray-500">6 hours ago</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
-                  <span className="text-sm text-gray-700">Low stock alert: "Gaming Mouse" (5 units remaining)</span>
-                </div>
-                <span className="text-xs text-gray-500">1 day ago</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 gap-6">
         <div>
           {userRole === 'admin' ? (
             <FeedbackSummary />

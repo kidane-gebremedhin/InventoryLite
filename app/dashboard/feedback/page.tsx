@@ -8,9 +8,9 @@ import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import { FeedbackRating } from '@/components/feedback/FeedbackRating'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { useUserContext } from '@/components/context_apis/UserProvider'
-import { getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { formatDateToUTC, getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { DEFAULT_USER_ROLE, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES } from '@/lib/Constants'
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus } from '@/lib/Enums'
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, TABLE } from '@/lib/Enums'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 
 interface Feedback {
@@ -52,7 +52,7 @@ export default function FeedbackPage() {
 
     try {
       const { data, error } = await supabase
-        .from('feedback')
+        .from(TABLE.feedback)
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -71,7 +71,7 @@ export default function FeedbackPage() {
 
     try {
       const { error } = await supabase
-        .from('feedback')
+        .from(TABLE.feedback)
         .insert({
           category: formData.category,
           subject: formData.subject,
@@ -255,7 +255,7 @@ export default function FeedbackPage() {
                   </span>
                 </div>
                 <div className="text-sm text-gray-500">
-                  {new Date(feedback.created_at).toUTCString()}
+                  {formatDateToUTC(feedback.created_at)}
                 </div>
               </div>
 

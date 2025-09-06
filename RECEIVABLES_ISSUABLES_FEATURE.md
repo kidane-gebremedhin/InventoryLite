@@ -14,7 +14,7 @@ The purchase_orders and sales_orders features provide comprehensive order manage
 - **Create Purchase Orders**: Add new purchase orders with multiple items
 - **Edit Purchase Orders**: Modify existing purchase orders and their items
 - **View Order Details**: Detailed view of purchase orders with supplier information
-- **Status Management**: Update order status (pending, received, cancelled)
+- **Status Management**: Update order status (pending, received, canceled)
 - **Supplier Management**: Create and manage suppliers
 - **Real-time Data**: All data is fetched from and saved to the database
 
@@ -36,7 +36,7 @@ The purchase_orders and sales_orders features provide comprehensive order manage
 - **Create Sales Orders**: Add new sales orders with multiple items
 - **Edit Sales Orders**: Modify existing sales orders and their items
 - **View Order Details**: Detailed view of sales orders with customer information
-- **Status Management**: Update order status (pending, fulfilled, cancelled)
+- **Status Management**: Update order status (pending, fulfilled, canceled)
 - **Customer Management**: Create and manage customers
 - **Inventory Validation**: Check stock availability before creating orders
 - **Real-time Data**: All data is fetched from and saved to the database

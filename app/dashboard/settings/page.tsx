@@ -8,11 +8,12 @@ import {
 } from '@heroicons/react/24/outline'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
+import { insertSeedData } from '@/lib/db_queries/DBQuery'
 
 const tabs = [
   { name: 'Profile', icon: UserIcon },
   { name: 'Security', icon: ShieldCheckIcon },
-  { name: 'Preferences', icon: Cog6ToothIcon },
+  { name: 'Preferences', icon: Cog6ToothIcon }
 ]
 
 export default function SettingsPage() {
@@ -112,14 +113,39 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600">Manage your account settings and preferences.</p>
+        <div></div>
+        <button className="btn-primary"
+          onClick={insertSeedData}
+        >
+          Insert Seed Data
+        </button>
       </div>
 
+      {/* Mobile Sidebar */}
+      <div className="md:hidden">
+        <div className="overflow-wrap">
+          {tabs.map((tab) => (
+            <button
+              key={tab.name}
+              onClick={() => setActiveTab(tab.name)}
+              className={`items-center px-3 py-2 text-sm font-medium rounded-md ${
+                activeTab === tab.name
+                  ? 'bg-primary-100 text-primary-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <tab.icon className="mr-3 h-5 w-5" />
+              {tab.name}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex space-x-8">
-        {/* Sidebar */}
-        <div className="w-64 flex-shrink-0">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:flex lg:flex">
           <nav className="space-y-1">
             {tabs.map((tab) => (
               <button
