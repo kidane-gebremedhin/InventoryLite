@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { DEFAULT_USER_ROLE } from '@/lib/Constants'
-import { TABLE } from '@/lib/Enums'
+import { DATABASE_TABLE } from '@/lib/Enums'
 
 interface FeedbackNotificationProps {
   className?: string
@@ -26,7 +26,7 @@ export function FeedbackNotification({ className = '' }: FeedbackNotificationPro
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .select('id')
         .eq('status', 'open')
 

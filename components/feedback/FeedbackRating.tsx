@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { APP_NAME } from '@/lib/Constants'
 import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { useUserContext } from '../context_apis/UserProvider'
-import { FeedbackPriority, TABLE } from '@/lib/Enums'
+import { FeedbackPriority, DATABASE_TABLE } from '@/lib/Enums'
 
 interface FeedbackRatingProps {
   onFeedbackSubmitted?: () => void
@@ -47,7 +47,7 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
     setSubmitting(true)
     try {
       const { error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .insert({
           category: formData.category,
           subject: formData.subject,

@@ -1,7 +1,7 @@
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { getCurrentDateTimeUTC, showErrorToast } from '../helpers/Helper'
 import { User } from '../types/Models'
-import { PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TABLE, UserRole } from '../Enums'
+import { DATABASE_TABLE, PurchaseOrderStatus, SalesOrderStatus, UserRole } from '../Enums'
 
 export const getCurrentUserRole = (user: User): string => {
   return user.email === 'kidane10g.edu@gmail.com' ? UserRole.ADMIN : UserRole.USER
@@ -24,7 +24,7 @@ export const fetchPurchaseOrders = async () => {
 
   try {
     const { data, error } = await supabase
-      .from(TABLE.purchase_orders)
+      .from('purchase_orders')
       .select(`
         *,
         supplier:suppliers(name, email),
@@ -46,7 +46,7 @@ export const fetchPurchaseOrderDetails = async (orderId: string) => {
 
   try {
     const { data, error } = await supabase
-      .from(TABLE.purchase_orders)
+      .from('purchase_orders')
       .select(`
         *,
         supplier:suppliers(name, email),
@@ -72,7 +72,7 @@ export const fetchSalesOrders = async () => {
 
   try {
     const { data, error } = await supabase
-      .from(TABLE.sales_orders)
+      .from('sales_orders')
       .select(`
         *,
         customer:customers(name, email),
@@ -94,7 +94,7 @@ export const fetchSalesOrderDetails = async (orderId: string) => {
 
   try {
     const { data, error } = await supabase
-      .from(TABLE.sales_orders)
+      .from('sales_orders')
       .select(`
         *,
         customer:customers(name, email),
@@ -120,7 +120,7 @@ export const fetchSuppliers = async () => {
 
   try {
     const { data, error } = await supabase
-      .from(TABLE.suppliers)
+      .from('suppliers')
       .select('id, name, email')
       .order('name')
 
@@ -137,7 +137,7 @@ export const fetchCustomers = async () => {
 
   try {
     const { data, error } = await supabase
-      .from(TABLE.customers)
+      .from('customers')
       .select('id, name, email')
       .order('name')
 
@@ -149,13 +149,32 @@ export const fetchCustomers = async () => {
   }
 }
 
+// Inventory Queries
+export const fetchInventoryItems = async () => {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('id, sku, name, unit_price, quantity')
+      .eq('status', 'active')
+      .order('name')
+
+    if (error) throw error
+    return data || []
+  } catch (error: any) {
+    console.error('Error fetching inventory items:', error)
+    throw error
+  }
+}
+
 // Order Status Update Queries
 export const updatePurchaseOrderStatus = async (orderId: string, status: string) => {
   if (!supabase) return
 
   try {
     const { error } = await supabase
-      .from(TABLE.purchase_orders)
+      .from('purchase_orders')
       .update({ status })
       .eq('id', orderId)
 
@@ -171,7 +190,7 @@ export const updateSalesOrderStatus = async (orderId: string, status: string) =>
 
   try {
     const { error } = await supabase
-      .from(TABLE.sales_orders)
+      .from('sales_orders')
       .update({ status })
       .eq('id', orderId)
 
@@ -187,7 +206,7 @@ export const insertSeedData = async () => {
 
   try {
     const { data: storeData, error: storeError } = await supabase
-      .from(TABLE.stores)
+      .from(DATABASE_TABLE.stores)
       .insert({ name: 'Main Store', description: 'The main store' })
       .select()
       .single()
@@ -198,7 +217,7 @@ export const insertSeedData = async () => {
     }
 
     const { data: categoryData, error: categoryError } = await supabase
-      .from(TABLE.categories)
+      .from(DATABASE_TABLE.categories)
       .insert({ name: 'Electronics', description: 'Electronic devices' })
       .select()
       .single()
@@ -209,7 +228,7 @@ export const insertSeedData = async () => {
     }
 
     const { data: inventoryItemData, error: inventoryItemError } = await supabase
-      .from(TABLE.inventory_items)
+      .from(DATABASE_TABLE.inventory_items)
       .insert({ name: 'Samsung S-16 Ultra', sku: 'S-123456', category_id: categoryData.id, unit_price: 20 })
       .select()
       .single()
@@ -220,7 +239,7 @@ export const insertSeedData = async () => {
     }
 
     const { data: supplierData, error: supplierError } = await supabase
-      .from(TABLE.suppliers)
+      .from(DATABASE_TABLE.suppliers)
       .insert({ name: 'Main Suppier', email: 'supplier@gmail.com', phone: '+12324665748', address: 'The main supplier address' })
       .select()
       .single()
@@ -231,7 +250,7 @@ export const insertSeedData = async () => {
     }
 
     const { data: purchaseOrderData, error: purchaseOrderError } = await supabase
-      .from(TABLE.purchase_orders)
+      .from(DATABASE_TABLE.purchase_orders)
       .insert({ po_number: 'PO-12346456', supplier_id: supplierData.id, expected_date: getCurrentDateTimeUTC(), order_status: PurchaseOrderStatus.PENDING, received_date: getCurrentDateTimeUTC() })
       .select()
       .single()
@@ -242,7 +261,7 @@ export const insertSeedData = async () => {
     }
 
     const { data: purchaseOrderItemData, error: purchaseOrderItemError } = await supabase
-      .from(TABLE.purchase_order_items)
+      .from(DATABASE_TABLE.purchase_order_items)
       .insert({ purchase_order_id: purchaseOrderData.id, store_id: storeData.id, inventory_item_id: inventoryItemData.id, quantity: 12, unit_price: inventoryItemData.unit_price })
       .select()
       .single()
@@ -253,7 +272,7 @@ export const insertSeedData = async () => {
     }
 
     const { data: customerData, error: customerError } = await supabase
-      .from(TABLE.customers)
+      .from(DATABASE_TABLE.customers)
       .insert({ name: 'Main Customer', email: 'custome@gmail.com', phone: '+346465675675', address: 'The main customer address' })
       .select()
       .single()
@@ -264,7 +283,7 @@ export const insertSeedData = async () => {
     }
 
     const { data: salesOrderData, error: salesOrderError } = await supabase
-      .from(TABLE.sales_orders)
+      .from(DATABASE_TABLE.sales_orders)
       .insert({ so_number: 'SO-1354354', customer_id: customerData.id, expected_date: getCurrentDateTimeUTC(), order_status: SalesOrderStatus.PENDING, fulfilled_date: getCurrentDateTimeUTC() })
       .select()
       .single()
@@ -275,7 +294,7 @@ export const insertSeedData = async () => {
     }
 
     const { data: salesOrderItemsData, error: salesOrderItemsError } = await supabase
-      .from(TABLE.sales_order_items)
+      .from(DATABASE_TABLE.sales_order_items)
       .insert({ sales_order_id: salesOrderData.id, store_id: storeData.id, inventory_item_id: inventoryItemData.id, quantity: 2, unit_price: inventoryItemData.unit_price })
       .select()
       .single()
@@ -284,7 +303,7 @@ export const insertSeedData = async () => {
       console.log(salesOrderItemsError)
       return
     }
-    
+
   } catch (error: any) {
     console.error('Error inserting seed data:', error)
     showErrorToast('Error inserting seed data')

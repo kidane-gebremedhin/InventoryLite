@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier } from '@/lib/types/Models'
-import { PurchaseOrderStatus, RecordStatus, TABLE } from '@/lib/Enums'
+import { PurchaseOrderStatus, RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { calculateOrderTotalProce, formatDateToUTC, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
-import { PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
+import { DECIMAL_REGEX, PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
 
 interface PurchaseOrderModalProps {
   isOpen: boolean
@@ -63,7 +63,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.stores)
+        .from(DATABASE_TABLE.stores)
         .select('id, name, description')
         .eq('status', RecordStatus.ACTIVE)
         .order('name')
@@ -81,7 +81,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.suppliers)
+        .from(DATABASE_TABLE.suppliers)
         .select('id, name, email')
         .eq('status', RecordStatus.ACTIVE)
         .order('name')
@@ -103,7 +103,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.inventory_items)
+        .from(DATABASE_TABLE.inventory_items)
         .select('id, sku, name, unit_price, quantity')
         .eq('status', RecordStatus.ACTIVE)
         .order('name')
@@ -135,6 +135,10 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   }
 
   const updateItem = (index: number, field: keyof PurchaseOrderItem, value: any) => {
+    if (value && field === 'unit_price' && !DECIMAL_REGEX.test(value)) {
+      return
+    }
+    
     const preSelectedItem = purchaseOrderItems.find(item => item.inventory_item_id === value)
     if (preSelectedItem) {
         showErrorToast('Item already selected.')
@@ -345,11 +349,9 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                         Unit Price *
                       </label>
                       <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={item.unit_price}
-                        onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
+                        type="text"
+                        value={item.unit_price > 0 ? item.unit_price : ''}
+                        onChange={(e) => updateItem(index, 'unit_price', e.target.value)}
                         className="input-field"
                         required
                       />

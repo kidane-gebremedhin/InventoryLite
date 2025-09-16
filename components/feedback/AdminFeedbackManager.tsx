@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { 
   ChatBubbleLeftRightIcon, 
@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { ALL_OPTIONS, FEEDBACK_STATUSES } from '@/lib/Constants'
-import { FeedbackStatus, TABLE } from '@/lib/Enums'
+import { FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { formatDateToUTC, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 
 interface Feedback {
@@ -51,7 +51,7 @@ export function AdminFeedbackManager() {
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .select(`
           *,
           tenant:tenants(name, domain)
@@ -72,7 +72,7 @@ export function AdminFeedbackManager() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .update({ status: newStatus })
         .eq('id', feedbackId)
 
@@ -89,7 +89,7 @@ export function AdminFeedbackManager() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .update({ 
           admin_response: responseText,
           status: 'resolved'

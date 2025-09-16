@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { Customer, InventoryItem, SalesOrder, SalesOrderItem, Store } from '@/lib/types/Models'
-import { SalesOrderStatus, RecordStatus, TABLE } from '@/lib/Enums'
+import { SalesOrderStatus, RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { calculateOrderTotalProce, formatDateToUTC, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
-import { SALES_ORDER_STATUSES } from '@/lib/Constants'
+import { DECIMAL_REGEX, SALES_ORDER_STATUSES } from '@/lib/Constants'
 
 interface SalesOrderModalProps {
   isOpen: boolean
@@ -63,7 +63,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.stores)
+        .from(DATABASE_TABLE.stores)
         .select('id, name, description')
         .eq('status', RecordStatus.ACTIVE)
         .order('name')
@@ -81,7 +81,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.customers)
+        .from(DATABASE_TABLE.customers)
         .select('id, name, email')
         .eq('status', RecordStatus.ACTIVE)
         .order('name')
@@ -102,7 +102,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.inventory_items)
+        .from(DATABASE_TABLE.inventory_items)
         .select('id, sku, name, unit_price, quantity')
         .eq('status', RecordStatus.ACTIVE)
         .order('name')
@@ -134,6 +134,10 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
   }
 
   const updateItem = (index: number, field: keyof SalesOrderItem, value: any) => {
+    if (value && field === 'unit_price' && !DECIMAL_REGEX.test(value)) {
+      return
+    }
+    
     const preSelectedItem = salesOrderItems.find(item => item.inventory_item_id === value)
     if (preSelectedItem) {
         showErrorToast('Item already selected.')
@@ -339,11 +343,9 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                         Unit Price *
                       </label>
                       <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={item.unit_price}
-                        onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
+                        type="text"
+                        value={item.unit_price > 0 ? item.unit_price : ''}
+                        onChange={(e) => updateItem(index, 'unit_price', e.target.value)}
                         className="input-field"
                         required
                       />

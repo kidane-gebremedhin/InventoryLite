@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { 
   ChatBubbleLeftRightIcon,
@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline'
 import MiniLoading from '../helpers/MiniLoading'
 import { getCurrentDateTimeUTC } from '@/lib/helpers/Helper'
-import { TABLE } from '@/lib/Enums'
+import { DATABASE_TABLE } from '@/lib/Enums'
 
 interface FeedbackSummaryProps {
   className?: string
@@ -44,7 +44,7 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .select('*')
 
       if (error) throw error

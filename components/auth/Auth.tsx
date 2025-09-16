@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'

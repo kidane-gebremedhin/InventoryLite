@@ -11,10 +11,10 @@ import {
   EyeIcon
 } from '@heroicons/react/24/outline'
 import { InventoryItemModal } from '@/components/inventory_items/InventoryItemModal'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { Category, InventoryItem } from '@/lib/types/Models';
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, TABLE } from '@/lib/Enums'
+import { RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
@@ -57,7 +57,7 @@ export default function InventoryPage() {
 
       try {
         const { data, error } = await supabase
-          .from(TABLE.categories)
+          .from(DATABASE_TABLE.categories)
           .select('*')
           .eq('status', RecordStatus.ACTIVE)
           .order('name')
@@ -84,15 +84,14 @@ export default function InventoryPage() {
   }, [searchTerm, selectedCategoryId, selectedStatus, recordsPerPage, currentPage])
 
   const loadInventoryItems = async () => {
-    setLoading(true)
     if (!supabase || !await authorseDBAction(currentUser)) return
 
-    
     const startIndex = (currentPage - 1) * recordsPerPage
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE.inventory_items).select(`
+      setLoading(true)
+      let query = supabase.from(DATABASE_TABLE.inventory_items).select(`
         *,
         category:categories(*),
         purchase_order_items:purchase_order_items(*),
@@ -151,7 +150,7 @@ export default function InventoryPage() {
     
     try {
       const { error } = await supabase
-        .from(TABLE.inventory_items)
+        .from(DATABASE_TABLE.inventory_items)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
@@ -176,7 +175,7 @@ export default function InventoryPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await supabase
-        .from(TABLE.inventory_items)
+        .from(DATABASE_TABLE.inventory_items)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
@@ -202,7 +201,7 @@ export default function InventoryPage() {
       // Exclude id when creating new records
       const {id, ...inventoryItemWithNoId} = inventoryItem
       const { error } = await supabase
-        .from(TABLE.inventory_items)
+        .from(DATABASE_TABLE.inventory_items)
         .insert(inventoryItemWithNoId)
 
       if (error) {
@@ -225,7 +224,7 @@ export default function InventoryPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.inventory_items)
+        .from(DATABASE_TABLE.inventory_items)
         .update(inventoryItem)
         .eq('id', inventoryItem.id)
 

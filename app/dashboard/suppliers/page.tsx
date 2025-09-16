@@ -9,10 +9,10 @@ import {
   TrashIcon,
   ArrowUpOnSquareIcon
 } from '@heroicons/react/24/outline'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { Supplier } from '@/lib/types/Models'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, TABLE } from '@/lib/Enums'
+import { RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
@@ -51,15 +51,14 @@ export default function SupplierPage() {
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
   const loadSuppliers = async () => {
-    setLoading(true)
-
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     const startIndex = (currentPage - 1) * recordsPerPage
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE.suppliers).select('*', {count: 'exact', head: false})
+      setLoading(true)
+      let query = supabase.from(DATABASE_TABLE.suppliers).select('*', {count: 'exact', head: false})
       if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus)
       }
@@ -99,7 +98,7 @@ export default function SupplierPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.suppliers)
+        .from(DATABASE_TABLE.suppliers)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
@@ -125,7 +124,7 @@ export default function SupplierPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await supabase
-        .from(TABLE.suppliers)
+        .from(DATABASE_TABLE.suppliers)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
@@ -151,7 +150,7 @@ export default function SupplierPage() {
       const {id, ...supplierWithNoId} = supplier
     try {
       const { error } = await supabase
-        .from(TABLE.suppliers)
+        .from(DATABASE_TABLE.suppliers)
         .insert(supplierWithNoId)
 
       if (error) {
@@ -174,7 +173,7 @@ export default function SupplierPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.suppliers)
+        .from(DATABASE_TABLE.suppliers)
         .update(supplier)
         .eq('id', supplier.id)
 

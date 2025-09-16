@@ -16,7 +16,8 @@ import {
   ChatBubbleLeftRightIcon,
   WindowIcon,
   UserGroupIcon,
-  BuildingStorefrontIcon
+  BuildingStorefrontIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import { APP_NAME } from '@/lib/Constants'
 import { FireIcon } from '@heroicons/react/24/solid'
@@ -34,14 +35,15 @@ export function Sidebar() {
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
       { name: 'Stores', href: '/dashboard/store', icon: BuildingStorefrontIcon },
       { name: 'Categories', href: '/dashboard/category', icon: WindowIcon },
-      { name: 'Inventory Items', href: '/dashboard/inventory_items', icon: CubeIcon },
+      { name: 'Inventory Items', href: '/dashboard/inventory-items', icon: CubeIcon },
       { name: 'Suppliers', href: '/dashboard/suppliers', icon: BuildingStorefrontIcon },
-      { name: 'Purchase Orders', href: '/dashboard/purchase_orders', icon: TruckIcon },
+      { name: 'Purchase Orders', href: '/dashboard/purchase-orders', icon: TruckIcon },
       { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
-      { name: 'Sales Orders', href: '/dashboard/sales_orders', icon: ShoppingCartIcon },
+      { name: 'Sales Orders', href: '/dashboard/sales-orders', icon: ShoppingCartIcon },
       { name: 'Transactions', href: '/dashboard/transactions', icon: FireIcon },
       { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
-      { name: 'Feedback', href: (getCurrentUserRole(currentUser) === UserRole.ADMIN ? '/dashboard/feedback_management' : '/dashboard/feedback'), icon: ChatBubbleLeftRightIcon },
+      { name: 'Feedback', href: (getCurrentUserRole(currentUser) === UserRole.ADMIN ? '/dashboard/feedback-management' : '/dashboard/feedback'), icon: ChatBubbleLeftRightIcon },
+      { name: 'Payments', href: '/dashboard/manual-payment', icon: CurrencyDollarIcon },
       { name: 'Settings', href: '/dashboard/settings', icon: Cog6ToothIcon },
     ]
   }

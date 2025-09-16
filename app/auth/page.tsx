@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { Auth } from '@/components/auth/Auth'
 
 export default function HomePage() {
@@ -22,7 +22,7 @@ export default function HomePage() {
   }, [router])
 
   return (
-    <div className="bg-gradient-to-br from-teal-500 to-orange-500 text-white py-20 md:py-32">
+    <div className="bg-gradient-to-tr from-green-500 to-teal-500 py-20 md:py-32 text-white">
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-8">

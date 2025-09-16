@@ -1,10 +1,6 @@
 
 -- This file contains all table definitions, constraints, indexes, and RLS policies
 
--- Enable necessary extensions
--- uuid-ossp for UUIDs
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- DOWN
 
 -- Drop All Tables (REMOVE THIS)
@@ -16,7 +12,28 @@ BEGIN
     END LOOP;
 END $$;
 
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (
+        SELECT
+            trigger_name,
+            event_object_table AS table_name
+        FROM
+            information_schema.triggers
+        WHERE
+            event_object_schema = 'public'
+    ) LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I;', r.trigger_name, r.table_name);
+    END LOOP;
+END;
+$$;
+
+DELETE FROM auth.users;
+
 -- Drop All Triggers (REMOVE THIS)
+DROP TRIGGER IF EXISTS sync_user_tenant_mapping ON auth.users;
 DROP TRIGGER IF EXISTS sync_user_tenant_mapping ON auth.users;
 
 -- Drop All Functions (REMOVE THIS)
@@ -25,20 +42,24 @@ DROP FUNCTION IF EXISTS public.get_all_categories();
 DROP FUNCTION IF EXISTS public.generate_inventory_aging_report();
 DROP FUNCTION IF EXISTS update_received_or_fulfilled_date_on_order_status_update_to_received_or_fulfilled();
 
--- Delete Records  (REMOVE THIS)
-DELETE from auth.users;
 
-
+-- Enable necessary extensions
+-- uuid-ossp for UUIDs
+DROP EXTENSION IF EXISTS "uuid-ossp";
+CREATE EXTENSION "uuid-ossp" SCHEMA public;
 
 ------------------------------------------------------------------------------------
 -- UP
 ------------------------------------------------------------------------------------
 -- TENANTS TABLE
 CREATE TABLE IF NOT EXISTS public.tenants (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) UNIQUE NOT NULL,
     domain VARCHAR(255) UNIQUE NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    price_id TEXT,
+    current_payment_expiry_date DATE NOT NULL,
+    expected_payment_amount DECIMAL(10,2) NOT NULL CHECK (expected_payment_amount >= 0),
+    status VARCHAR(255) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'terminated')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -55,7 +76,7 @@ CREATE TABLE IF NOT EXISTS public.user_tenant_mappings (
 
 -- STORES TABLE
 CREATE TABLE IF NOT EXISTS public.stores (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
@@ -69,7 +90,7 @@ CREATE TABLE IF NOT EXISTS public.stores (
 
 -- CATEGORIES TABLE
 CREATE TABLE IF NOT EXISTS public.categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
@@ -83,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
 
 -- INVENTORY_ITEMS TABLE (Updated to match application model)
 CREATE TABLE IF NOT EXISTS public.inventory_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     sku VARCHAR(100) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -103,7 +124,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
 
 -- SUPPLIERS TABLE
 CREATE TABLE IF NOT EXISTS public.suppliers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
     phone VARCHAR(50),
@@ -119,7 +140,7 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
 
 -- PURCHASE_ORDERS TABLE
 CREATE TABLE IF NOT EXISTS public.purchase_orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     po_number VARCHAR(100) NOT NULL,
     supplier_id UUID NOT NULL REFERENCES public.suppliers(id) ON DELETE RESTRICT,
     order_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (order_status IN ('pending', 'received', 'canceled')),
@@ -136,7 +157,7 @@ CREATE TABLE IF NOT EXISTS public.purchase_orders (
 
 -- PURCHASE_ORDER_ITEMS TABLE
 CREATE TABLE IF NOT EXISTS public.purchase_order_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     purchase_order_id UUID NOT NULL REFERENCES public.purchase_orders(id) ON DELETE CASCADE,
     store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE RESTRICT,
     inventory_item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE RESTRICT,
@@ -152,7 +173,7 @@ CREATE TABLE IF NOT EXISTS public.purchase_order_items (
 
 -- CUSTOMERS TABLE
 CREATE TABLE IF NOT EXISTS public.customers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
     phone VARCHAR(50),
@@ -168,7 +189,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
 
 -- SALES_ORDERS TABLE
 CREATE TABLE IF NOT EXISTS public.sales_orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     so_number VARCHAR(100) NOT NULL,
     customer_id UUID NOT NULL REFERENCES public.customers(id) ON DELETE RESTRICT,
     order_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (order_status IN ('pending', 'fulfilled', 'canceled')),
@@ -185,7 +206,7 @@ CREATE TABLE IF NOT EXISTS public.sales_orders (
 
 -- SALES_ORDER_ITEMS TABLE
 CREATE TABLE IF NOT EXISTS public.sales_order_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     sales_order_id UUID NOT NULL REFERENCES public.sales_orders(id) ON DELETE CASCADE,
     store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE RESTRICT,
     inventory_item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE RESTRICT,
@@ -201,7 +222,7 @@ CREATE TABLE IF NOT EXISTS public.sales_order_items (
 
 -- TRANSACTIONS TABLE
 CREATE TABLE IF NOT EXISTS public.transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
     type VARCHAR(10) NOT NULL CHECK (type IN ('in', 'out')),
     item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE CASCADE,
@@ -218,7 +239,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 
 -- FEEDBACK TABLE
 CREATE TABLE IF NOT EXISTS public.feedback (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     category VARCHAR(50) NOT NULL CHECK (category IN ('bug', 'feature', 'improvement', 'general')),
     subject VARCHAR(255) NOT NULL,
@@ -233,6 +254,18 @@ CREATE TABLE IF NOT EXISTS public.feedback (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- MANUAL_PAYMENTS TABLE
+CREATE TABLE IF NOT EXISTS public.manual_payments (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    amount DECIMAL(10,2) NOT NULL CHECK (amount >= 0),
+    reference_number VARCHAR(255) UNIQUE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'declined')),
+    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 ------------------------------------------------------------------------------------------
 -- Helper function to get user's tenant without RLS recursion
@@ -251,7 +284,7 @@ DECLARE
     newTenantId UUID;
 BEGIN
     -- Create tenant record first
-    INSERT INTO public.tenants (name, domain) VALUES (NEW.id, NEW.email)
+    INSERT INTO public.tenants (name, domain, current_payment_expiry_date, expected_payment_amount) VALUES (NEW.id, NEW.email, NOW(), 9.99)
     RETURNING id INTO newTenantId;
     -- Create user-ternant mapping
     INSERT INTO public.user_tenant_mappings (user_id, tenant_id) VALUES (NEW.id, newTenantId);
@@ -286,6 +319,40 @@ CREATE OR REPLACE FUNCTION public.sync_transactions_with_purchase_orders()
         RETURN NEW;
     END;
     $$ language plpgsql SECURITY DEFINER;
+
+-- fetch User's Subscription Info
+CREATE OR REPLACE FUNCTION public.fetch_user_subscription_info(
+    current_user_id UUID
+)
+RETURNS TABLE(
+    name VARCHAR,
+    domain VARCHAR,
+    price_id TEXT,
+    current_payment_expiry_date DATE,
+    expected_payment_amount DECIMAL,
+    status VARCHAR,
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        t.name, 
+        t.domain, 
+        t.price_id, 
+        t.current_payment_expiry_date, 
+        t.expected_payment_amount, 
+        t.status, 
+        t.created_at,
+        t.updated_at
+    FROM public.tenants t INNER JOIN user_tenant_mappings utm
+    ON utm.tenant_id = t.id
+    WHERE utm.user_id = current_user_id
+    LIMIT 1;
+END;
+$$;
 
 -- Sync transactions and  purchase_orders tables
 CREATE TRIGGER sync_transactions_with_purchase_orders
@@ -378,7 +445,9 @@ CREATE INDEX idx_feedback_created_by ON public.feedback(created_by);
 CREATE INDEX idx_feedback_status ON public.feedback(status);
 CREATE INDEX idx_feedback_category ON public.feedback(category);
 CREATE INDEX idx_feedback_rating ON public.feedback(rating);
-
+CREATE INDEX idx_manual_payments_tenant_id ON public.manual_payments(tenant_id);
+CREATE INDEX idx_manual_payments_created_at ON public.manual_payments(created_at);
+CREATE INDEX idx_manual_payments_updated_at ON public.manual_payments(updated_at);
 
 -- Function to add tenant_id and created_by before saving
 CREATE OR REPLACE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record()
@@ -450,6 +519,10 @@ CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_feedback
     FOR EACH ROW
     EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
+CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_manual_payments
+    BEFORE INSERT ON public.manual_payments
+    FOR EACH ROW
+    EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
 -- UPDATED_AT and UPDATED_BY TRIGGER FUNCTION
 CREATE OR REPLACE FUNCTION public.update_updated_at_and_updated_by_column()
@@ -461,8 +534,17 @@ CREATE OR REPLACE FUNCTION public.update_updated_at_and_updated_by_column()
     END;
     $$ language plpgsql;
 
+-- UPDATED_AT TRIGGER FUNCTION
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = NOW();
+        RETURN NEW;
+    END;
+    $$ language plpgsql;
+
 -- TRIGGERS FOR UPDATED_AT and UPDATED_BY
-CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON public.tenants FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
+CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON public.tenants FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_stores_updated_at BEFORE UPDATE ON public.stores FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
@@ -474,6 +556,7 @@ CREATE TRIGGER update_sales_orders_updated_at BEFORE UPDATE ON public.sales_orde
 CREATE TRIGGER update_sales_order_items_updated_at BEFORE UPDATE ON public.sales_order_items FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_feedback_updated_at BEFORE UPDATE ON public.feedback FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
+CREATE TRIGGER update_manual_payments_updated_at BEFORE UPDATE ON public.manual_payments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 
 
 -- Function to update received_date/fulfilled_date on order_status = received/fulfilled update
@@ -503,9 +586,8 @@ CREATE TRIGGER update_fulfilled_date_on_order_status_update_to_fulfilled
     EXECUTE FUNCTION public.update_received_or_fulfilled_date_on_order_status_update_to_received_or_fulfilled();
 
 -- ROW LEVEL SECURITY (RLS) POLICIES
-
--- Enable RLS on all tables except user_tenant_mappings
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_tenant_mappings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
@@ -517,16 +599,38 @@ ALTER TABLE public.purchase_order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sales_order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.manual_payments ENABLE ROW LEVEL SECURITY;
 
 -- TENANTS POLICIES
 CREATE POLICY "Tenants are viewable by authenticated users" ON public.tenants
     FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "Tenants are insertable by authenticated users" ON public.tenants
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated'
+    );
 
 CREATE POLICY "Tenants are updatable by authenticated users" ON public.tenants
     FOR UPDATE USING (auth.role() = 'authenticated');
+
+-- USER_TTENANT_MAPPING POLICIES
+CREATE POLICY "user_tenant_mappings are viewable by authenticated users" ON public.user_tenant_mappings
+    FOR SELECT USING (
+        auth.role() = 'authenticated' AND 
+        user_id = auth.uid()
+    );
+
+CREATE POLICY "user_tenant_mappings are insertable by authenticated users" ON public.user_tenant_mappings
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND 
+        user_id = auth.uid()
+    );
+
+CREATE POLICY "user_tenant_mappings are updatable by authenticated users" ON public.user_tenant_mappings
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND 
+        user_id = auth.uid()
+    );
 
 -- CATEGORIES POLICIES
 CREATE POLICY "Users can view categories in their tenant" ON public.categories
@@ -799,6 +903,36 @@ CREATE POLICY "Users can update their own feedback" ON public.feedback
     );
 
 CREATE POLICY "Admins can update any feedback in their tenant" ON public.feedback
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id() AND
+        EXISTS (
+            SELECT 1 FROM public.user_tenant_mappings 
+            WHERE user_id = auth.uid() 
+            AND role IN ('admin')
+        )
+    );
+
+-- MANUAL_PAYMENTS POLICIES
+CREATE POLICY "Users can view their own manual_payments" ON public.manual_payments
+    FOR SELECT USING (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "Users can insert manual_payments in their tenant" ON public.manual_payments
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND 
+        created_by = auth.uid() AND
+        tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "Users can update their own manual_payments" ON public.manual_payments
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND created_by = auth.uid()
+    );
+
+CREATE POLICY "Admins can update any manual_payments in their tenant" ON public.manual_payments
     FOR UPDATE USING (
         auth.role() = 'authenticated' AND 
         tenant_id = public.user_tenant_id() AND

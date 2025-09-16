@@ -1,0 +1,13 @@
+services:
+  inventorylite:
+    # Build the image using the Dockerfile in the current directory
+    build: 
+      context: .
+    # Map the container's port 3000 to the host's port 3000
+    ports:
+      - "5000:3000"
+    # Restart the container if it stops
+    restart: always
+    # Set environment variables (for example, a database URL)
+    environment:
+      NODE_ENV: development

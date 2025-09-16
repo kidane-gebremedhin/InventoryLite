@@ -1,5 +1,5 @@
 import toast from "react-hot-toast"
-import { PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
+import { PaymentStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
 import { PurchaseOrderItem, SalesOrderItem } from "../types/Models"
 import { CUSTOM_SERVER_ERRORS, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
 
@@ -32,6 +32,19 @@ export const getRecordStatusColor = (status: string): string => {
         return 'bg-green-100 text-green-800'
       case RecordStatus.ARCHIVED:
         return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+}
+
+export const getPaymentStatusColor = (status: string): string => {
+    switch (status) {
+      case PaymentStatus.PENDING:
+        return 'bg-yellow-100 text-yellow-800'
+      case PaymentStatus.APPROVED:
+        return 'bg-green-100 text-green-800'
+      case PaymentStatus.DECLINED:
+        return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }

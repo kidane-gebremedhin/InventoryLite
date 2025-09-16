@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
 } from '@heroicons/react/24/outline'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, TABLE, TransactionDirection } from '@/lib/Enums'
+import { RecordStatus, DATABASE_TABLE, TransactionDirection } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORDS_PER_PAGE, TRANSACTION_DIRECTIONS } from '@/lib/Constants'
 import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getTransactionDirectionColor, setEarliestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
@@ -43,7 +43,7 @@ export default function SalesOrderPage() {
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.inventory_items)
+        .from(DATABASE_TABLE.inventory_items)
         .select('id, sku, name, unit_price, quantity')
         .eq('status', RecordStatus.ACTIVE)
         .order('name')
@@ -63,7 +63,7 @@ export default function SalesOrderPage() {
 
     try {
       const { data, error } = await supabase
-        .from(TABLE.stores)
+        .from(DATABASE_TABLE.stores)
         .select('id, name, description')
         .eq('status', RecordStatus.ACTIVE)
         .order('name')
@@ -97,7 +97,7 @@ export default function SalesOrderPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE.transactions).select(`
+      let query = supabase.from(DATABASE_TABLE.transactions).select(`
         *,
         item:inventory_items(*),
         store:stores(*)

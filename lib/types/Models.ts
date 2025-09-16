@@ -1,10 +1,22 @@
 import { PurchaseOrderStatus, SalesOrderStatus } from "../Enums"
 
+export interface UserSubscriptionInfo {
+  name: string,
+  domain: string,
+  price_id: string,
+  current_payment_expiry_date: Date,
+  expected_payment_amount: number,
+  status: string,
+  created_at: Date,
+  updated_at: Date
+}
+
 export interface User {
     id: string
     fullName: string
     email: string,
-    picturePicture: string
+    picturePicture: string,
+    subscriptionInfo: UserSubscriptionInfo
 }
 
 export interface Category {
@@ -205,4 +217,15 @@ export interface SalesOrderMonthlyTrendsData {
   ordered_quantity: number
   canceled_quantity: number
   fulfilled_quantity: number
+}
+
+export interface ManualPayment {
+  id?: string
+  amount: number,
+  reference_number: string,
+  status: string,
+  created_at?: string,
+  updated_at?: string,
+  created_by?: string,
+  updated_by?: string,
 }

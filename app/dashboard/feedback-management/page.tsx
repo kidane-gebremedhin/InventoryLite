@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { AdminFeedbackManager } from '@/components/feedback/AdminFeedbackManager'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import { showErrorToast } from '@/lib/helpers/Helper'
 import { DEFAULT_USER_ROLE } from '@/lib/Constants'
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, TABLE } from '@/lib/Enums'
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
 
 interface Feedback {
   id: string
@@ -35,13 +35,12 @@ export default function FeedbackPage() {
   }, [])
 
   const loadFeedbacks = async () => {
-    setLoading(true)
-
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
+      setLoading(true)
       const { data, error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .select('*')
         .order('created_at', { ascending: false })
 

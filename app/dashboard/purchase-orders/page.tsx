@@ -15,9 +15,9 @@ import {
 } from '@heroicons/react/24/outline'
 import PurchaseOrderModal from '@/components/purchase_orders/PurchaseOrderModal'
 import OrderDetailsModal from '@/components/purchase_orders/OrderDetailsModal'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { PurchaseOrderStatus, RecordStatus, RPC_FUNCTION, TABLE } from '@/lib/Enums'
+import { PurchaseOrderStatus, RecordStatus, RPC_FUNCTION, DATABASE_TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, PURCHASE_ORDER_STATUSES, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getCurrentDateTimeUTC, getDateWithoutTime, getRecordStatusColor, isCustomServerError, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
@@ -71,7 +71,7 @@ export default function PurchaseOrderPage() {
 
       try {
         const { data, error } = await supabase
-          .from(TABLE.suppliers)
+          .from(DATABASE_TABLE.suppliers)
           .select('*')
           .eq('status', RecordStatus.ACTIVE)
           .order('name')
@@ -107,7 +107,7 @@ export default function PurchaseOrderPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE.purchase_orders).select(`
+      let query = supabase.from(DATABASE_TABLE.purchase_orders).select(`
           *,
           supplier:suppliers(*),
           order_items:purchase_order_items(
@@ -177,7 +177,7 @@ export default function PurchaseOrderPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await supabase
-        .from(TABLE.purchase_orders)
+        .from(DATABASE_TABLE.purchase_orders)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
@@ -202,7 +202,7 @@ export default function PurchaseOrderPage() {
     if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await supabase
-        .from(TABLE.purchase_orders)
+        .from(DATABASE_TABLE.purchase_orders)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
@@ -308,7 +308,7 @@ export default function PurchaseOrderPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.purchase_orders)
+        .from(DATABASE_TABLE.purchase_orders)
         .update({ order_status: status })
         .eq('id', id)
 

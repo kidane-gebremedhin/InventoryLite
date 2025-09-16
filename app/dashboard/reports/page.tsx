@@ -5,9 +5,9 @@ import { useUserContext } from '@/components/context_apis/UserProvider'
 import RecordsPerPage from '@/components/helpers/RecordsPerPage'
 import { ALL_OPTIONS, MAX_DROPDOWN_TEXT_LENGTH, REPORTS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY } from '@/lib/Constants'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { OrderStatus, RecordStatus, ReportType, RPC_FUNCTION, SalesOrderStatus, TABLE } from '@/lib/Enums'
+import { OrderStatus, RecordStatus, ReportType, RPC_FUNCTION, SalesOrderStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { canShowLoadingScreen, convertToUTC, formatDateToUTC, formatDateToYYMMDD, getCurrentDateTimeUTC, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast } from '@/lib/helpers/Helper'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { InventoryAgingReport, PendingOrdersReport, InventoryItem, InventoryTurnoverReport } from '@/lib/types/Models'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
@@ -171,7 +171,7 @@ export default function App() {
 
       try {
         const { data, error } = await supabase
-          .from(TABLE.inventory_items)
+          .from(DATABASE_TABLE.inventory_items)
           .select('*')
           .eq('status', RecordStatus.ACTIVE)
           .order('name')

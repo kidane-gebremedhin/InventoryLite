@@ -1,15 +1,28 @@
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "./Enums"
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PaymentStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "./Enums"
 
 export const APP_NAME = 'InventoryLite'
-export const APP_MOTO = 'Simplified Inventory Management Software for Modern Businesses'
+export const APP_MOTO = 'Demand and Inventory Management Software for Modern Businesses'
 export const CONTACT_EMAIL = 'info@ethiotechsolutions.com'
+export const APP_TITLE = 'Demand Tracking and Inventory Management Simplified!'
+export const APP_DESCRIPTION = 'A comprehensive demand tracking and inventory management system for businesses of all sizes'
 
 export const ALL_OPTIONS = ''
 export const TEXT_SEARCH_TRIGGER_KEY = 'Enter'
 
+// Pricing
+export const FREE_PLAN_LABEL = 'Free'
+export const FREE_PLAN_DURATION = 'week'
+export const PAID_PLAN_DURATION = 'month'
+
 // Auth constants
 export const SIGNED_OUT = 'SIGNED_OUT'
 export const DEFAULT_USER_ROLE = 'user'
+
+// Currency
+export const PAYMENT_CURRENTCY = 'ETB'
+
+// Decimal validation
+export const DECIMAL_REGEX = /^\d*\.?\d*$/;
 
 export const MAX_TABLE_TEXT_LENGTH = 50
 export const MAX_DROPDOWN_TEXT_LENGTH = 25
@@ -31,6 +44,13 @@ export const SALES_ORDER_STATUSES: string[] = [
     SalesOrderStatus.PENDING,
     SalesOrderStatus.FULFILLED,
     SalesOrderStatus.CANCELED
+]
+
+export const PAYMENT_STATUSES: string[] = [
+    ALL_OPTIONS,
+    PaymentStatus.PENDING,
+    PaymentStatus.APPROVED,
+    PaymentStatus.DECLINED
 ]
 
 export const TRANSACTION_DIRECTIONS: string[] = [
@@ -100,6 +120,11 @@ export const VALIDATION_ERRORS_MAPPING = {
                 name: {displayError: 'Supplier name already exists.'},
             }
         },
+        manualPayment: {
+            fields: {
+                name: {displayError: 'invalid payment reference number.'},
+            }
+        }
     }
 }
 

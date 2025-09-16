@@ -7,66 +7,64 @@ import {
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
-  ArrowUpOnSquareIcon,
 } from '@heroicons/react/24/outline'
-import { CategoryModal } from '@/components/category/CategoryModal'
+import { ManualPaymentModal } from '@/components/manual_payment/ManualPaymentModal'
 import { supabase } from '@/supabase/supabase'
-import { Category } from '@/lib/types/Models'
+import { ManualPayment } from '@/lib/types/Models'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
-import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { DATABASE_TABLE, PaymentStatus } from '@/lib/Enums'
+import { ALL_OPTIONS, FIRST_PAGE_NUMBER, PAYMENT_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
+import { formatDateToUTC, getPaymentStatusColor, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
+import { CheckmarkIcon } from 'react-hot-toast'
 
-export default function CategoryPage() {
+export default function ManualPaymentPage() {
   const router = useRouter()
   const [searchTermTemp, setSearchTermTemp] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [categories, setCategories] = useState<Category[]>([])
+  const [manualPayments, setManualPayments] = useState<ManualPayment[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [canSeeMore, setCanSeeMore] = useState(true)
-  const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
+  const [editingManualPayment, setEditingManualPayment] = useState<ManualPayment | null>(null)
+  const [selectedStatus, setSelectedStatus] = useState(ALL_OPTIONS)
   // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
   // Record Actions
   const [currentActiveId, setCurrentActiveId] = useState<string>('')
-  const [isArchiveConfirmationModalOpen, setIsArchiveConfirmationModalOpen] = useState(false)
-  const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] = useState(false)
+  const [isApprovePaymentConfirmationModalOpen, setIsApprovePaymentConfirmationModalOpen] = useState(false)
+  const [isDeclinePaymentConfirmationModalOpen, setIsDeclinePaymentConfirmationModalOpen] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
   const {currentUser, setCurrentUser} = useUserContext()
 
   useEffect(() => {
+    console.log('currentUsercurrentUsercurrentUsercurrentUsercurrentUser:')
+    console.log(currentUser)
     // reset pagination
     router.push(`?page=${currentPage}`)
-    loadCategories()
+    loadManualPayments()
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
-  const loadCategories = async () => {
+  const loadManualPayments = async () => {
     if (!supabase || !await authorseDBAction(currentUser)) return
-    const { data, error} = await supabase.from(DATABASE_TABLE.tenants).select('*')
-    console.log(JSON.stringify(data))
-    console.log(JSON.stringify(error))
 
     const startIndex = (currentPage - 1) * recordsPerPage
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
       setLoading(true)
-      let query = supabase.from(DATABASE_TABLE.categories).select('*', {count: 'exact', head: false})
+      let query = supabase.from(DATABASE_TABLE.manual_payments).select('*', {count: 'exact', head: false})
       if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus)
       }
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%, description.ilike.%${searchTerm}%`)
+        query = query.or(`reference_number.ilike.%${searchTerm}%`)
       }
       const { data, count, error } = await query.order('created_at', { ascending: false })
       .range(startIndex, endIndex)
@@ -74,8 +72,7 @@ export default function CategoryPage() {
       if (error) {
         showServerErrorToast(error.message)
       }
-
-      setCategories(data || [])
+      setManualPayments(data || [])
       setTotalRecordsCount(count || 0)
     } catch (error: any) {
       showErrorToast()
@@ -85,34 +82,42 @@ export default function CategoryPage() {
   }
 
   const handleAdd = () => {
-    setEditingCategory(null)
+    setEditingManualPayment(null)
     setIsModalOpen(true)
   }
 
   const handleEdit = (id: string) => {
-    const category = categories.find(category => category.id === id)
-    setEditingCategory(category!)
+    const manualPayment = manualPayments.find(manualPayment => manualPayment.id === id)
+    setEditingManualPayment(manualPayment!)
     setIsModalOpen(true)
   }
 
-  const handleArchive = async (id: string) => {
+  const handleApprovePayment = async (id: string) => {
     resetModalState()
 
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
       const { error } = await supabase
-        .from(DATABASE_TABLE.categories)
-        .update({status: RecordStatus.ARCHIVED})
+        .from(DATABASE_TABLE.manual_payments)
+        .update({status: PaymentStatus.APPROVED})
         .eq('id', id)
 
       if (error) {
         showServerErrorToast(error.message)
       } else {
-        showSuccessToast('Record Archived.')
-        const remainingRecords = categories.filter(category => category.id !== id)
-        setCategories(remainingRecords)
-        setTotalRecordsCount(remainingRecords.length)
+        showSuccessToast('Payment Approved.')
+        const updatedRecords = manualPayments
+        .map(manualPayment => {
+            return manualPayment.id !== id ?
+              manualPayment
+              : {
+              ...manualPayment,
+              status: PaymentStatus.APPROVED
+            }
+        });
+        
+        setManualPayments(updatedRecords)
       }
     } catch (error: any) {
       showErrorToast()
@@ -121,24 +126,32 @@ export default function CategoryPage() {
     }
   }
 
-  const handleRestore = async (id: string) => {
+  const handleDeclinePayment = async (id: string) => {
     resetModalState()
 
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
       const { error } = await supabase
-        .from(DATABASE_TABLE.categories)
-        .update({status: RecordStatus.ACTIVE})
+        .from(DATABASE_TABLE.manual_payments)
+        .update({status: PaymentStatus.DECLINED})
         .eq('id', id)
 
       if (error) {
         showServerErrorToast(error.message)
       } else {
-        showSuccessToast('Record Restored.')
-        const remainingRecords = categories.filter(category => category.id !== id)
-        setCategories(remainingRecords)
-        setTotalRecordsCount(remainingRecords.length)
+        showSuccessToast('Record Declined.')
+        const updatedRecords = manualPayments
+        .map(manualPayment => {
+            return manualPayment.id !== id ?
+              manualPayment
+              : {
+              ...manualPayment,
+              status: PaymentStatus.DECLINED
+            }
+        });
+        
+        setManualPayments(updatedRecords)
       }
     } catch (error: any) {
       showErrorToast()
@@ -147,15 +160,15 @@ export default function CategoryPage() {
     }
   }
 
-  const handleCreate = async (category: Category) => {
+  const handleCreate = async (manualPayment: ManualPayment) => {
     if (!supabase || !await authorseDBAction(currentUser)) return
 
       // Exclude id field while creating new record 
-      const {id, ...categoryWithNoId} = category
+      const {id, ...manualPaymentWithNoId} = manualPayment
     try {
       const { error } = await supabase
-        .from(DATABASE_TABLE.categories)
-        .insert(categoryWithNoId)
+        .from(DATABASE_TABLE.manual_payments)
+        .insert(manualPaymentWithNoId)
 
       if (error) {
         handleServerError(error)
@@ -163,9 +176,8 @@ export default function CategoryPage() {
       }
 
       setIsModalOpen(false)
-
       showSuccessToast('Record Created.')
-      loadCategories()
+      loadManualPayments()
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -173,14 +185,14 @@ export default function CategoryPage() {
     }
   }
 
-  const handleUpdate = async (category: Category) => {
+  const handleUpdate = async (manualPayment: ManualPayment) => {
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
       const { error } = await supabase
-        .from(DATABASE_TABLE.categories)
-        .update(category)
-        .eq('id', category.id)
+        .from(DATABASE_TABLE.manual_payments)
+        .update(manualPayment)
+        .eq('id', manualPayment.id)
 
       if (error) {
         handleServerError(error)
@@ -189,7 +201,7 @@ export default function CategoryPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      loadCategories()
+      loadManualPayments()
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -204,13 +216,13 @@ export default function CategoryPage() {
 
   const resetModalState = () => {
     setCurrentActiveId('')
-    setIsArchiveConfirmationModalOpen(false)
-    setIsRestoreConfirmationModalOpen(false)
+    setIsApprovePaymentConfirmationModalOpen(false)
+    setIsDeclinePaymentConfirmationModalOpen(false)
   }
 
   const handleServerError = (error: PostgrestError) => {
     if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
-      showErrorToast(VALIDATION_ERRORS_MAPPING.entities.category.fields.name.displayError)
+      showErrorToast(VALIDATION_ERRORS_MAPPING.entities.manualPayment.fields.name.displayError)
     } else {
       showServerErrorToast(error.message)
     }
@@ -220,34 +232,32 @@ export default function CategoryPage() {
     <div className="space-y-6">
       <div className="md:flex md:justify-between md:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Category Management</h1>
-          <p className="text-gray-600">Manage your categories of items</p>
+          <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
+          <p className="text-gray-600">Your payments</p>
         </div>
-        <div>
-          <button
-            onClick={handleAdd}
-            className="w-full btn-primary flex items-center"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add Category
-          </button>
-        </div>
+        <button
+          onClick={handleAdd}
+          className="btn-primary flex items-center items-center"
+        >
+          <PlusIcon className="h-5 w-5 mr-2" />
+          Add Payment
+        </button>
       </div>
 
-      {/* Category Table */}
+      {/* ManualPayment Table */}
       <div className="card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  Reference Number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
+                  Date
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
-                  Record Status
+                  Payment Status
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 </th>
@@ -258,7 +268,7 @@ export default function CategoryPage() {
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search by name or description... and press ENTER key"
+                      placeholder="Search payment by reference number... and press ENTER key"
                       value={searchTermTemp}
                       onChange={(e) => {
                         setSearchTermTemp(e.target.value)
@@ -275,7 +285,7 @@ export default function CategoryPage() {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
                     <div className='w-full'>
-                        <select
+                      <select
                         value={selectedStatus}
                         onChange={(e) => { 
                           setCurrentPage(FIRST_PAGE_NUMBER)
@@ -283,7 +293,7 @@ export default function CategoryPage() {
                         }}
                         className="input-field"
                       >
-                        {RECORD_STATUSES.map(status => (
+                        {PAYMENT_STATUSES.map(status => (
                           <option key={status} value={status}>
                             {status === ALL_OPTIONS ? 'All Statuses' : status}
                           </option>
@@ -296,56 +306,53 @@ export default function CategoryPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {categories.map((category) => (
-                <tr key={category.id} className="hover:bg-gray-50">
+              {manualPayments.map((manualPayment) => (
+                <tr key={manualPayment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{category.name}</div>
+                      <div className="text-sm font-medium text-gray-900">{manualPayment.reference_number}</div>
                     </div>
                   </td>
-                  <td style={{maxWidth: 200}} className="px-6 py-4 text-sm text-gray-900 o">
-                    {canSeeMore ? shortenText(category.description, MAX_TABLE_TEXT_LENGTH) : category.description}
-                    {category.description.length > MAX_TABLE_TEXT_LENGTH && (
-                      <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
-                    )}
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(manualPayment.status!)}`}>
+                      {manualPayment.status}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(category.status!)}`}>
-                      {category.status}
-                    </span>
+                    {formatDateToUTC(manualPayment.created_at)}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
                     <div className="flex justify-center space-x-2 items-center">                        
                       <ActionsMenu
                         actions={[
                           {
-                            id: category.id!,
-                            hideOption: selectedStatus === RecordStatus.ARCHIVED,
+                            id: manualPayment.id!,
+                            hideOption: manualPayment.status !== PaymentStatus.PENDING,
                             icon: <PencilIcon className="h-4 w-4" />,
-                            label: 'Edit',
+                            label: 'Edit Details',
                             class: "w-full text-primary-600 hover:text-primary-900",
                             listener: handleEdit
                           },
                           {
-                            id: category.id!,
-                            hideOption: selectedStatus !== RecordStatus.ACTIVE,
-                            icon: <TrashIcon className="h-4 w-4" />,
-                            label: 'Archive',
-                            class: "w-full text-red-600 hover:text-red-900",
+                            id: manualPayment.id!,
+                            hideOption: manualPayment.status === PaymentStatus.APPROVED || false/*'user' !== 'admin'*/,
+                            icon: <CheckmarkIcon className="h-4 w-4" />,
+                            label: 'Approve Payment',
+                            class: "w-full text-green-600 hover:text-yellow-900",
                             listener: () => {
-                              setCurrentActiveId(category.id!)
-                              setIsArchiveConfirmationModalOpen(true)
+                              setCurrentActiveId(manualPayment.id!)
+                              setIsApprovePaymentConfirmationModalOpen(true)
                             }
                           },
                           {
-                            id: category.id!,
-                            hideOption: selectedStatus === RecordStatus.ACTIVE,
-                            icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
-                            label: 'Restore',
-                            class: "w-full text-yellow-600 hover:text-yellow-900",
+                            id: manualPayment.id!,
+                            hideOption: manualPayment.status === PaymentStatus.DECLINED || false/*'user' !== 'admin'*/,
+                            icon: <TrashIcon className="h-4 w-4" />,
+                            label: 'Decline Payment',
+                            class: "w-full text-red-600 hover:text-red-900",
                             listener: () => {
-                              setCurrentActiveId(category.id!)
-                              setIsRestoreConfirmationModalOpen(true)
+                              setCurrentActiveId(manualPayment.id!)
+                              setIsDeclinePaymentConfirmationModalOpen(true)
                             }
                           },
                         ]}
@@ -366,38 +373,40 @@ export default function CategoryPage() {
         />
       </div>
 
-      {/* Category Modal */}
-      <CategoryModal
+      {/* ManualPayment Modal */}
+      <ManualPaymentModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        category={editingCategory}
-        onSave={(category) => {
+        manualPayment={editingManualPayment}
+        onSave={(manualPayment) => {
           setLoading(true)
-          if (editingCategory) {
-            handleUpdate(category)
+          if (editingManualPayment) {
+            handleUpdate(manualPayment)
           } else {
-            handleCreate(category)
+            handleCreate(manualPayment)
           }
         }}
       />
 
-      {/* Confirmation Modal for Archive */}
+      {/* Confirmation Modal for approve manual payment */}
       <ConfirmationModal
-        isOpen={isArchiveConfirmationModalOpen}
+        isOpen={isApprovePaymentConfirmationModalOpen}
         id={currentActiveId}
-        message="Are you sure you want to archive this category?"
-        onConfirmationSuccess={handleArchive}
+        message="Are you sure you want to approve this payment?"
+        onConfirmationSuccess={handleApprovePayment}
         onConfirmationFailure={resetModalState}
       />
       
-      {/* Confirmation Modal for Restore */}
+      {/* Confirmation Modal for decline manual payment */}
       <ConfirmationModal
-        isOpen={isRestoreConfirmationModalOpen}
+        isOpen={isDeclinePaymentConfirmationModalOpen}
         id={currentActiveId}
-        message="Are you sure you want to restore this category?"
-        onConfirmationSuccess={handleRestore}
+        message="Are you sure you want to decline this payment?"
+        onConfirmationSuccess={handleDeclinePayment}
         onConfirmationFailure={resetModalState}
       />
     </div>
   )
 }
+
+

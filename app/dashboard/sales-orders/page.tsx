@@ -15,9 +15,9 @@ import {
 } from '@heroicons/react/24/outline'
 import SalesOrderModal from '@/components/sales_orders/SalesOrderModal'
 import OrderDetailsModal from '@/components/sales_orders/OrderDetailsModal'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { SalesOrderStatus, RecordStatus, RPC_FUNCTION, TABLE } from '@/lib/Enums'
+import { SalesOrderStatus, RecordStatus, RPC_FUNCTION, DATABASE_TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, SALES_ORDER_STATUSES, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getCurrentDateTimeUTC, getDateWithoutTime, getOrderStatusColor, getRecordStatusColor, isCustomServerError, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
@@ -71,7 +71,7 @@ export default function SalesOrderPage() {
 
       try {
         const { data, error } = await supabase
-          .from(TABLE.customers)
+          .from(DATABASE_TABLE.customers)
           .select('*')
           .eq('status', RecordStatus.ACTIVE)
           .order('name')
@@ -107,7 +107,7 @@ export default function SalesOrderPage() {
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE.sales_orders).select(`
+      let query = supabase.from(DATABASE_TABLE.sales_orders).select(`
           *,
           customer:customers(*),
           order_items:sales_order_items(
@@ -178,7 +178,7 @@ export default function SalesOrderPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.sales_orders)
+        .from(DATABASE_TABLE.sales_orders)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
@@ -204,7 +204,7 @@ export default function SalesOrderPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.sales_orders)
+        .from(DATABASE_TABLE.sales_orders)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
@@ -294,7 +294,7 @@ export default function SalesOrderPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.sales_orders)
+        .from(DATABASE_TABLE.sales_orders)
         .update({order_status: status})
         .eq('id', id)
 

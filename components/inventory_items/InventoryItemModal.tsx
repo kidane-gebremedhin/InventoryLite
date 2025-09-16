@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Category, InventoryItem } from '@/lib/types/Models';
 import { showErrorToast } from '@/lib/helpers/Helper';
+import { DECIMAL_REGEX } from '@/lib/Constants';
 
 interface InventoryItemModalProps {
   isOpen: boolean
@@ -64,6 +65,10 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
   }
 
   const handleInputChange = (field: keyof InventoryItem, value: any) => {
+    if (value && field === 'unit_price' && !DECIMAL_REGEX.test(value)) {
+      return
+    }
+    
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -141,12 +146,11 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
                 </label>
                 <div className="relative">
                   <input
-                    type="number"
-                    value={formData.unit_price}
-                    onChange={(e) => handleInputChange('unit_price', parseFloat(e.target.value))}
-                    className="input-field pl-8"
-                    min="1"
-                    step="1"
+                    type="text"
+                    value={formData.unit_price! > 0 ? formData.unit_price : ''}
+                    onChange={(e) => handleInputChange('unit_price', e.target.value)}
+                    className="input-field"
+                    required
                   />
                 </div>
               </div>

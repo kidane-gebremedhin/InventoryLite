@@ -42,6 +42,12 @@ export enum FeedbackStatus {
     CLOSED = 'closed'
 }
 
+export enum PaymentStatus {
+    PENDING = 'pending',
+    APPROVED = 'approved',
+    DECLINED = 'declined'
+}
+
 export enum FeedbackPriority {
     LOW = 'low',
     MEDIUM = 'medium',
@@ -54,7 +60,8 @@ export enum UserRole {
     USER = 'user'
 }
 
-export enum TABLE {
+export enum DATABASE_TABLE {
+    tenants = 'tenants',
     categories = 'categories',
     customers = 'customers',
     inventory_items = 'inventory_items',
@@ -65,7 +72,8 @@ export enum TABLE {
     stores = 'stores',
     suppliers = 'suppliers',
     transactions = 'transactions',
-    feedback = 'feedback'
+    feedback = 'feedback',
+    manual_payments = 'manual_payments'
 }
 
 export enum ReportType {
@@ -86,5 +94,11 @@ export enum RPC_FUNCTION {
     UNRECEIVED_PURCHASE_ORDERS = 'generate_unreceived_purchase_orders_report',
     DASHBOARD_STATS = 'build_dashboard_stats',
     PURCHASE_ORDER_MONTHLY_TRENDS = 'purchase_order_monthly_trends',
-    SALES_ORDER_MONTHLY_TRENDS = 'sales_order_monthly_trends'
+    SALES_ORDER_MONTHLY_TRENDS = 'sales_order_monthly_trends',
+    FETCH_USER_SUBSCRIPTION_INFO = 'fetch_user_subscription_info'
+}
+
+export enum STRIPE_PAYMENT_EVENT {
+    CHECKOUT_SESSION_COMPLETED = 'checkout.session.completed',
+    CUSTOMER_SUBSCRIPTION_DELETED = 'customer.subscription.deleted'
 }

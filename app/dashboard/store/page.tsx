@@ -10,10 +10,10 @@ import {
   ArrowUpOnSquareIcon,
 } from '@heroicons/react/24/outline'
 import { StoreModal } from '@/components/store/StoreModal'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { Store } from '@/lib/types/Models'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, TABLE } from '@/lib/Enums'
+import { RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
@@ -51,15 +51,14 @@ export default function StorePage() {
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
   const loadStores = async () => {
-    setLoading(true)
-
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     const startIndex = (currentPage - 1) * recordsPerPage
     const endIndex = currentPage * recordsPerPage - 1
 
     try {
-      let query = supabase.from(TABLE.stores).select('*', {count: 'exact', head: false})
+      setLoading(true)
+      let query = supabase.from(DATABASE_TABLE.stores).select('*', {count: 'exact', head: false})
       if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus)
       }
@@ -99,7 +98,7 @@ export default function StorePage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.stores)
+        .from(DATABASE_TABLE.stores)
         .update({status: RecordStatus.ARCHIVED})
         .eq('id', id)
 
@@ -125,7 +124,7 @@ export default function StorePage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.stores)
+        .from(DATABASE_TABLE.stores)
         .update({status: RecordStatus.ACTIVE})
         .eq('id', id)
 
@@ -151,7 +150,7 @@ export default function StorePage() {
       const {id, ...storeWithNoId} = store
     try {
       const { error } = await supabase
-        .from(TABLE.stores)
+        .from(DATABASE_TABLE.stores)
         .insert(storeWithNoId)
 
       if (error) {
@@ -174,7 +173,7 @@ export default function StorePage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.stores)
+        .from(DATABASE_TABLE.stores)
         .update(store)
         .eq('id', store.id)
 
@@ -214,7 +213,7 @@ export default function StorePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="md:flex md:justify-between md:items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Store Management</h1>
           <p className="text-gray-600">Manage your stores of items</p>

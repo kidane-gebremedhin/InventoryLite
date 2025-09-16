@@ -1,9 +1,12 @@
 'use client';
-import { User } from '@/lib/types/Models';
+import { User, UserSubscriptionInfo } from '@/lib/types/Models';
 import { Dispatch, SetStateAction, createContext, useEffect, useState, useContext } from 'react';
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { useRouter } from 'next/navigation'
 import { SIGNED_OUT } from '@/lib/Constants';
+import { RPC_FUNCTION } from '@/lib/Enums';
+import { showServerErrorToast } from '@/lib/helpers/Helper';
+import { Session } from '@supabase/supabase-js';
 
 // Define the type for the context value
 interface UserContextType {
@@ -20,13 +23,27 @@ export function UserProvider({ children }: any) {
     id: '',
     fullName: "",
     email: "",
-    picturePicture: ""
+    picturePicture: "",
+    subscriptionInfo: null
   }
   
   const [currentUser, setCurrentUser] = useState<User>(defaultUser);
   const router = useRouter()
 
   useEffect(() => {
+    const fetchUserSubscriptionInfo = async (session: Session): Promise<UserSubscriptionInfo> => {
+      // RPC call to fetch subscription info
+      const searchParams = { current_user_id: session.user.id }
+      const { data, error }: {data: UserSubscriptionInfo[], error: any} = await supabase
+        .rpc(RPC_FUNCTION.FETCH_USER_SUBSCRIPTION_INFO, searchParams)
+      if (error) {
+        showServerErrorToast('Login failed.')
+        return null;
+      }
+
+      return data.length > 0 ? data[0] : null;
+    }
+
     const fetchCurrentUserInfo = async () => {
       if (!supabase) {
         return
@@ -43,7 +60,8 @@ export function UserProvider({ children }: any) {
         id: session.user.id,
         fullName: session.user.user_metadata.full_name,
         email: session.user.email!,
-        picturePicture: session.user.user_metadata.picture
+        picturePicture: session.user.user_metadata.picture,
+        subscriptionInfo: await fetchUserSubscriptionInfo(session)
       }
 
       setCurrentUser(userData)
@@ -64,8 +82,10 @@ export function UserProvider({ children }: any) {
             id: session.user.id,
             fullName: session.user.user_metadata.full_name,
             email: session.user.email!,
-            picturePicture: session.user.user_metadata.picture
+            picturePicture: session.user.user_metadata.picture,
+            subscriptionInfo: await fetchUserSubscriptionInfo(session)
           }
+          
           setCurrentUser(userData)
         }
       }

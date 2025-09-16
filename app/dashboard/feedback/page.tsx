@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/supabase/supabase'
 import { PlusIcon, StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
@@ -10,7 +10,7 @@ import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { useUserContext } from '@/components/context_apis/UserProvider'
 import { formatDateToUTC, getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { DEFAULT_USER_ROLE, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES } from '@/lib/Constants'
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, TABLE } from '@/lib/Enums'
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 
 interface Feedback {
@@ -46,13 +46,12 @@ export default function FeedbackPage() {
   }, [])
 
   const loadFeedbacks = async () => {
-    setLoading(true)
-
     if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
+      setLoading(true)
       const { data, error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -71,7 +70,7 @@ export default function FeedbackPage() {
 
     try {
       const { error } = await supabase
-        .from(TABLE.feedback)
+        .from(DATABASE_TABLE.feedback)
         .insert({
           category: formData.category,
           subject: formData.subject,
