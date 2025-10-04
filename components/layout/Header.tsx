@@ -1,32 +1,31 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/supabase/supabase'
+
 import { 
   BellIcon, 
   UserCircleIcon,
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
 import { FeedbackNotification } from '@/components/feedback/FeedbackNotification'
-import { useUserContext } from '@/components/context_apis/UserProvider'
 import MiniLoading from '../helpers/MiniLoading'
 import { capitalizeFirstLetter } from '@/lib/helpers/Helper'
+import { useAuthContext } from '../providers/AuthProvider'
 
 
-export function Header() {
+
+export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [loading, setLoading] = useState(false)
     // Global States
-  const {currentUser, setCurrentUser} = useUserContext()
+  const {currentUser, signOut} = useAuthContext()
 
-  const handleSignOut = async () => {
-    if (!supabase) return
-    
+  const handleSignOut = async () => {    
     setLoading(true)
-    await supabase.auth.signOut()
+    await signOut()
   }
 
-  if (loading) {
+  if (loading || !currentUser) {
     return <MiniLoading />
   }
   

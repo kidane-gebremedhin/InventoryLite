@@ -4,17 +4,6 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import { PurchaseOrder, SalesOrder } from '@/lib/types/Models'
 import { calculateOrderTotalProce, formatDateToUTC, getDateWithoutTime, getOrderStatusColor } from '@/lib/helpers/Helper'
 
-interface OrderItem {
-  id: string
-  inventory_item_id: string
-  quantity: number
-  unit_price: number
-  item: {
-    sku: string
-    name: string
-  }
-}
-
 interface orderModalProps {
   isOpen: boolean
   onClose: () => void

@@ -4,13 +4,20 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { headers } from 'next/headers';
 import { Stripe } from 'stripe'
-import { createServerClient } from "@/supabase/supabase";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+// Do not export this, only use it for webhooks
+const createServerClientWithServiceKey = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+}
+
 export async function POST(req) {
-    const supabase = createServerClient();
+    const supabase = createServerClientWithServiceKey();
     const body: string = await req.text();
     const signature: string | null = headers().get('stripe-signature');
 
@@ -39,20 +46,7 @@ export async function POST(req) {
 
     const data: Stripe.Event.Data = event.data;
     const eventType: string = event.type;
-    /*
-    try {
-        const { data, error } = await supabase
-        .from(DATABASE_TABLE.tenants)
-        .insert({name: eventType + new Date().getTime(), domain: eventType + new Date().getTime(), status: 'active', price_id: eventType + new Date().getTime()});
-    if (error) {
-        console.log(`Tenant creation failed: ${JSON.stringify(data)}`);
-        return NextResponse.json({ error: 'Unknown error' }, { status: 500 });
-    }
-    } catch (e) {
-        console.log(`Tenant creation thrown exception: ${JSON.stringify(e)}`);
-        return NextResponse.json({ error: 'Unknown error' }, { status: 500 });
-    }
-    */
+    
     try {
         switch (eventType) {
             case STRIPE_PAYMENT_EVENT.CHECKOUT_SESSION_COMPLETED: {
@@ -125,16 +119,14 @@ export async function POST(req) {
 
                 break;
                 */
+               break;
             }
 
             default:
                 // Unhandled event type
-                console.log(`Unhandled event type ${eventType}`);
+                break;
         }
     } catch (e: unknown) {
-        if (e instanceof Error) {
-            console.error('Stripe error: ' + e.message + ' | EVENT TYPE: ' + eventType);
-        }
     }
 
     return NextResponse.json({ received: true });

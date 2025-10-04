@@ -1,11 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { StarIcon } from '@heroicons/react/24/outline'
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import { FeedbackRating } from './FeedbackRating'
-import { APP_NAME } from '@/lib/Constants'
+import { APP_NAME } from '@/lib/app_config/config'
 
 interface FeedbackWidgetProps {
   className?: string

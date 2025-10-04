@@ -1,3 +1,20 @@
+export enum SubscriptionStatus {
+    FREE_TRIAL = 'free_trial',
+    SUBSCRIBED = 'subscribed',
+    UNSUBSCRIBED = 'unsubscribed',
+    EXPIRED = 'expired',
+    TERMINATED = 'terminated'
+}
+
+export enum SubscriptionPaymentType {
+    BANK_TRANSFER = 'bank_transfer',
+    PAYMENT_GATEWAY = 'payment_gateway'
+}
+
+export enum CurrencyType {
+    ETB = 'ETB',
+    USD = 'USD'
+}
 
 export enum RecordStatus {
     ACTIVE = 'active',
@@ -73,7 +90,8 @@ export enum DATABASE_TABLE {
     suppliers = 'suppliers',
     transactions = 'transactions',
     feedback = 'feedback',
-    manual_payments = 'manual_payments'
+    manual_payments = 'manual_payments',
+    domains = 'domains',
 }
 
 export enum ReportType {
@@ -101,4 +119,32 @@ export enum RPC_FUNCTION {
 export enum STRIPE_PAYMENT_EVENT {
     CHECKOUT_SESSION_COMPLETED = 'checkout.session.completed',
     CUSTOMER_SUBSCRIPTION_DELETED = 'customer.subscription.deleted'
+}
+
+export enum ROUTE_PATH {
+    // Public routes
+    LANDING_PAGE = '/',
+    SIGNIN = '/auth/signin',
+    PRICING_PLAN = '/pricing-plan',
+    PRIVACY_POLICY = '/privacy-policy',
+    PRODUCT_DEMO = '/product-demo',
+    TERMS_OF_SERVICE = '/terms-of-service',
+    OAUTH_GOOGLE_WEBHOOK = '/api/oauth/google',
+    // Authenticated routes
+    DASHBOARD = '/dashboard',
+    CATEGORY = '/dashboard/category',
+    COMPLETE_PROFILE = '/dashboard/complete-profile',
+    CUSTOMER = '/dashboard/customer',
+    DOMAIN = '/dashboard/domain',
+    FEEDBACK = '/dashboard/feedback',
+    FEEDBACK_MANAGEMENT = '/dashboard/feedback-management',
+    INVENTORY_ITEM = '/dashboard/inventory-item',
+    MANUAL_PAYMENT = '/dashboard/manual-payment',
+    PURCHASE_ORDER = '/dashboard/purchase-order',
+    REPORT = '/dashboard/report',
+    SALES_ORDER = '/dashboard/sales-order',
+    SETTING = '/dashboard/setting',
+    STORE = '/dashboard/store',
+    SUPPLIER = '/dashboard/supplier',
+    TRANSACTION = '/dashboard/transaction'
 }

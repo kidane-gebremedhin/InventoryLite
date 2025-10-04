@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/supabase/supabase'
+
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { DEFAULT_USER_ROLE } from '@/lib/Constants'
-import { DATABASE_TABLE } from '@/lib/Enums'
+import { DATABASE_TABLE, ROUTE_PATH } from '@/lib/Enums'
+
+import { useAuthContext } from '../providers/AuthProvider'
 
 interface FeedbackNotificationProps {
   className?: string
@@ -14,6 +16,7 @@ interface FeedbackNotificationProps {
 export function FeedbackNotification({ className = '' }: FeedbackNotificationProps) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [userRole, setUserRole] = useState<string>(DEFAULT_USER_ROLE)
+  const { supabase } = useAuthContext();
 
   useEffect(() => {
     if (userRole === 'admin') {
@@ -33,7 +36,6 @@ export function FeedbackNotification({ className = '' }: FeedbackNotificationPro
       if (error) throw error
       setUnreadCount(data?.length || 0)
     } catch (error) {
-      console.error('Error loading unread feedback count:', error)
     }
   }
 
@@ -44,7 +46,7 @@ export function FeedbackNotification({ className = '' }: FeedbackNotificationPro
 
   return (
     <Link 
-      href="/dashboard/feedback" 
+      href={ROUTE_PATH.FEEDBACK} 
       className={`relative p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 ${className}`}
     >
       <ChatBubbleLeftRightIcon className="h-6 w-6" />

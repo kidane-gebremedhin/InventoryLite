@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/supabase/supabase'
+
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { Customer, InventoryItem, SalesOrder, SalesOrderItem, Store } from '@/lib/types/Models'
 import { SalesOrderStatus, RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { calculateOrderTotalProce, formatDateToUTC, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
 import { DECIMAL_REGEX, SALES_ORDER_STATUSES } from '@/lib/Constants'
+
+import { useAuthContext } from '../providers/AuthProvider'
 
 interface SalesOrderModalProps {
   isOpen: boolean
@@ -21,7 +23,6 @@ const emptyEntry: SalesOrder = {
   customer_id: '',
   order_status: SalesOrderStatus.PENDING,
   expected_date: '',
-  tenant_id: '',
   status: RecordStatus.ACTIVE,
   created_at: '',
   updated_at: '',
@@ -35,6 +36,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<SalesOrder>>(emptyEntry)
   const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([])
+  const { supabase } = useAuthContext();
 
   useEffect(() => {
     // reset form
@@ -361,6 +363,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                         className="input-field"
                         required
                       >
+                        <option value="">Select Store</option>
                         {stores.map(store => (
                           <option key={store.id} value={store.id}>
                             {store.name}

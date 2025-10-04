@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { supabase } from '@/supabase/supabase'
-import { APP_NAME } from '@/lib/Constants'
+
 import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import { useUserContext } from '../context_apis/UserProvider'
 import { FeedbackPriority, DATABASE_TABLE } from '@/lib/Enums'
+import { APP_NAME } from '@/lib/app_config/config'
+
+import { useAuthContext } from '../providers/AuthProvider'
 
 interface FeedbackRatingProps {
   onFeedbackSubmitted?: () => void
@@ -25,7 +26,8 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
     category: 'general' as const
   })
   const [submitting, setSubmitting] = useState(false)
-  const {currentUser, setCurrentUser} = useUserContext()
+  const {currentUser} = useAuthContext()
+  const { supabase } = useAuthContext();
 
   const handleStarClick = (star: number) => {
     setRating(star)

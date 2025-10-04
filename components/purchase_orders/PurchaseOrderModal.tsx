@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/supabase/supabase'
+
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier } from '@/lib/types/Models'
 import { PurchaseOrderStatus, RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { calculateOrderTotalProce, formatDateToUTC, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
 import { DECIMAL_REGEX, PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
+
+import { useAuthContext } from '../providers/AuthProvider'
 
 interface PurchaseOrderModalProps {
   isOpen: boolean
@@ -21,7 +23,6 @@ const emptyEntry: PurchaseOrder = {
   supplier_id: '',
   order_status: PurchaseOrderStatus.PENDING,
   expected_date: '',
-  tenant_id: '',
   status: RecordStatus.ACTIVE,
   created_at: '',
   updated_at: '',
@@ -35,6 +36,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<PurchaseOrder>>(emptyEntry)
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([])
+  const { supabase } = useAuthContext();
 
   useEffect(() => {
     // reset form

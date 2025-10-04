@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/supabase/supabase'
+
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { 
   ChatBubbleLeftRightIcon,
@@ -12,6 +12,8 @@ import {
 import MiniLoading from '../helpers/MiniLoading'
 import { getCurrentDateTimeUTC } from '@/lib/helpers/Helper'
 import { DATABASE_TABLE } from '@/lib/Enums'
+
+import { useAuthContext } from '../providers/AuthProvider'
 
 interface FeedbackSummaryProps {
   className?: string
@@ -34,6 +36,7 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
     recentCount: 0
   })
   const [loading, setLoading] = useState(true)
+  const { supabase } = useAuthContext();
 
   useEffect(() => {
     loadFeedbackStats()
@@ -72,7 +75,6 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
         recentCount
       })
     } catch (error) {
-      console.error('Error loading feedback stats:', error)
     } finally {
       setLoading(false)
     }

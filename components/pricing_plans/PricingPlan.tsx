@@ -81,13 +81,13 @@ export default function PricingPlan() {
         <div className="mx-auto max-w-7xl px-6 py-0 sm:py-0 lg:px-8">
           <div className="bg-gradient-to-br from-green-500 to-teal-500 text-white py-4">
             <div className="mx-auto max-w-4xl text-center">
-                <h2 className="text-base font-semibold leading-7 text-orange-300">Pricing</h2>
+                <p className="text-base font-semibold leading-7 text-orange-300 text-10xl">Pricing</p>
                 <p className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
-                    Simple plans for businesses of all sizes
+                    Best plans for your modern businesses
                 </p>
             </div>
             <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-8">
-                Choose a plan that scales with your business. Get started with a 14-day free trial on any plan, no credit card required.
+                Choose a plan that matches with your business needs. Get started with a 7-day free trial on any plan, no credit card required.
             </p>
           </div>
           {/* This is the container for the pricing tiers. It is now a responsive grid. */}

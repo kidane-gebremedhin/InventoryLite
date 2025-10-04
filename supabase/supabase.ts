@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { PurchaseOrderStatus } from '../lib/Enums'
+import { PurchaseOrderStatus, TransactionDirection } from '../lib/Enums'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -15,12 +15,17 @@ export const supabase = supabaseUrl && supabaseAnonKey
     })
   : null
 
-export const createServerClient = () => {
+export const createServerClient = (token: string) => {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    supabaseUrl,
+    supabaseAnonKey, {
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    }
   )
 }
+
 
 export type Database = {
   public: {
@@ -307,7 +312,7 @@ export type Database = {
       transactions: {
         Row: {
           id: string
-          type: 'in' | 'out'
+          type: TransactionDirection.IN | TransactionDirection.OUT
           item_id: string
           quantity: number
           reference_id: string
@@ -316,7 +321,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          type: 'in' | 'out'
+          type: TransactionDirection.IN | TransactionDirection.OUT
           item_id: string
           quantity: number
           reference_id: string
@@ -325,7 +330,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          type?: 'in' | 'out'
+          type?: TransactionDirection.IN | TransactionDirection.OUT
           item_id?: string
           quantity?: number
           reference_id?: string

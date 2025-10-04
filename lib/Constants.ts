@@ -1,10 +1,4 @@
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PaymentStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "./Enums"
-
-export const APP_NAME = 'InventoryLite'
-export const APP_MOTO = 'Demand and Inventory Management Software for Modern Businesses'
-export const CONTACT_EMAIL = 'info@ethiotechsolutions.com'
-export const APP_TITLE = 'Demand Tracking and Inventory Management Simplified!'
-export const APP_DESCRIPTION = 'A comprehensive demand tracking and inventory management system for businesses of all sizes'
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PaymentStatus, PurchaseOrderStatus, RecordStatus, ROUTE_PATH, SalesOrderStatus, TransactionDirection } from "./Enums"
 
 export const ALL_OPTIONS = ''
 export const TEXT_SEARCH_TRIGGER_KEY = 'Enter'
@@ -81,9 +75,29 @@ export const FEEDBACK_PRIORITIES = [
   { value: FeedbackPriority.URGENT, label: 'Urgent', color: 'bg-red-100 text-red-800' },
 ]
 
+export const PUBLIC_PATHS = [
+    ROUTE_PATH.LANDING_PAGE.toString(),
+    ROUTE_PATH.SIGNIN.toString(),
+    ROUTE_PATH.PRICING_PLAN.toString(),
+    ROUTE_PATH.PRIVACY_POLICY.toString(),
+    ROUTE_PATH.PRODUCT_DEMO.toString(),
+    ROUTE_PATH.TERMS_OF_SERVICE.toString(),
+    ROUTE_PATH.OAUTH_GOOGLE_WEBHOOK.toString()
+]
+
 export const VALIDATION_ERRORS_MAPPING = {
     serverError: 'violates unique constraint',
     entities: {
+        userSubscriptionInfo: {
+            fields: {
+                name: {displayError: 'Selected name is taken, please select another name.'},
+            }
+        },
+        domain: {
+            fields: {
+                name: {displayError: 'Domain name already exists.'},
+            }
+        },
         store: {
             fields: {
                 name: {displayError: 'Store name already exists.'},

@@ -1,207 +1,24 @@
-import { supabase } from '@/supabase/supabase'
+
 import { getCurrentDateTimeUTC, showErrorToast } from '../helpers/Helper'
 import { User } from '../types/Models'
 import { DATABASE_TABLE, PurchaseOrderStatus, SalesOrderStatus, UserRole } from '../Enums'
 
+
 export const getCurrentUserRole = (user: User): string => {
-  return user.email === 'kidane10g.edu@gmail.com' ? UserRole.ADMIN : UserRole.USER
+  return user && user.email === 'kidane10g.edu@gmail.com' ? UserRole.ADMIN : UserRole.USER
 }
 
 export const authorseDBAction = async (user: User): Promise<User | undefined> => {
-  if (!supabase) return
-
   if (!user) {
-    showErrorToast('Unauthorised attempt.')
+    //showErrorToast('Unauthorised attempt.')
+    console.log('Unauthorised attempt.')
     return
   }
 
   return user
 }
 
-// Purchase Order Queries
-export const fetchPurchaseOrders = async () => {
-  if (!supabase) return []
-
-  try {
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select(`
-        *,
-        supplier:suppliers(name, email),
-        items:purchase_order_items(count)
-      `)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-
-    return data
-  } catch (error: any) {
-    console.error('Error fetching purchase orders:', error)
-    throw error
-  }
-}
-
-export const fetchPurchaseOrderDetails = async (orderId: string) => {
-  if (!supabase) return null
-
-  try {
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select(`
-        *,
-        supplier:suppliers(name, email),
-        items:purchase_order_items(
-          *,
-          item:inventory_items(sku, name, unit_price)
-        )
-      `)
-      .eq('id', orderId)
-      .single()
-
-    if (error) throw error
-    return data
-  } catch (error: any) {
-    console.error('Error fetching purchase order details:', error)
-    throw error
-  }
-}
-
-// Sales Order Queries
-export const fetchSalesOrders = async () => {
-  if (!supabase) return []
-
-  try {
-    const { data, error } = await supabase
-      .from('sales_orders')
-      .select(`
-        *,
-        customer:customers(name, email),
-        items:sales_order_items(count)
-      `)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-
-    return data
-  } catch (error: any) {
-    console.error('Error fetching sales orders:', error)
-    throw error
-  }
-}
-
-export const fetchSalesOrderDetails = async (orderId: string) => {
-  if (!supabase) return null
-
-  try {
-    const { data, error } = await supabase
-      .from('sales_orders')
-      .select(`
-        *,
-        customer:customers(name, email),
-        items:sales_order_items(
-          *,
-          item:inventory_items(sku, name, unit_price, quantity)
-        )
-      `)
-      .eq('id', orderId)
-      .single()
-
-    if (error) throw error
-    return data
-  } catch (error: any) {
-    console.error('Error fetching sales order details:', error)
-    throw error
-  }
-}
-
-// Supplier and Customer Queries
-export const fetchSuppliers = async () => {
-  if (!supabase) return []
-
-  try {
-    const { data, error } = await supabase
-      .from('suppliers')
-      .select('id, name, email')
-      .order('name')
-
-    if (error) throw error
-    return data || []
-  } catch (error: any) {
-    console.error('Error fetching suppliers:', error)
-    throw error
-  }
-}
-
-export const fetchCustomers = async () => {
-  if (!supabase) return []
-
-  try {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('id, name, email')
-      .order('name')
-
-    if (error) throw error
-    return data || []
-  } catch (error: any) {
-    console.error('Error fetching customers:', error)
-    throw error
-  }
-}
-
-// Inventory Queries
-export const fetchInventoryItems = async () => {
-  if (!supabase) return []
-
-  try {
-    const { data, error } = await supabase
-      .from('inventory_items')
-      .select('id, sku, name, unit_price, quantity')
-      .eq('status', 'active')
-      .order('name')
-
-    if (error) throw error
-    return data || []
-  } catch (error: any) {
-    console.error('Error fetching inventory items:', error)
-    throw error
-  }
-}
-
-// Order Status Update Queries
-export const updatePurchaseOrderStatus = async (orderId: string, status: string) => {
-  if (!supabase) return
-
-  try {
-    const { error } = await supabase
-      .from('purchase_orders')
-      .update({ status })
-      .eq('id', orderId)
-
-    if (error) throw error
-  } catch (error: any) {
-    console.error('Error updating purchase order status:', error)
-    throw error
-  }
-}
-
-export const updateSalesOrderStatus = async (orderId: string, status: string) => {
-  if (!supabase) return
-
-  try {
-    const { error } = await supabase
-      .from('sales_orders')
-      .update({ status })
-      .eq('id', orderId)
-
-    if (error) throw error
-  } catch (error: any) {
-    console.error('Error updating sales order status:', error)
-    throw error
-  }
-}
-
-export const insertSeedData = async () => {
+export const insertSeedData = async (supabase) => {
   if (!supabase) return
 
   try {
@@ -212,7 +29,6 @@ export const insertSeedData = async () => {
       .single()
     if (storeError) {
       showErrorToast('stores err')
-      console.log(storeError)
       return
     }
 
@@ -223,7 +39,6 @@ export const insertSeedData = async () => {
       .single()
     if (categoryError) {
       showErrorToast('categories err')
-      console.log(categoryError)
       return
     }
 
@@ -234,7 +49,6 @@ export const insertSeedData = async () => {
       .single()
     if (inventoryItemError) {
       showErrorToast('inventory_items err')
-      console.log(inventoryItemError)
       return
     }
 
@@ -245,7 +59,6 @@ export const insertSeedData = async () => {
       .single()
     if (supplierError) {
       showErrorToast('suppliers err')
-      console.log(supplierError)
       return
     }
 
@@ -256,7 +69,6 @@ export const insertSeedData = async () => {
       .single()
     if (purchaseOrderError) {
       showErrorToast('purchase_orders err')
-      console.log(purchaseOrderError)
       return
     }
 
@@ -267,7 +79,6 @@ export const insertSeedData = async () => {
       .single()
     if (purchaseOrderItemError) {
       showErrorToast('purchase_order_items err')
-      console.log(purchaseOrderItemError)
       return
     }
 
@@ -278,7 +89,6 @@ export const insertSeedData = async () => {
       .single()
     if (customerError) {
       showErrorToast('customers err')
-      console.log(customerError)
       return
     }
 
@@ -289,7 +99,6 @@ export const insertSeedData = async () => {
       .single()
     if (salesOrderError) {
       showErrorToast('sales_orders err')
-      console.log(salesOrderError)
       return
     }
 
@@ -300,7 +109,6 @@ export const insertSeedData = async () => {
       .single()
     if (salesOrderItemsError) {
       showErrorToast('sales_order_items err')
-      console.log(salesOrderItemsError)
       return
     }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/supabase/supabase'
+
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { 
   ChatBubbleLeftRightIcon, 
@@ -11,10 +11,11 @@ import {
   EyeIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline'
-import toast from 'react-hot-toast'
 import { ALL_OPTIONS, FEEDBACK_STATUSES } from '@/lib/Constants'
 import { FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { formatDateToUTC, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+
+import { useAuthContext } from '../providers/AuthProvider'
 
 interface Feedback {
   id: string
@@ -30,7 +31,8 @@ interface Feedback {
   created_at: string
   tenant: {
     name: string
-    domain: string
+    domain_id: string
+    email: string
   }
 }
 
@@ -41,6 +43,7 @@ export function AdminFeedbackManager() {
   const [showResponseModal, setShowResponseModal] = useState(false)
   const [responseText, setResponseText] = useState('')
   const [filter, setFilter] = useState(ALL_OPTIONS)
+  const { supabase } = useAuthContext();
 
   useEffect(() => {
     loadFeedbacks()
@@ -209,7 +212,7 @@ export function AdminFeedbackManager() {
                     {feedback.priority}
                   </span>
                   <span className="text-sm text-gray-500">
-                    by {feedback.tenant?.name || feedback.tenant?.domain}
+                    by {feedback.tenant?.name || feedback.tenant?.domain_id}
                   </span>
                 </div>
                 <div className="text-sm text-gray-500">

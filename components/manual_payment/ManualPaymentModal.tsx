@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { ManualPayment } from '@/lib/types/Models';
 import { showErrorToast } from '@/lib/helpers/Helper';
-import { useUserContext } from '../context_apis/UserProvider';
 import { PAYMENT_CURRENTCY } from '@/lib/Constants';
+import { useAuthContext } from '../providers/AuthProvider';
 
 interface ManualPaymentModalProps {
   isOpen: boolean
@@ -17,7 +17,7 @@ interface ManualPaymentModalProps {
 
 
 export function ManualPaymentModal({ isOpen, onClose, manualPayment, onSave }: ManualPaymentModalProps) {
-  const {currentUser, setCurrentUser} = useUserContext()
+  const {currentUser} = useAuthContext()
   const emptyEntry: Partial<ManualPayment> = {
     reference_number: '',
     amount: 0
