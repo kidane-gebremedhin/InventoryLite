@@ -3,9 +3,8 @@ import { Inter } from 'next/font/google'
 import './../globals.css'
 import { Toaster } from 'react-hot-toast'
 import { LoadingProvider } from '@/components/context_apis/LoadingProvider'
-import { APP_DESCRIPTION, APP_NAME, APP_TITLE, GOOGLE_SOURCE_SCRIPT } from '@/lib/app_config/config'
+import { APP_DESCRIPTION, APP_NAME, APP_TITLE } from '@/lib/app_config/config'
 import { AuthProvider } from '@/components/providers/AuthProvider'
-import { createClient } from '@/supabase/server'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,13 +18,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient();
-
   return (
     <html lang="en">
-      <head>
-        <script src={GOOGLE_SOURCE_SCRIPT} async defer></script>
-      </head>
       <body className={inter.className}>
         <div className="min-h-screen bg-gray-50 font-sans text-gray-800 antialiased">
           <div className='pb-8'>

@@ -1,6 +1,6 @@
 'use client'
 
-import { formatDateToUTC, getRecordStatusColor } from '@/lib/helpers/Helper'
+import { formatDateToLocalDate, getRecordStatusColor } from '@/lib/helpers/Helper'
 import { InventoryItem } from '@/lib/types/Models'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import CloseModal from '../helpers/CloseModal'
@@ -76,11 +76,11 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                 </div>
                 <div>
                   <span className="text-gray-600">Created:</span>
-                  <span className="ml-2">{formatDateToUTC(item.created_at!)}</span>
+                  <span className="ml-2">{formatDateToLocalDate(item.created_at!)}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Updated:</span>
-                  <span className="ml-2">{formatDateToUTC(item.updated_at!)}</span>
+                  <span className="ml-2">{formatDateToLocalDate(item.updated_at!)}</span>
                 </div>
               </div>
             </div>

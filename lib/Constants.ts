@@ -82,7 +82,8 @@ export const PUBLIC_PATHS = [
     ROUTE_PATH.PRIVACY_POLICY.toString(),
     ROUTE_PATH.PRODUCT_DEMO.toString(),
     ROUTE_PATH.TERMS_OF_SERVICE.toString(),
-    ROUTE_PATH.OAUTH_GOOGLE_WEBHOOK.toString()
+    ROUTE_PATH.OAUTH_GOOGLE_WEBHOOK.toString(),
+    '/redis-test'
 ]
 
 export const VALIDATION_ERRORS_MAPPING = {
@@ -161,5 +162,5 @@ export const MONTH_NAME_MAPPING = new Map([
     ['12', 'Dec']
 ])
 
-export const RECORDS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
+export const RECORDS_PER_PAGE_OPTIONS = [2, 10, 25, 50, 100]
 export const REPORTS_PER_PAGE_OPTIONS = [25, 50, 100, 200, 500, 1000]

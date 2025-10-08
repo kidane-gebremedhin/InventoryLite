@@ -3,8 +3,8 @@
 
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
-import Loading from '@/components/helpers/Loading'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
+import LoadingOverlay from '@/components/helpers/LoadingOverlay'
 
 export default function DashboardLayout({
   children,
@@ -18,7 +18,7 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="lg:pl-64">
         <Header />
-        <Loading isLoading={loading} />
+        <LoadingOverlay loading={loading} />
         <main className="py-6">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             {children}

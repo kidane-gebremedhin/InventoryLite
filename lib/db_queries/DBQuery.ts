@@ -1,21 +1,11 @@
 
-import { getCurrentDateTimeUTC, showErrorToast } from '../helpers/Helper'
+import { getCurrentDateTime, showErrorToast } from '../helpers/Helper'
 import { User } from '../types/Models'
 import { DATABASE_TABLE, PurchaseOrderStatus, SalesOrderStatus, UserRole } from '../Enums'
 
 
 export const getCurrentUserRole = (user: User): string => {
   return user && user.email === 'kidane10g.edu@gmail.com' ? UserRole.ADMIN : UserRole.USER
-}
-
-export const authorseDBAction = async (user: User): Promise<User | undefined> => {
-  if (!user) {
-    //showErrorToast('Unauthorised attempt.')
-    console.log('Unauthorised attempt.')
-    return
-  }
-
-  return user
 }
 
 export const insertSeedData = async (supabase) => {
@@ -64,7 +54,7 @@ export const insertSeedData = async (supabase) => {
 
     const { data: purchaseOrderData, error: purchaseOrderError } = await supabase
       .from(DATABASE_TABLE.purchase_orders)
-      .insert({ po_number: 'PO-12346456', supplier_id: supplierData.id, expected_date: getCurrentDateTimeUTC(), order_status: PurchaseOrderStatus.PENDING, received_date: getCurrentDateTimeUTC() })
+      .insert({ po_number: 'PO-12346456', supplier_id: supplierData.id, expected_date: getCurrentDateTime(), order_status: PurchaseOrderStatus.PENDING, received_date: getCurrentDateTime() })
       .select()
       .single()
     if (purchaseOrderError) {
@@ -94,7 +84,7 @@ export const insertSeedData = async (supabase) => {
 
     const { data: salesOrderData, error: salesOrderError } = await supabase
       .from(DATABASE_TABLE.sales_orders)
-      .insert({ so_number: 'SO-1354354', customer_id: customerData.id, expected_date: getCurrentDateTimeUTC(), order_status: SalesOrderStatus.PENDING, fulfilled_date: getCurrentDateTimeUTC() })
+      .insert({ so_number: 'SO-1354354', customer_id: customerData.id, expected_date: getCurrentDateTime(), order_status: SalesOrderStatus.PENDING, fulfilled_date: getCurrentDateTime() })
       .select()
       .single()
     if (salesOrderError) {

@@ -10,7 +10,7 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline'
 import MiniLoading from '../helpers/MiniLoading'
-import { getCurrentDateTimeUTC } from '@/lib/helpers/Helper'
+import { getCurrentDateTime } from '@/lib/helpers/Helper'
 import { DATABASE_TABLE } from '@/lib/Enums'
 
 import { useAuthContext } from '../providers/AuthProvider'
@@ -63,9 +63,9 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
         : 0
 
       // Recent feedback (last 7 days)
-      const weekAgo = getCurrentDateTimeUTC()
+      const weekAgo = getCurrentDateTime()
       weekAgo.setDate(weekAgo.getDate() - 7)
-      const recentCount = feedbacks.filter(f => getCurrentDateTimeUTC(f.created_at) > weekAgo).length
+      const recentCount = feedbacks.filter(f => getCurrentDateTime(f.created_at) > weekAgo).length
 
       setStats({
         total,

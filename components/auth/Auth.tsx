@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import { ROUTE_PATH } from '@/lib/Enums';
 
 export function Auth() {
-  const { currentUser, loading, signInWithGoogle } = useAuthContext()
+  const { signInWithGoogle } = useAuthContext()
   const googleSSOImage = "/images/auth_providers/google/google-sso-1.JPG";
   const [isMounted, setIsMounted] = useState(false);
 

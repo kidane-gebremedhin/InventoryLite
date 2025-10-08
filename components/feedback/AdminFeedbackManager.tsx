@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { ALL_OPTIONS, FEEDBACK_STATUSES } from '@/lib/Constants'
 import { FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
-import { formatDateToUTC, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { formatDateToLocalDate, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 
 import { useAuthContext } from '../providers/AuthProvider'
 
@@ -216,7 +216,7 @@ export function AdminFeedbackManager() {
                   </span>
                 </div>
                 <div className="text-sm text-gray-500">
-                  {formatDateToUTC(feedback.created_at)}
+                  {formatDateToLocalDate(feedback.created_at)}
                 </div>
               </div>
 

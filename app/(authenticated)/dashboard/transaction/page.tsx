@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation'
 import { 
 } from '@heroicons/react/24/outline'
 
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, DATABASE_TABLE, TransactionDirection } from '@/lib/Enums'
+import { RecordStatus, TransactionDirection } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORDS_PER_PAGE, TRANSACTION_DIRECTIONS } from '@/lib/Constants'
-import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getDateWithoutTime, getTransactionDirectionColor, setEarliestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { calculateStartAndEndIndex, canShowLoadingScreen, formatDateToLocalDate, getDateWithoutTime, getTransactionDirectionColor, shortenText, showErrorToast, showServerErrorToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import { InventoryItem, Store, Transaction } from '@/lib/types/Models'
 // DatePicker both are required
@@ -17,9 +16,11 @@ import 'react-datepicker/dist/react-datepicker.css'
 
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 
-import { useAuthContext } from '@/components/providers/AuthProvider'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
+import { fetchTransactions } from '@/lib/server_actions/transaction'
+import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
+import { fetchStoreOptions } from '@/lib/server_actions/store'
 
 export default function SalesOrderPage() {
   const router = useRouter()
@@ -28,7 +29,6 @@ export default function SalesOrderPage() {
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
-  
   const [stores, setStores] = useState<Store[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [inventoryItems, setInventoryItems] = useState<Partial<InventoryItem>[]>([])
@@ -40,7 +40,6 @@ export default function SalesOrderPage() {
   const [showFilters, setShowFilters] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
 
   const reportHeaders = {
     type: 'Direction',
@@ -52,15 +51,8 @@ export default function SalesOrderPage() {
   }
 
   const loadInventoryItems = async () => {
-    if (!supabase) return
-
     try {
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.inventory_items)
-        .select('id, sku, name, unit_price, quantity')
-        .eq('status', RecordStatus.ACTIVE)
-        .order('name')
-
+      const { data, error } = await fetchInventoryItemOptions()
 
       if (error) throw error
 
@@ -72,14 +64,8 @@ export default function SalesOrderPage() {
   }
 
   const loadStores = async () => {
-    if (!supabase) return
-
     try {
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.stores)
-        .select('id, name, description')
-        .eq('status', RecordStatus.ACTIVE)
-        .order('name')
+      const { data, error } = await fetchStoreOptions()
 
       if (error) throw error
 
@@ -104,39 +90,10 @@ export default function SalesOrderPage() {
   const loadTransactions = async () => {
     setLoading(canShowLoadingScreen(startDate, endDate, null, null))
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
-    const startIndex = (currentPage - 1) * recordsPerPage
-    const endIndex = currentPage * recordsPerPage - 1
+    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
 
     try {
-      let query = supabase.from(DATABASE_TABLE.transactions).select(`
-        *,
-        item:inventory_items(*),
-        store:stores(*)
-        `, {count: 'exact', head: false})
-      if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus)
-      }
-      if (selectedDirection !== ALL_OPTIONS) {
-        query = query.eq('type', selectedDirection);
-      }
-      if (selectedStoreId !== ALL_OPTIONS) {
-        query = query.eq('store_id', selectedStoreId);
-      }
-      if (selectedInventoryItemId !== ALL_OPTIONS) {
-        query = query.eq('item_id', selectedInventoryItemId);
-      }
-      if (startDate) {
-        const startDateUTC = convertToUTC(setEarliestTimeOfDay(startDate))
-        query = query.gte('created_at', startDateUTC.toUTCString())
-      }
-      if (endDate) {
-        const endDateUTC = convertToUTC(setEarliestTimeOfDay(endDate))
-        query = query.lte('created_at', endDateUTC.toUTCString())
-      }
-      const { data, count, error } = await query.order('created_at', { ascending: false })
-      .range(startIndex, endIndex)
+      const { data, count, error } = await fetchTransactions({ selectedStatus, selectedDirection, selectedStoreId, selectedInventoryItemId, startDate, endDate, startIndex, endIndex });
 
       if (error) {
         showServerErrorToast(error.message)
@@ -162,11 +119,11 @@ export default function SalesOrderPage() {
     return {
       row_no: idx > 0 ? idx : 'Row No.', 
       type: transaction.type,
-      store_id: transaction.store.name,
-      item: transaction.item.name,
+      store_id: transaction.store?.name,
+      item: transaction.item?.name,
       quantity: transaction.quantity,
       current_item_quantity: transaction.current_item_quantity,
-      created_at: getDateWithoutTime(transaction.created_at)
+      created_at: idx > 0 ? getDateWithoutTime(transaction.created_at) : transaction.created_at
     }
   }
 
@@ -296,7 +253,7 @@ export default function SalesOrderPage() {
                     {transaction.store?.name} 
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    {formatDateToUTC(transaction.created_at!)}
+                    {formatDateToLocalDate(transaction.created_at!)}
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
                     <b>{transaction.current_item_quantity}</b>

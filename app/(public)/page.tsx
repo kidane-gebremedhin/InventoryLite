@@ -37,7 +37,7 @@ const App = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">Demand tracking with pre-orders</h3>
               <p className="text-gray-600">
-                Monitor demand and fulfill.
+                Monitor demand and fulfill orders.
               </p>
             </div>
 
@@ -50,7 +50,7 @@ const App = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">Easy Order Management</h3>
               <p className="text-gray-600">
-                Manage purchase orders and sales orders easly.
+                Manage purchase orders and sales orders with ease.
               </p>
             </div>
 
@@ -63,7 +63,7 @@ const App = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">Detailed Reporting & Analytics</h3>
               <p className="text-gray-600">
-                Generate insightful reports on sales, stock turnover, and inventory aging to make informed decisions.
+                Generate insightful reports on sales, stock turnover, and inventory aging to make informed business decisions.
               </p>
             </div>
 
@@ -76,7 +76,7 @@ const App = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">Multi Store Support</h3>
               <p className="text-gray-600">
-                Place order from/to any store you configured.
+                Place order from/to any store thet you configured.
               </p>
             </div>
 
@@ -89,7 +89,7 @@ const App = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">Multi User Support</h3>
               <p className="text-gray-600">
-                Add staff to facilitate non-administrative tasks.
+                Add staff members to facilitate your workflow.
               </p>
             </div>
 
@@ -102,7 +102,7 @@ const App = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">Backup and Export</h3>
               <p className="text-gray-600">
-                Backup option to export your data as Pdf and CSV
+                Export your data as PDF and/or Excel
               </p>
             </div>
           </div>
@@ -124,7 +124,7 @@ const App = () => {
                 className="w-20 h-20 rounded-full mb-4 object-cover"
               />
               <p className="text-lg italic mb-4 text-gray-700">
-                "{APP_NAME} transformed how we manage our inventory. It's stock level monito is powerful which saved us countless hours!"
+                "{APP_NAME} transformed how we manage our shop. It's stock level monitor is powerful which saved us countless hours!"
               </p>
               <p className="font-semibold text-gray-800">- Duram H., CEO of IManufacturingCo</p>
             </div>
@@ -136,7 +136,7 @@ const App = () => {
                 className="w-20 h-20 rounded-full mb-4 object-cover"
               />
               <p className="text-lg italic mb-4 text-gray-700">
-                "The Inventory aging and turnover reports are my favorite ones, it is a game-changer. Now we can see which items are selling and which ones are not."
+                "The Inventory Aging and Turnover reports are business critical ones, it is a game-changer. Now we can see which items are selling and which ones are tying up capital."
               </p>
               <p className="font-semibold text-gray-800">- Abebe Alem, Steel Retailer AA</p>
             </div>

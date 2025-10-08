@@ -7,11 +7,9 @@ import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import { FeedbackRating } from '@/components/feedback/FeedbackRating'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
-import { formatDateToUTC, getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { formatDateToLocalDate, getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES } from '@/lib/Constants'
 import { FeedbackCategory, FeedbackPriority, FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-
 import { useAuthContext } from '@/components/providers/AuthProvider'
 
 interface Feedback {
@@ -39,15 +37,13 @@ export default function FeedbackPage() {
   })
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
+  const { supabase } = useAuthContext();
 
   useEffect(() => {
     loadFeedbacks()
   }, [])
 
   const loadFeedbacks = async () => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       setLoading(true)
       const { data, error } = await supabase
@@ -66,8 +62,6 @@ export default function FeedbackPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await supabase
         .from(DATABASE_TABLE.feedback)
@@ -254,7 +248,7 @@ export default function FeedbackPage() {
                   </span>
                 </div>
                 <div className="text-sm text-gray-500">
-                  {formatDateToUTC(feedback.created_at)}
+                  {formatDateToLocalDate(feedback.created_at)}
                 </div>
               </div>
 

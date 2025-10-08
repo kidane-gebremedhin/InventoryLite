@@ -3,9 +3,8 @@
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import RecordsPerPage from '@/components/helpers/RecordsPerPage'
 import { ALL_OPTIONS, MAX_DROPDOWN_TEXT_LENGTH, REPORTS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY } from '@/lib/Constants'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { OrderStatus, RecordStatus, ReportType, RPC_FUNCTION, SalesOrderStatus, DATABASE_TABLE } from '@/lib/Enums'
-import { canShowLoadingScreen, convertToUTC, formatDateToUTC, formatDateToYYMMDD, getCurrentDateTimeUTC, getDateWithoutTime, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast } from '@/lib/helpers/Helper'
+import { OrderStatus, ReportType, RPC_FUNCTION } from '@/lib/Enums'
+import { canShowLoadingScreen, convertToUTC, formatDateToLocalDate, formatDateToYYMMDD, getCurrentDateTime, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast } from '@/lib/helpers/Helper'
 
 import { InventoryAgingReport, PendingOrdersReport, InventoryItem, InventoryTurnoverReport } from '@/lib/types/Models'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
@@ -15,11 +14,10 @@ import React, { useState, useEffect } from 'react'
 // DatePicker both are required
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { fetchReport } from '@/lib/server_actions/report'
-
-import { useAuthContext } from '@/components/providers/AuthProvider'
+import { makeRpcCall } from '@/lib/server_actions/report'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
+import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
 
 // === Main App Component ===
 export default function App() {
@@ -31,18 +29,17 @@ export default function App() {
   const [selectedInventoryItemId, setSelectedInventoryItem] = useState(ALL_OPTIONS)
   const [orderNumber, setOrderNumber] = useState('')
   const [orderNumberTmp, setOrderNumberTmp] = useState('')
-  const [fulfilledDateStart, setFulfilledDateStart] = useState<Date | null>(getCurrentDateTimeUTC())
-  const [fulfilledDateEnd, setFulfilledDateEnd] = useState<Date | null>(getCurrentDateTimeUTC())
+  const [fulfilledDateStart, setFulfilledDateStart] = useState<Date | null>(getCurrentDateTime())
+  const [fulfilledDateEnd, setFulfilledDateEnd] = useState<Date | null>(getCurrentDateTime())
   const [expectedDateStart, setExpectedDateStart] = useState<Date | null>(null)
   const [expectedDateEnd, setExpectedDateEnd] = useState<Date | null>(null)
-  const [receivedDateStart, setReceivedDateStart] = useState<Date | null>(getCurrentDateTimeUTC())
-  const [receivedDateEnd, setReceivedDateEnd] = useState<Date | null>(getCurrentDateTimeUTC())
+  const [receivedDateStart, setReceivedDateStart] = useState<Date | null>(getCurrentDateTime())
+  const [receivedDateEnd, setReceivedDateEnd] = useState<Date | null>(getCurrentDateTime())
   const [showFilters, setShowFilters] = useState(false)
   // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(REPORTS_PER_PAGE_OPTIONS[0])
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
 
   const inventoryTurnoverReportHeaders = {item_name: 'Inventory Item', sold_quantity: 'Sale Quantity'};
   const pendingOrdersReportHeaders = {item_name: 'Inventory Item', total_ordered_quantity: 'Total Order Quantity', order_status: 'Order Status'};
@@ -65,8 +62,6 @@ export default function App() {
     const loadInventoryTurnoverReport = async () => {
       setLoading(canShowLoadingScreen(null, null, fulfilledDateStart, fulfilledDateEnd))
 
-      if (!supabase || !await authorseDBAction(currentUser)) return
-
       try {
         const searchParams = {
           records_per_page: recordsPerPage,
@@ -74,7 +69,7 @@ export default function App() {
           ...fulfilledDateStart && {fulfilled_date_start: convertToUTC(setEarliestTimeOfDay(fulfilledDateStart))},
           ...fulfilledDateEnd && {fulfilled_date_end: convertToUTC(setLatestTimeOfDay(fulfilledDateEnd))}
         }
-        const { data, error } = await fetchReport(RPC_FUNCTION.INVENTORY_TURNOVER, searchParams)
+        const { data, error } = await makeRpcCall(RPC_FUNCTION.INVENTORY_TURNOVER, searchParams)
         if (error) {
           showServerErrorToast(error.message)
           return;
@@ -108,8 +103,6 @@ export default function App() {
     const loadOutstandingOrdersReport = async () => {
       setLoading(canShowLoadingScreen(expectedDateStart, expectedDateEnd, null, null))
 
-      if (!supabase || !await authorseDBAction(currentUser)) return
-
       try {
         const searchParams = {
           target_order_status: orderStatus,
@@ -118,7 +111,7 @@ export default function App() {
           ...expectedDateStart && {expected_date_start: convertToUTC(setEarliestTimeOfDay(expectedDateStart))},
           ...expectedDateEnd && {expected_date_end: convertToUTC(setLatestTimeOfDay(expectedDateEnd))}
         }
-        const { data, error } = await fetchReport(rpcFunctionName, searchParams)
+        const { data, error } = await makeRpcCall(rpcFunctionName, searchParams)
         if (error) {
           showErrorToast()
           return;
@@ -142,8 +135,6 @@ export default function App() {
     const loadInventoryAgingReport = async () => {
       setLoading(canShowLoadingScreen(null, null, receivedDateStart, receivedDateEnd))
 
-      if (!supabase || !await authorseDBAction(currentUser)) return
-
       try {
         const searchParams = {
           records_per_page: recordsPerPage,
@@ -152,7 +143,7 @@ export default function App() {
           ...receivedDateStart && {received_date_start: convertToUTC(setEarliestTimeOfDay(receivedDateStart))},
           ...receivedDateEnd && {received_date_end: convertToUTC(setLatestTimeOfDay(receivedDateEnd))}
         }
-        const { data, error } = await fetchReport(RPC_FUNCTION.INVENTORY_AGING, searchParams)
+        const { data, error } = await makeRpcCall(RPC_FUNCTION.INVENTORY_AGING, searchParams)
         if (error) {
           showErrorToast()
           return;
@@ -170,14 +161,8 @@ export default function App() {
 
   useEffect(() => {
     const loadInventoryItems = async () => {
-      if (!supabase || !await authorseDBAction(currentUser)) return
-
       try {
-        const { data, error } = await supabase
-          .from(DATABASE_TABLE.inventory_items)
-          .select('*')
-          .eq('status', RecordStatus.ACTIVE)
-          .order('name')
+        const { data, error } = await fetchInventoryItemOptions()
 
         if (error) {
           showServerErrorToast(error.message)
@@ -478,7 +463,7 @@ export default function App() {
                             {report.days_in_stock}
                         </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDateToUTC(report.order_received_date)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDateToLocalDate(report.order_received_date)}</td>
                       </tr>
                     )
                   })}

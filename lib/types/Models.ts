@@ -226,10 +226,6 @@ export interface ManualPayment {
   updated_by?: string
 }
 
-export interface ManualPaymentStatusPayload {
-  status: string
-}
-
 export interface RecordStatusPayload {
   status: string
 }
@@ -240,7 +236,8 @@ export interface ServerActionsHeader {
 
 export interface ServerActionsResponse {
   error: any
-  data: any
+  data: any,
+  count?: number
 }
 
 export interface PurchaseOrderData {

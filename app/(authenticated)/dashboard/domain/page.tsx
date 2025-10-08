@@ -12,16 +12,15 @@ import {
 import { DomainModal } from '@/components/domain/DomainModal'
 
 import { Domain } from '@/lib/types/Models'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
+import { RecordStatus } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { calculateStartAndEndIndex, getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
-import { saveDomain, updateDomain, updateDomainRecordStatus } from '@/lib/server_actions/domain'
+import { fetchDomains, saveDomain, updateDomain, updateDomainRecordStatus } from '@/lib/server_actions/domain'
 
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
@@ -47,7 +46,6 @@ export default function DomainPage() {
   const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
 
   const reportHeaders = {name: 'Tenant Domain', description: 'Description', created_at: 'Date Created'}
 
@@ -58,23 +56,13 @@ export default function DomainPage() {
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
   const loadDomains = async () => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
-    const startIndex = (currentPage - 1) * recordsPerPage
-    const endIndex = currentPage * recordsPerPage - 1
+    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
 
     try {
       setLoading(true)
-      let query = supabase.from(DATABASE_TABLE.domains).select('*', {count: 'exact', head: false})
-      if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus)
-      }
-      if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%, description.ilike.%${searchTerm}%`)
-      }
-      const { data, count, error } = await query.order('created_at', { ascending: false })
-      .range(startIndex, endIndex)
 
+      const { data, count, error } = await fetchDomains({ selectedStatus, searchTerm, startIndex, endIndex });
+      
       if (error) {
         showServerErrorToast(error.message)
       }
@@ -101,8 +89,6 @@ export default function DomainPage() {
   const handleArchive = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateDomainRecordStatus(id, {status: RecordStatus.ARCHIVED})
 
@@ -124,8 +110,6 @@ export default function DomainPage() {
   const handleRestore = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateDomainRecordStatus(id, {status: RecordStatus.ACTIVE})
 
@@ -145,8 +129,6 @@ export default function DomainPage() {
   }
 
   const handleCreate = async (domain: Domain) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
       // Exclude id field while creating new record 
       const {id, ...domainWithNoId} = domain
     try {
@@ -168,8 +150,6 @@ export default function DomainPage() {
   }
 
   const handleUpdate = async (domain: Domain) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateDomain(domain.id, domain)
 

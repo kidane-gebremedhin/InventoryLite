@@ -15,11 +15,9 @@ import {
 } from '@heroicons/react/24/outline'
 import PurchaseOrderModal from '@/components/purchase_orders/PurchaseOrderModal'
 import OrderDetailsModal from '@/components/purchase_orders/OrderDetailsModal'
-
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { PurchaseOrderStatus, RecordStatus, RPC_FUNCTION, DATABASE_TABLE } from '@/lib/Enums'
-import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, PURCHASE_ORDER_STATUSES, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getCurrentDateTimeUTC, getDateWithoutTime, getRecordStatusColor, isCustomServerError, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { PurchaseOrderStatus, RecordStatus } from '@/lib/Enums'
+import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, PURCHASE_ORDER_STATUSES, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
+import { calculateStartAndEndIndex, canShowLoadingScreen, formatDateToLocalDate, getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import { PurchaseOrder, Supplier } from '@/lib/types/Models'
 // DatePicker both are required
@@ -30,11 +28,11 @@ import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
-import { savePurchaseOrder, updatePurchaseOrder, updatePurchaseOrderRecordStatus, updatePurchaseOrderStatus } from '@/lib/server_actions/purchase_order'
-
+import { fetchPurchaseOrders, savePurchaseOrder, updatePurchaseOrder, updatePurchaseOrderRecordStatus, updatePurchaseOrderStatus } from '@/lib/server_actions/purchase_order'
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
+import { fetchSupplierOptions } from '@/lib/server_actions/supplier'
 
 export default function PurchaseOrderPage() {
   const router = useRouter()
@@ -68,7 +66,6 @@ export default function PurchaseOrderPage() {
   const [isMoveToCanceledConfirmationModalOpen, setIsMoveToCanceledConfirmationModalOpen] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
 
   const reportHeaders = {
     row_no: 'Row No.',
@@ -88,14 +85,8 @@ export default function PurchaseOrderPage() {
 
   useEffect(() => {
     const loadSuppliers = async () => {
-      if (!supabase || !await authorseDBAction(currentUser)) return
-
       try {
-        const { data, error } = await supabase
-          .from(DATABASE_TABLE.suppliers)
-          .select('*')
-          .eq('status', RecordStatus.ACTIVE)
-          .order('name')
+        const { data, error } = await fetchSupplierOptions()
 
         if (error) {
           showServerErrorToast(error.message)
@@ -122,52 +113,11 @@ export default function PurchaseOrderPage() {
   const loadPurchaseOrders = async () => {
     setLoading(canShowLoadingScreen(startDate, endDate, receivedDateStart, receivedDateEnd))
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
-    const startIndex = (currentPage - 1) * recordsPerPage
-    const endIndex = currentPage * recordsPerPage - 1
+    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
 
     try {
-      let query = supabase.from(DATABASE_TABLE.purchase_orders).select(`
-          *,
-          supplier:suppliers(*),
-          order_items:purchase_order_items(
-          *,
-          item:inventory_items(*),
-          store:stores(*)
-          )`,
-          {count: 'exact', head: false})
-      if (selectedOrderStatus !== ALL_OPTIONS) {
-        query = query.eq('order_status', selectedOrderStatus)
-      }
-      if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus)
-      }
-      if (selectedSupplierId !== ALL_OPTIONS) {
-        query = query.eq('supplier_id', selectedSupplierId);
-      }
-      if (searchTerm) {
-        query = query.or(`po_number.ilike.%${searchTerm}%`)
-      }
-      if (startDate) {
-        const startDateUTC = convertToUTC(setEarliestTimeOfDay(startDate))
-        query = query.gte('expected_date', startDateUTC.toUTCString())
-      }
-      if (endDate) {
-        const endDateUTC = convertToUTC(setLatestTimeOfDay(endDate))
-        query = query.lte('expected_date', endDateUTC.toUTCString())
-      }
-      if (receivedDateStart) {
-        const receivedDateStartUTC = convertToUTC(setEarliestTimeOfDay(receivedDateStart))
-        query = query.gte('received_date', receivedDateStartUTC.toUTCString())
-      }
-      if (receivedDateEnd) {
-        const receivedDateEndUTC = convertToUTC(setLatestTimeOfDay(receivedDateEnd))
-        query = query.lte('received_date', receivedDateEndUTC.toUTCString())
-      }
-      const { data, count, error } = await query.order('created_at', { ascending: false })
-      .range(startIndex, endIndex)
-
+      const { data, count, error } = await fetchPurchaseOrders({ selectedOrderStatus, selectedStatus, selectedSupplierId, searchTerm, startDate, endDate, receivedDateStart, receivedDateEnd, startIndex, endIndex });
+      
       if (error) {
         showServerErrorToast(error.message)
       }
@@ -195,7 +145,6 @@ export default function PurchaseOrderPage() {
   const handleArchive = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await updatePurchaseOrderRecordStatus(id, {status: RecordStatus.ARCHIVED})
 
@@ -217,7 +166,6 @@ export default function PurchaseOrderPage() {
   const handleRestore = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await updatePurchaseOrderRecordStatus(id, {status: RecordStatus.ACTIVE})
 
@@ -237,8 +185,6 @@ export default function PurchaseOrderPage() {
   }
 
   const handleCreate = async (purchaseOrder: PurchaseOrder) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     // Exclude id field while creating new record 
     const {id, order_items, ...purchaseOrderWithNoId} = purchaseOrder
 
@@ -265,8 +211,6 @@ export default function PurchaseOrderPage() {
   }
 
   const handleUpdate = async (purchaseOrder: PurchaseOrder) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     // Exclude id field while creating new record 
     const {order_items, ...purchaseOrderWithNoOrderItems} = purchaseOrder
 
@@ -319,7 +263,7 @@ export default function PurchaseOrderPage() {
   const handleOrderStatusChange = async (id: string, status?: PurchaseOrderStatus) => {
     resetModalState()
 
-    if (!status || !supabase) return
+    if (!status) return
 
     try {
       const { error } = await updatePurchaseOrderStatus(id, { order_status: status })
@@ -580,10 +524,10 @@ export default function PurchaseOrderPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {getDateWithoutTime(formatDateToUTC(order.expected_date))}
+                    {getDateWithoutTime(formatDateToLocalDate(order.expected_date))}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {formatDateToUTC(order.received_date)}
+                    {formatDateToLocalDate(order.received_date)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(order.status!)}`}>

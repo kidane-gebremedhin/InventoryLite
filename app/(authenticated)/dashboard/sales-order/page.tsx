@@ -15,11 +15,9 @@ import {
 } from '@heroicons/react/24/outline'
 import SalesOrderModal from '@/components/sales_orders/SalesOrderModal'
 import OrderDetailsModal from '@/components/sales_orders/OrderDetailsModal'
-
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { SalesOrderStatus, RecordStatus, RPC_FUNCTION, DATABASE_TABLE } from '@/lib/Enums'
-import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, RECORDS_PER_PAGE_OPTIONS, SALES_ORDER_STATUSES, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { canShowLoadingScreen, convertToUTC, formatDateToUTC, getCurrentDateTimeUTC, getDateWithoutTime, getOrderStatusColor, getRecordStatusColor, isCustomServerError, setEarliestTimeOfDay, setLatestTimeOfDay, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { SalesOrderStatus, RecordStatus } from '@/lib/Enums'
+import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, SALES_ORDER_STATUSES, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
+import { calculateStartAndEndIndex, canShowLoadingScreen, formatDateToLocalDate, getDateWithoutTime, getOrderStatusColor, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import { SalesOrder, Customer } from '@/lib/types/Models'
 // DatePicker both are required
@@ -30,11 +28,10 @@ import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
-import { saveSalesOrder, updateSalesOrder, updateSalesOrderRecordStatus, updateSalesOrderStatus } from '@/lib/server_actions/sales_order'
-
-import { useAuthContext } from '@/components/providers/AuthProvider'
+import { fetchSalesOrders, saveSalesOrder, updateSalesOrder, updateSalesOrderRecordStatus, updateSalesOrderStatus } from '@/lib/server_actions/sales_order'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
+import { fetchCategoryOptions } from '@/lib/server_actions/category'
 
 export default function SalesOrderPage() {
   const router = useRouter()
@@ -48,7 +45,6 @@ export default function SalesOrderPage() {
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
-  
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([])
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null)
@@ -68,7 +64,6 @@ export default function SalesOrderPage() {
   const [isMoveToCanceledConfirmationModalOpen, setIsMoveToCanceledConfirmationModalOpen] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
 
   const reportHeaders = {
     row_no: 'Row No.',
@@ -88,14 +83,8 @@ export default function SalesOrderPage() {
 
   useEffect(() => {
     const loadCustomers = async () => {
-      if (!supabase || !await authorseDBAction(currentUser)) return
-
       try {
-        const { data, error } = await supabase
-          .from(DATABASE_TABLE.customers)
-          .select('*')
-          .eq('status', RecordStatus.ACTIVE)
-          .order('name')
+        const { data, error } = await fetchCategoryOptions()
 
         if (error) {
           showServerErrorToast(error.message)
@@ -122,51 +111,10 @@ export default function SalesOrderPage() {
   const loadSalesOrders = async () => {
     setLoading(canShowLoadingScreen(startDate, endDate, fulfilledDateStart, fulfilledDateEnd))
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
-    const startIndex = (currentPage - 1) * recordsPerPage
-    const endIndex = currentPage * recordsPerPage - 1
+    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
 
     try {
-      let query = supabase.from(DATABASE_TABLE.sales_orders).select(`
-          *,
-          customer:customers(*),
-          order_items:sales_order_items(
-          *,
-          item:inventory_items(*),
-          store:stores(*)
-          )`,
-          {count: 'exact', head: false})
-      if (selectedOrderStatus !== ALL_OPTIONS) {
-        query = query.eq('order_status', selectedOrderStatus)
-      }
-      if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus)
-      }
-      if (selectedCustomerId !== ALL_OPTIONS) {
-        query = query.eq('customer_id', selectedCustomerId);
-      }
-      if (searchTerm) {
-        query = query.or(`so_number.ilike.%${searchTerm}%`)
-      }
-      if (startDate) {
-        const startDateUTC = convertToUTC(setEarliestTimeOfDay(startDate))
-        query = query.gte('expected_date', startDateUTC.toUTCString())
-      }
-      if (endDate) {
-        const endDateUTC = convertToUTC(setLatestTimeOfDay(endDate))
-        query = query.lte('expected_date', endDateUTC.toUTCString())
-      }
-      if (fulfilledDateStart) {
-        const fulfilledDateStartUTC = convertToUTC(setEarliestTimeOfDay(fulfilledDateStart))
-        query = query.gte('fulfilled_date', fulfilledDateStartUTC.toUTCString())
-      }
-      if (fulfilledDateEnd) {
-        const fulfilledDateEndUTC = convertToUTC(setLatestTimeOfDay(fulfilledDateEnd))
-        query = query.lte('fulfilled_date', fulfilledDateEndUTC.toUTCString())
-      }
-      const { data, count, error } = await query.order('created_at', { ascending: false })
-      .range(startIndex, endIndex)
+      const { data, count, error } = await fetchSalesOrders({ selectedOrderStatus, selectedStatus, selectedCustomerId, searchTerm, startDate, endDate, fulfilledDateStart, fulfilledDateEnd, startIndex, endIndex });
 
       if (error) {
         showServerErrorToast(error.message)
@@ -195,8 +143,6 @@ export default function SalesOrderPage() {
   const handleArchive = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateSalesOrderRecordStatus(id, {status: RecordStatus.ARCHIVED})
 
@@ -218,8 +164,6 @@ export default function SalesOrderPage() {
   const handleRestore = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateSalesOrderRecordStatus(id, {status: RecordStatus.ACTIVE})
 
@@ -237,8 +181,6 @@ export default function SalesOrderPage() {
   }
 
   const handleCreate = async (salesOrder: SalesOrder) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     // Exclude id field while creating new record 
     const {id, order_items, ...salesOrderWithNoId} = salesOrder
 
@@ -264,8 +206,6 @@ export default function SalesOrderPage() {
   }
 
   const handleUpdate = async (salesOrder: SalesOrder) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     // Exclude id field while creating new record 
     const {order_items, ...salesOrderWithNoOrderItems} = salesOrder
 
@@ -305,7 +245,7 @@ export default function SalesOrderPage() {
   const handleOrderStatusChange = async (id: string, status?: SalesOrderStatus) => {
     resetModalState()
 
-    if (!status || !supabase) return
+    if (!status) return
 
     try {
       const { error } = await updateSalesOrderStatus(id, { order_status: status })
@@ -571,10 +511,10 @@ export default function SalesOrderPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {getDateWithoutTime(formatDateToUTC(order.expected_date))}
+                    {getDateWithoutTime(formatDateToLocalDate(order.expected_date))}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {formatDateToUTC(order.fulfilled_date)}
+                    {formatDateToLocalDate(order.fulfilled_date)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(order.status!)}`}>

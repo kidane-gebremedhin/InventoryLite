@@ -1,7 +1,7 @@
 'use client'
 
 import { APP_NAME } from "@/lib/app_config/config";
-import { getCurrentDateTimeUTC } from "@/lib/helpers/Helper";
+import { getCurrentDateTime } from "@/lib/helpers/Helper";
 import { useEffect, useState } from "react";
 import MiniLoading from "../helpers/MiniLoading";
 
@@ -17,7 +17,7 @@ export default function Footer() {
     return (
         <footer className="bg-gray-800 text-gray-300 py-8">
             <div className="container mx-auto px-4 text-center text-sm">
-            <p>&copy; {getCurrentDateTimeUTC().getFullYear()} {APP_NAME}. All rights reserved.</p>
+            <p>&copy; {getCurrentDateTime().getFullYear()} {APP_NAME}. All rights reserved.</p>
             <div className="mt-2 space-x-4">
                 <a href="#" className="hover:text-white">Privacy Policy</a>
                 <a href="#" className="hover:text-white">Terms of Service</a>

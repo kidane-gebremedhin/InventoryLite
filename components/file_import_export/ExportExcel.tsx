@@ -2,7 +2,7 @@
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { getCurrentDateTimeUTC } from "@/lib/helpers/Helper";
+import { getCurrentDateTime } from "@/lib/helpers/Helper";
 
 export default function ExportExcel({ records, reportName }: { records: any[], reportName: string }) {
   const exportToExcel = () => {
@@ -11,7 +11,7 @@ export default function ExportExcel({ records, reportName }: { records: any[], r
     XLSX.utils.book_append_sheet(workbook, worksheet, reportName);
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(data, `${reportName}-ExportedData-${getCurrentDateTimeUTC()}.xlsx`);
+    saveAs(data, `${reportName}-ExportedData-${getCurrentDateTime()}.xlsx`);
   };
 
   return (

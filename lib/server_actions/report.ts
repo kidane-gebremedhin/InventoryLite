@@ -3,7 +3,7 @@
 import { ServerActionsResponse } from '../types/Models';
 import { createClient } from '@/supabase/server';
 
-export async function fetchReport(rpcFunctionName: string, searchParams: any): Promise<ServerActionsResponse> {
+export async function makeRpcCall(rpcFunctionName: string, searchParams?: any): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
     // RPC call

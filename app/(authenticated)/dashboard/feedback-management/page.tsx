@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 
 import { AdminFeedbackManager } from '@/components/feedback/AdminFeedbackManager'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { showErrorToast } from '@/lib/helpers/Helper'
 import { FeedbackCategory, FeedbackPriority, FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
@@ -34,8 +33,6 @@ export default function FeedbackPage() {
   }, [])
 
   const loadFeedbacks = async () => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       setLoading(true)
       const { data, error } = await supabase

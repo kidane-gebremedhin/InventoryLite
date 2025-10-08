@@ -5,11 +5,14 @@ import { useState, useEffect } from 'react'
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier } from '@/lib/types/Models'
 import { PurchaseOrderStatus, RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
-import { calculateOrderTotalProce, formatDateToUTC, showErrorToast } from '@/lib/helpers/Helper'
+import { calculateOrderTotalProce, formatDateToLocalDate, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
 import { DECIMAL_REGEX, PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
 
 import { useAuthContext } from '../providers/AuthProvider'
+import { fetchStoreOptions } from '@/lib/server_actions/store'
+import { fetchSupplierOptions } from '@/lib/server_actions/supplier'
+import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
 
 interface PurchaseOrderModalProps {
   isOpen: boolean
@@ -64,11 +67,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
     if (!supabase) return
 
     try {
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.stores)
-        .select('id, name, description')
-        .eq('status', RecordStatus.ACTIVE)
-        .order('name')
+      const { data, error } = await fetchStoreOptions()
 
       if (error) throw error
       
@@ -82,11 +81,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
     if (!supabase) return
 
     try {
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.suppliers)
-        .select('id, name, email')
-        .eq('status', RecordStatus.ACTIVE)
-        .order('name')
+      const { data, error } = await fetchSupplierOptions()
 
       if (error) throw error
       
@@ -104,11 +99,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
     if (!supabase) return
 
     try {
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.inventory_items)
-        .select('id, sku, name, unit_price, quantity')
-        .eq('status', RecordStatus.ACTIVE)
-        .order('name')
+      const { data, error } = await fetchInventoryItemOptions()
 
       if (error) throw error
       setInventoryItems(data || [])

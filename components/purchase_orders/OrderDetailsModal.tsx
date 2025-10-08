@@ -2,7 +2,7 @@
 
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { PurchaseOrder, SalesOrder } from '@/lib/types/Models'
-import { calculateOrderTotalProce, formatDateToUTC, getDateWithoutTime, getOrderStatusColor } from '@/lib/helpers/Helper'
+import { calculateOrderTotalProce, formatDateToLocalDate, getDateWithoutTime, getOrderStatusColor } from '@/lib/helpers/Helper'
 
 interface orderModalProps {
   isOpen: boolean
@@ -48,22 +48,22 @@ export default function orderModal({ isOpen, onClose, order }: orderModalProps) 
                 {order.expected_date && (
                   <div>
                     <span className="text-gray-600">Expected Date:</span>
-                    <span className="ml-2">{getDateWithoutTime(formatDateToUTC(order.expected_date))}</span>
+                    <span className="ml-2">{getDateWithoutTime(formatDateToLocalDate(order.expected_date))}</span>
                   </div>
                 )}
                 {order.received_date && (
                   <div>
                     <span className="text-gray-600">Received Date:</span>
-                    <span className="ml-2">{formatDateToUTC(order.received_date)}</span>
+                    <span className="ml-2">{formatDateToLocalDate(order.received_date)}</span>
                   </div>
                 )}
                 <div>
                   <span className="text-gray-600">Created:</span>
-                  <span className="ml-2">{formatDateToUTC(order.created_at!)}</span>
+                  <span className="ml-2">{formatDateToLocalDate(order.created_at!)}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Updated:</span>
-                  <span className="ml-2">{formatDateToUTC(order.updated_at!)}</span>
+                  <span className="ml-2">{formatDateToLocalDate(order.updated_at!)}</span>
                 </div>
               </div>
             </div>

@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import { StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-
 import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { FeedbackPriority, DATABASE_TABLE } from '@/lib/Enums'
 import { APP_NAME } from '@/lib/app_config/config'
@@ -42,8 +40,6 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     e.preventDefault()
 
     setSubmitting(true)

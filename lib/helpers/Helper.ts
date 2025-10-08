@@ -2,9 +2,8 @@ import toast from "react-hot-toast"
 import { PaymentStatus, PurchaseOrderStatus, RecordStatus, RPC_FUNCTION, SalesOrderStatus, TransactionDirection } from "../Enums"
 import { PurchaseOrderItem, SalesOrderItem, ServerActionsHeader, User, UserSubscriptionInfo } from "../types/Models"
 import { CUSTOM_SERVER_ERRORS, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
-import { createClient } from "@/supabase/client"
 import { User as SupabaseUser } from "@supabase/supabase-js"
-import { fetchReport } from "../server_actions/report"
+import { makeRpcCall } from "../server_actions/report"
 
 export const shortenText = (input: string | undefined | null, targetLength: number): string => {
     if (!input) return ''
@@ -114,34 +113,44 @@ export const setLatestTimeOfDay = (date: Date): Date => {
   }
   return date
 }
+
+/**
+ * This method helps send UTC date to Supabase
+ * @param date Date
+ * @returns 
+ */
 export const convertToUTC = (date: Date) => {
   if (!date) return date
 
   return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds()));
 }
 
+export const getDateStringForDisplay = (date: Date): string => {
+  if (!date) return ''
 
-export const formatDateToUTC = (dateStr?: string): string => {
+  return date.toLocaleString()
+}
+
+export const formatDateToLocalDate = (dateStr?: string): string => {
   if (!dateStr) return ''
 
-
-  return new Date(dateStr).toUTCString()
+  return getDateStringForDisplay(new Date(dateStr))
 }
 
 export const formatDateToYYMMDD = (date: Date | null): string => {
   if (!date) return ''
 
-  const utcDate = new Date(date.toUTCString())
-  return `${utcDate.getDate()}-${utcDate.getMonth()}-${utcDate.getFullYear()}`
+  const dateWithTimezone = new Date(getDateStringForDisplay(date))
+  return `${dateWithTimezone.getDate()}-${dateWithTimezone.getMonth()}-${dateWithTimezone.getFullYear()}`
 }
 
-export const getCurrentDateTimeUTC = (date?: Date): Date => {
+export const getCurrentDateTime = (date?: Date): Date => {
   const dateTmp = date ? date : new Date()
-  return new Date(dateTmp.toUTCString())
+  return new Date(getDateStringForDisplay(dateTmp))
 }
 
-export const getCurrentDateUTC = (): String => {
-  const dateTime = getCurrentDateTimeUTC();
+export const getCurrentDate = (): String => {
+  const dateTime = getCurrentDateTime();
   return dateTime.getDate()+"-"+dateTime.getMonth()+"-"+dateTime.getFullYear();
 }
 
@@ -199,7 +208,7 @@ export const fetchUserProfile = async (user: SupabaseUser): Promise<User> => {
 export const fetchUserSubscriptionInfo = async (user: SupabaseUser): Promise<UserSubscriptionInfo> => {
   // RPC call to fetch subscription info
   const searchParams = { current_user_id: user.id }
-  const { data, error } = await fetchReport(RPC_FUNCTION.FETCH_USER_SUBSCRIPTION_INFO, searchParams)
+  const { data, error } = await makeRpcCall(RPC_FUNCTION.FETCH_USER_SUBSCRIPTION_INFO, searchParams)
   if (error) {
     return null;
   }
@@ -207,3 +216,9 @@ export const fetchUserSubscriptionInfo = async (user: SupabaseUser): Promise<Use
   return data.length > 0 ? data[0] : null;
 }
   
+export const calculateStartAndEndIndex = ({currentPage, recordsPerPage}): { startIndex: number, endIndex: number } => {
+  const startIndex = (currentPage - 1) * recordsPerPage;
+  const endIndex = currentPage * recordsPerPage - 1;
+
+  return { startIndex, endIndex }
+}

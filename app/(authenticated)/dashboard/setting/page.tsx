@@ -9,6 +9,7 @@ import {
 import { triggerInsertSeedData } from '@/lib/server_actions/setting'
 
 import { useAuthContext } from '@/components/providers/AuthProvider'
+import MiniLoading from '@/components/helpers/MiniLoading'
 
 const tabs = [
   { name: 'Profile', icon: UserIcon },
@@ -24,6 +25,8 @@ export default function SettingsPage() {
   const insertSeedData = async () => {
     triggerInsertSeedData();
   }
+  
+  if (!currentUser) return <MiniLoading />
   
   const renderTabContent = () => {
     switch (activeTab) {

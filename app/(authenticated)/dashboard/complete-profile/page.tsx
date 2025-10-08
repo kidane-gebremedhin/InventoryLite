@@ -4,19 +4,20 @@ import { useState, useEffect } from 'react'
 import { UserSubscriptionInfo } from '@/lib/types/Models';
 import { showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper';
 import { VALIDATION_ERRORS_MAPPING } from '@/lib/Constants';
-import { DATABASE_TABLE, RecordStatus, ROUTE_PATH } from '@/lib/Enums';
+import { ROUTE_PATH } from '@/lib/Enums';
 import { updateUserSubscriptionInfo } from '@/lib/server_actions/subscription_info';
 import { PostgrestError } from '@supabase/supabase-js';
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
+import { fetchDomainOptions } from '@/lib/server_actions/domain';
 
 export default function CompleteProfile() {
     const [domains, setDomains] = useState([]);
 
     const router = useRouter();
     const {loading, setLoading} = useLoadingContext();
-    const { currentUser, supabase } = useAuthContext();
+    const { currentUser } = useAuthContext();
     
     const [formData, setFormData] = useState<Partial<UserSubscriptionInfo>>({
       name: '',
@@ -41,11 +42,7 @@ export default function CompleteProfile() {
         const loadDomains = async () => {
             try {
                 setLoading(true);
-                const { data, error } = await supabase
-                .from(DATABASE_TABLE.domains)
-                .select('*')
-                .eq('status', RecordStatus.ACTIVE)
-                .order('name');
+                const { data, error } = await fetchDomainOptions();
 
                 if (error) {
                 showServerErrorToast(error.message);

@@ -24,7 +24,6 @@ import {
   Cell
 } from 'recharts'
 import { DEFAULT_USER_ROLE, MONTH_NAME_MAPPING } from '@/lib/Constants'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 
 import { RPC_FUNCTION } from '@/lib/Enums'
 import { showServerErrorToast, showErrorToast } from '@/lib/helpers/Helper'
@@ -33,6 +32,7 @@ import { PurchaseOrderMonthlyTrendsData, SalesOrderMonthlyTrendsData } from '@/l
 import { CheckmarkIcon } from 'react-hot-toast'
 
 import { useAuthContext } from '@/components/providers/AuthProvider'
+import { makeRpcCall } from '@/lib/server_actions/report'
 
 interface DashboardStats {
   totalItems: number
@@ -60,17 +60,15 @@ export default function DashboardPage() {
   const [purchaseOrderMonthlyTrendsData, setPurchaseOrderMonthlyTrendsData] = useState<PurchaseOrderMonthlyTrendsData[]>([])
   const [salesOrderMonthlyTrendsData, setSalesOrderMonthlyTrendsData] = useState<SalesOrderMonthlyTrendsData[]>([])
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
+  const { currentUser } = useAuthContext();
 
   useEffect(() => {
     const loadDashboardStats = async () => {
-      if (!supabase || !await authorseDBAction(currentUser)) return
   
       try {
         setLoading(true)
   
-        const { data, error } = await supabase
-          .rpc(RPC_FUNCTION.DASHBOARD_STATS);
+        const { data, error } = await makeRpcCall(RPC_FUNCTION.DASHBOARD_STATS)
   
         if (error) {
           showServerErrorToast(error.message)
@@ -86,13 +84,10 @@ export default function DashboardPage() {
     }
 
     
-    const loadOrderMonthlyTrends = async () => {
-      if (!supabase || !await authorseDBAction(currentUser)) return
-  
+    const loadOrderMonthlyTrends = async () => {  
       try {
         setLoading(true)
-        const { data: poData, error: poError } = await supabase
-          .rpc(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS);
+        const { data: poData, error: poError } = await makeRpcCall(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS);
   
         if (poError) {
           showServerErrorToast(poError.message)
@@ -106,8 +101,7 @@ export default function DashboardPage() {
         })
         setPurchaseOrderMonthlyTrendsData(podataProcessed)
         
-        const { data: soData, error: soError } = await supabase
-          .rpc(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS);
+        const { data: soData, error: soError } = await makeRpcCall(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS);
   
         if (soError) {
           showServerErrorToast(soError.message)

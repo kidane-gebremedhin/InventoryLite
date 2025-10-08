@@ -11,17 +11,16 @@ import {
 } from '@heroicons/react/24/outline'
 
 import { Customer } from '@/lib/types/Models'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { calculateStartAndEndIndex, getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import CustomerModal from '@/components/sales_orders/CustomerModal'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
-import { saveCustomer, updateCustomer, updateCustomerRecordStatus } from '@/lib/server_actions/customer'
+import { fetchCustomers, saveCustomer, updateCustomer, updateCustomerRecordStatus } from '@/lib/server_actions/customer'
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
@@ -46,7 +45,6 @@ export default function CustomerPage() {
   const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext()
 
   const reportHeaders = {name: 'Customer Name', email: 'Email', phone: 'Phone Number', address: 'Address', created_at: 'Date Created'}
 
@@ -57,23 +55,13 @@ export default function CustomerPage() {
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
   const loadCustomers = async () => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
-    const startIndex = (currentPage - 1) * recordsPerPage
-    const endIndex = currentPage * recordsPerPage - 1
-
+    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
+    
     try {
       setLoading(true)
-      let query = supabase.from(DATABASE_TABLE.customers).select('*', {count: 'exact', head: false})
-      if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus)
-      }
-      if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, phone.ilike.%${searchTerm}%, address.ilike.%${searchTerm}%`)
-      }
-      const { data, count, error } = await query.order('created_at', { ascending: false })
-      .range(startIndex, endIndex)
 
+      const { data, count, error } = await fetchCustomers({ selectedStatus, searchTerm, startIndex, endIndex });
+      
       if (error) {
         showServerErrorToast(error.message)
       }
@@ -100,8 +88,6 @@ export default function CustomerPage() {
   const handleArchive = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateCustomerRecordStatus(id, {status: RecordStatus.ARCHIVED})
 
@@ -123,8 +109,6 @@ export default function CustomerPage() {
   const handleRestore = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateCustomerRecordStatus(id, {status: RecordStatus.ACTIVE})
 
@@ -144,8 +128,6 @@ export default function CustomerPage() {
   }
 
   const handleCreate = async (customer: Customer) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
       // Exclude id field while creating new record 
       const {id, ...customerWithNoId} = customer
       try {
@@ -167,8 +149,6 @@ export default function CustomerPage() {
   }
 
   const handleUpdate = async (customer: Customer) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateCustomer(customer.id, customer)
 

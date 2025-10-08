@@ -1,7 +1,7 @@
 "use client";
 
 import { APP_NAME } from '@/lib/app_config/config';
-import { getCurrentDateTimeUTC, getCurrentDateUTC } from '@/lib/helpers/Helper';
+import { getCurrentDateTime, getCurrentDate } from '@/lib/helpers/Helper';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -10,7 +10,7 @@ export default function ExportPDF({ records, reportName }: { records: any[], rep
     const doc = new jsPDF();
     // Title
     doc.setFontSize(20);
-    doc.text(`${reportName} | Exported from ${APP_NAME} on ${getCurrentDateUTC()}`, 14, 15);
+    doc.text(`${reportName} | Exported from ${APP_NAME} on ${getCurrentDate()}`, 14, 15);
 
     // Table
     autoTable(doc, {
@@ -20,7 +20,7 @@ export default function ExportPDF({ records, reportName }: { records: any[], rep
       headStyles: { fillColor: [66, 139, 202] },
     });
 
-    doc.save(`${reportName}-ExportedData-${getCurrentDateTimeUTC()}.pdf`);
+    doc.save(`${reportName}-ExportedData-${getCurrentDateTime()}.pdf`);
   };
 
   return (

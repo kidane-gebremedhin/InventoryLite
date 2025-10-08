@@ -9,21 +9,17 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline'
 import { ManualPaymentModal } from '@/components/manual_payment/ManualPaymentModal'
-
 import { ManualPayment } from '@/lib/types/Models'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
 import { DATABASE_TABLE, PaymentStatus } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, PAYMENT_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { formatDateToUTC, getDateWithoutTime, getPaymentStatusColor, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { calculateStartAndEndIndex, formatDateToLocalDate, getDateWithoutTime, getPaymentStatusColor, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { CheckmarkIcon } from 'react-hot-toast'
-import { approveManualPayment } from '@/lib/server_actions/manual_payment'
-
-import { useAuthContext } from '@/components/providers/AuthProvider'
+import { approveManualPayment, declineManualPayment, fetchManualPayments, saveManualPayment, updateManualPayment } from '@/lib/server_actions/manual_payment'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
 
@@ -46,7 +42,6 @@ export default function ManualPaymentPage() {
   const [isDeclinePaymentConfirmationModalOpen, setIsDeclinePaymentConfirmationModalOpen] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
 
   const reportHeaders = {amount: 'Paid Amount', reference_number: 'Reference Number', created_at: 'Paymment Date'}
 
@@ -57,22 +52,12 @@ export default function ManualPaymentPage() {
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
   const loadManualPayments = async () => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
-    const startIndex = (currentPage - 1) * recordsPerPage
-    const endIndex = currentPage * recordsPerPage - 1
+    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
 
     try {
       setLoading(true)
-      let query = supabase.from(DATABASE_TABLE.manual_payments).select('*', {count: 'exact', head: false})
-      if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus)
-      }
-      if (searchTerm) {
-        query = query.or(`reference_number.ilike.%${searchTerm}%`)
-      }
-      const { data, count, error } = await query.order('created_at', { ascending: false })
-      .range(startIndex, endIndex)
+      
+      const { data, count, error } = await fetchManualPayments({ selectedStatus, searchTerm, startIndex, endIndex });
 
       if (error) {
         showServerErrorToast(error.message)
@@ -101,7 +86,7 @@ export default function ManualPaymentPage() {
     resetModalState()
     
     try {
-      const { data, error } = await approveManualPayment(id, { status: PaymentStatus.APPROVED })
+      const { data, error } = await approveManualPayment(id)
       if (error) {
         showServerErrorToast(error.message)
       } else {
@@ -128,13 +113,8 @@ export default function ManualPaymentPage() {
   const handleDeclinePayment = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
-      const { error } = await supabase
-        .from(DATABASE_TABLE.manual_payments)
-        .update({status: PaymentStatus.DECLINED})
-        .eq('id', id)
+      const { error } = await declineManualPayment(id)
 
       if (error) {
         showServerErrorToast(error.message)
@@ -160,14 +140,10 @@ export default function ManualPaymentPage() {
   }
 
   const handleCreate = async (manualPayment: ManualPayment) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
       // Exclude id field while creating new record 
       const {id, ...manualPaymentWithNoId} = manualPayment
     try {
-      const { error } = await supabase
-        .from(DATABASE_TABLE.manual_payments)
-        .insert(manualPaymentWithNoId)
+      const { error } = await saveManualPayment(manualPaymentWithNoId)
 
       if (error) {
         handleServerError(error)
@@ -185,13 +161,8 @@ export default function ManualPaymentPage() {
   }
 
   const handleUpdate = async (manualPayment: ManualPayment) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
-      const { error } = await supabase
-        .from(DATABASE_TABLE.manual_payments)
-        .update(manualPayment)
-        .eq('id', manualPayment.id)
+      const { error } = await updateManualPayment(manualPayment.id, manualPayment)
 
       if (error) {
         handleServerError(error)
@@ -333,7 +304,7 @@ export default function ManualPaymentPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    {formatDateToUTC(manualPayment.created_at)}
+                    {formatDateToLocalDate(manualPayment.created_at)}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
                     <div className="flex justify-center space-x-2 items-center">                        

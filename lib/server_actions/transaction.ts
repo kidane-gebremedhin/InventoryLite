@@ -1,40 +1,53 @@
 'use server';
 
 import { createClient } from '@/supabase/server';
-import { DATABASE_TABLE, RecordStatus } from '../Enums';
+import { DATABASE_TABLE } from '../Enums';
 import { Supplier, RecordStatusPayload, ServerActionsResponse } from '../types/Models';
 import { ALL_OPTIONS } from '../Constants';
+import { convertToUTC, setEarliestTimeOfDay } from '../helpers/Helper';
 
 interface SearchParams {
     selectedStatus: string,
-    searchTerm: string,
+    selectedDirection: string,
+    selectedStoreId: string,
+    selectedInventoryItemId: string,
+    startDate: Date,
+    endDate: Date,
     startIndex: number,
     endIndex: number
 }
 
-export async function fetchSuppliers({selectedStatus, searchTerm, startIndex, endIndex}: SearchParams): Promise<ServerActionsResponse> {
+export async function fetchTransactions({selectedStatus, selectedDirection, selectedStoreId, selectedInventoryItemId, startDate, endDate, startIndex, endIndex}: SearchParams): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
-    let query = supabase.from(DATABASE_TABLE.suppliers).select('*', {count: 'exact', head: false})
+    let query = supabase.from(DATABASE_TABLE.transactions).select(`
+        *,
+        item:inventory_items(*),
+        store:stores(*)
+        `, {count: 'exact', head: false})
+
     if (selectedStatus !== ALL_OPTIONS) {
         query = query.eq('status', selectedStatus)
     }
-    if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, phone.ilike.%${searchTerm}%, address.ilike.%${searchTerm}%`)
+    if (selectedDirection !== ALL_OPTIONS) {
+        query = query.eq('type', selectedDirection);
+    }
+    if (selectedStoreId !== ALL_OPTIONS) {
+        query = query.eq('store_id', selectedStoreId);
+    }
+    if (selectedInventoryItemId !== ALL_OPTIONS) {
+        query = query.eq('item_id', selectedInventoryItemId);
+    }
+    if (startDate) {
+        const startDateUTC = convertToUTC(setEarliestTimeOfDay(startDate))
+        query = query.gte('created_at', startDateUTC.toUTCString())
+    }
+    if (endDate) {
+        const endDateUTC = convertToUTC(setEarliestTimeOfDay(endDate))
+        query = query.lte('created_at', endDateUTC.toUTCString())
     }
     const { data, count, error } = await query.order('created_at', { ascending: false })
         .range(startIndex, endIndex)
-
-    return { data, count, error };
-}
-
-export async function fetchSupplierOptions(): Promise<ServerActionsResponse> {
-    const supabase = await createClient();
-
-    const { data, count, error } = await supabase.from(DATABASE_TABLE.suppliers)
-        .select('id, name', {count: 'exact', head: false})
-        .eq('status', RecordStatus.ACTIVE)
-        .order('name', { ascending: true })
 
     return { data, count, error };
 }

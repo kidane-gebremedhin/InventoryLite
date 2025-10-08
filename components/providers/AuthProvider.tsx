@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
     // 1. Get initial session on page reload
     supabase.auth.getSession().then(async ({ data }) => {
         
-        const currentUser = await fetchUserProfile(data.session.user);
+        const currentUser = await fetchUserProfile(data?.session?.user);
         setCurrentUser(currentUser);
     });
 

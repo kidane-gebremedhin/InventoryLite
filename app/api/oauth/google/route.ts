@@ -39,19 +39,19 @@ export async function GET(request: Request) {
       
       if (error) {
         console.error('Error exchanging code for session:')
-        return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, requestUrl.origin))
+        return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL))
       }
 
       console.log('Auth callback - Session exchanged successfully:')
       
       // Redirect to the intended page or dashboard
-      return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, requestUrl.origin))
+      return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, process.env.APP_URL))
     } catch (error) {
       console.error('Error in auth callback:')
-      return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, requestUrl.origin))
+      return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL))
     }
   }
 
   // Return to signin if no code is present
-  return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, requestUrl.origin))
+  return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL))
 }

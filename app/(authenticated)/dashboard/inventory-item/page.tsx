@@ -13,10 +13,9 @@ import {
 import { InventoryItemModal } from '@/components/inventory_items/InventoryItemModal'
 
 import { Category, InventoryItem } from '@/lib/types/Models';
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
+import { RecordStatus } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { calculateStartAndEndIndex, getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import InventoryItemDetailsModal from '@/components/inventory_items/InventoryItemDetailsModal'
@@ -24,11 +23,10 @@ import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import LowStock from '@/components/helpers/LowStock'
-import { saveInventoryItem, updateInventoryItem, updateInventoryItemRecordStatus } from '@/lib/server_actions/inventory_item'
-
-import { useAuthContext } from '@/components/providers/AuthProvider'
+import { fetchInvetoryItems, saveInventoryItem, updateInventoryItem, updateInventoryItemRecordStatus } from '@/lib/server_actions/inventory_item'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
+import { fetchCategoryOptions } from '@/lib/server_actions/category'
 
 export default function InventoryPage() {
   const router = useRouter()
@@ -54,7 +52,6 @@ export default function InventoryPage() {
   const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { currentUser, supabase } = useAuthContext();
 
   const reportHeaders = {
     sku: 'SKU Code', 
@@ -69,14 +66,8 @@ export default function InventoryPage() {
 
   useEffect(() => {
     const loadCategories = async () => {
-      if (!supabase || !await authorseDBAction(currentUser)) return
-
       try {
-        const { data, error } = await supabase
-          .from(DATABASE_TABLE.categories)
-          .select('*')
-          .eq('status', RecordStatus.ACTIVE)
-          .order('name')
+        const { data, error } = await fetchCategoryOptions()
 
         if (error) {
           showServerErrorToast(error.message)
@@ -100,30 +91,12 @@ export default function InventoryPage() {
   }, [searchTerm, selectedCategoryId, selectedStatus, recordsPerPage, currentPage])
 
   const loadInventoryItems = async () => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
-    const startIndex = (currentPage - 1) * recordsPerPage
-    const endIndex = currentPage * recordsPerPage - 1
+    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
 
     try {
       setLoading(true)
-      let query = supabase.from(DATABASE_TABLE.inventory_items).select(`
-        *,
-        category:categories(*),
-        purchase_order_items:purchase_order_items(*),
-        sales_order_items:sales_order_items(*)
-      `, {count: 'exact', head: false})
-      if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus);
-      }
-      if (selectedCategoryId !== ALL_OPTIONS) {
-        query = query.eq('category_id', selectedCategoryId);
-      }
-      if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%, sku.ilike.%${searchTerm}%`);
-      }
-      const { data, count, error } = await query.order('created_at', { ascending: false })
-      .range(startIndex, endIndex)
+      
+      const { data, count, error } = await fetchInvetoryItems({ selectedCategoryId, selectedStatus, searchTerm, startIndex, endIndex });
 
       if (error) {
         showServerErrorToast(error.message)
@@ -161,8 +134,6 @@ export default function InventoryPage() {
 
   const handleArchive = async (id: string) => {
     resetModalState()
-
-    if (!supabase || !await authorseDBAction(currentUser)) return
     
     try {
       const { error } = await updateInventoryItemRecordStatus(id, {status: RecordStatus.ARCHIVED})
@@ -185,7 +156,6 @@ export default function InventoryPage() {
   const handleRestore = async (id: string) => {
     resetModalState()
 
-    if (!supabase || !await authorseDBAction(currentUser)) return
     try {
       const { error } = await updateInventoryItemRecordStatus(id, {status: RecordStatus.ACTIVE})
 
@@ -205,7 +175,6 @@ export default function InventoryPage() {
   }
 
   const handleCreate = async (inventoryItem: InventoryItem) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
 
     try {
       // Exclude id when creating new records
@@ -228,8 +197,6 @@ export default function InventoryPage() {
   }
 
   const handleUpdate = async (inventoryItem: InventoryItem) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     try {
       const { error } = await updateInventoryItem(inventoryItem.id, inventoryItem)
 
