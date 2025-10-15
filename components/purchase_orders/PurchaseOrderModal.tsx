@@ -4,12 +4,10 @@ import { useState, useEffect } from 'react'
 
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier } from '@/lib/types/Models'
-import { PurchaseOrderStatus, RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
-import { calculateOrderTotalProce, formatDateToLocalDate, showErrorToast } from '@/lib/helpers/Helper'
+import { PurchaseOrderStatus, RecordStatus } from '@/lib/Enums'
+import { calculateOrderTotalProce, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
 import { DECIMAL_REGEX, PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
-
-import { useAuthContext } from '../providers/AuthProvider'
 import { fetchStoreOptions } from '@/lib/server_actions/store'
 import { fetchSupplierOptions } from '@/lib/server_actions/supplier'
 import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
@@ -39,7 +37,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<PurchaseOrder>>(emptyEntry)
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([])
-  const { supabase } = useAuthContext();
 
   useEffect(() => {
     // reset form
@@ -64,8 +61,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   }, [isOpen, order])
 
   const loadStores = async () => {
-    if (!supabase) return
-
     try {
       const { data, error } = await fetchStoreOptions()
 
@@ -78,8 +73,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   }
 
   const loadSuppliers = async () => {
-    if (!supabase) return
-
     try {
       const { data, error } = await fetchSupplierOptions()
 
@@ -96,8 +89,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   }
 
   const loadInventoryItems = async () => {
-    if (!supabase) return
-
     try {
       const { data, error } = await fetchInventoryItemOptions()
 

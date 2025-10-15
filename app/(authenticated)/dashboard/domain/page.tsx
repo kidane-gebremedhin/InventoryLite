@@ -22,7 +22,6 @@ import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { fetchDomains, saveDomain, updateDomain, updateDomainRecordStatus } from '@/lib/server_actions/domain'
 
-import { useAuthContext } from '@/components/providers/AuthProvider'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
 
@@ -132,7 +131,7 @@ export default function DomainPage() {
       // Exclude id field while creating new record 
       const {id, ...domainWithNoId} = domain
     try {
-      const { error } = await saveDomain(domainWithNoId)
+      const { data, error } = await saveDomain(domainWithNoId)
 
       if (error) {
         handleServerError(error)
@@ -141,7 +140,7 @@ export default function DomainPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Created.')
-      loadDomains()
+      setDomains(prev => [...data, ...prev])
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -151,7 +150,7 @@ export default function DomainPage() {
 
   const handleUpdate = async (domain: Domain) => {
     try {
-      const { error } = await updateDomain(domain.id, domain)
+      const { data, error } = await updateDomain(domain.id, domain)
 
       if (error) {
         handleServerError(error)
@@ -160,7 +159,7 @@ export default function DomainPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      loadDomains()
+      setDomains(prev => prev.map(elem => elem.id === domain.id ? data[0] : domain))
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -289,7 +288,7 @@ export default function DomainPage() {
                   </td>
                   <td style={{maxWidth: 200}} className="px-6 py-4 text-sm text-gray-900 o">
                     {canSeeMore ? shortenText(domain.description, MAX_TABLE_TEXT_LENGTH) : domain.description}
-                    {domain.description.length > MAX_TABLE_TEXT_LENGTH && (
+                    {domain.description?.length > MAX_TABLE_TEXT_LENGTH && (
                       <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
                     )}
                   </td>

@@ -19,7 +19,7 @@ interface SearchParams {
 
 export async function fetchTransactions({selectedStatus, selectedDirection, selectedStoreId, selectedInventoryItemId, startDate, endDate, startIndex, endIndex}: SearchParams): Promise<ServerActionsResponse> {
     const supabase = await createClient();
-    
+
     let query = supabase.from(DATABASE_TABLE.transactions).select(`
         *,
         item:inventory_items(*),
@@ -30,7 +30,7 @@ export async function fetchTransactions({selectedStatus, selectedDirection, sele
         query = query.eq('status', selectedStatus)
     }
     if (selectedDirection !== ALL_OPTIONS) {
-        query = query.eq('type', selectedDirection);
+        query = query.eq('direction', selectedDirection);
     }
     if (selectedStoreId !== ALL_OPTIONS) {
         query = query.eq('store_id', selectedStoreId);
@@ -52,34 +52,37 @@ export async function fetchTransactions({selectedStatus, selectedDirection, sele
     return { data, count, error };
 }
 
-export async function saveSupplier(requestData: Supplier): Promise<ServerActionsResponse> {
-    const supabase = await createClient();
+// export async function saveSupplier(requestData: Supplier): Promise<ServerActionsResponse> {
+//     const supabase = await createClient();
     
-    const { data, error } = await supabase
-        .from(DATABASE_TABLE.suppliers)
-        .insert(requestData);
+//     const { data, error } = await supabase
+//         .from(DATABASE_TABLE.suppliers)
+//         .insert(requestData)
+//         .select();
     
-    return { data, error };
-}
+//     return { data, error };
+// }
 
-export async function updateSupplier(id: string, requestData: Supplier): Promise<ServerActionsResponse> {
-    const supabase = await createClient();
+// export async function updateSupplier(id: string, requestData: Supplier): Promise<ServerActionsResponse> {
+//     const supabase = await createClient();
     
-    const { data, error } = await supabase
-        .from(DATABASE_TABLE.suppliers)
-        .update(requestData)
-        .eq('id', id);
+//     const { data, error } = await supabase
+//         .from(DATABASE_TABLE.suppliers)
+//         .update(requestData)
+//         .eq('id', id)
+//         .select();
     
-    return { data, error };
-}
+//     return { data, error };
+// }
 
-export async function updateSupplierRecordStatus(id: string, requestData: RecordStatusPayload): Promise<ServerActionsResponse> {
-    const supabase = await createClient();
+// export async function updateSupplierRecordStatus(id: string, requestData: RecordStatusPayload): Promise<ServerActionsResponse> {
+//     const supabase = await createClient();
     
-    const { data, error } = await supabase
-        .from(DATABASE_TABLE.suppliers)
-        .update(requestData)
-        .eq('id', id)
+//     const { data, error } = await supabase
+//         .from(DATABASE_TABLE.suppliers)
+//         .update(requestData)
+//         .eq('id', id)
+//         .select();
     
-    return { data, error };
-}
+//     return { data, error };
+// }

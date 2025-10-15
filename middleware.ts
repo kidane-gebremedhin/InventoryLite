@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { PUBLIC_PATHS } from './lib/Constants'
-import { fetchUserProfile } from './lib/helpers/Helper'
-import { ROUTE_PATH } from './lib/Enums'
+import { CookiesKey, ROUTE_PATH, UserRole } from './lib/Enums'
+import { fetchUserProfile } from './lib/server_actions/user'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -22,16 +22,39 @@ export async function middleware(request: NextRequest) {
           supabaseResponse = NextResponse.next({
             request,
           })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options)
           )
         },
       },
     }
   )
 
-  const { data } = await supabase.auth.getUser()
-  const user = await fetchUserProfile(data.user)
+  let user = null;
+  const userSubscriptionInfo = request.cookies.get(CookiesKey.ucookiesinfo)?.value;
+  if (!userSubscriptionInfo) {
+    const { data } = await supabase.auth.getUser()
+    if (data) {
+      user = await fetchUserProfile(data.user)
+      supabaseResponse.cookies.set({
+        name: CookiesKey.ucookiesinfo,
+        value: JSON.stringify(user),
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+        path: '/',
+      });
+
+      console.log("User details From DB")
+    }
+  } else {
+    // Clear cookies on logout
+    if (request.cookies.getAll().length == 1) {
+      supabaseResponse.cookies.delete(CookiesKey.ucookiesinfo);
+    } else {
+      console.log("User details From Cookies")
+      user = JSON.parse(userSubscriptionInfo);
+    }
+  }
 
   // Redirect unauthenticated users to login page except for public ones
   if (!PUBLIC_PATHS.includes(request.nextUrl.pathname)) {
@@ -40,11 +63,15 @@ export async function middleware(request: NextRequest) {
     }
 
     // Redirect to complete profile when needed
-    if (!user?.subscriptionInfo?.profile_complete && request.nextUrl.pathname !== ROUTE_PATH.COMPLETE_PROFILE) {
+    if (user?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN && !user?.subscriptionInfo?.profile_complete && request.nextUrl.pathname !== ROUTE_PATH.COMPLETE_PROFILE) {
       return NextResponse.redirect(new URL(ROUTE_PATH.COMPLETE_PROFILE, request.url))
     }
     // Redirect to complete profile when needed
     if (user?.subscriptionInfo?.profile_complete && request.nextUrl.pathname === ROUTE_PATH.COMPLETE_PROFILE) {
+      return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, request.url))
+    }
+    // Restrict SUPER_ADMIN pages
+    if (user?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN && request.nextUrl.pathname === ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT) {
       return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, request.url))
     }
   

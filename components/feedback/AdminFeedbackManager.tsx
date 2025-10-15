@@ -11,57 +11,43 @@ import {
   EyeIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline'
-import { ALL_OPTIONS, FEEDBACK_STATUSES } from '@/lib/Constants'
-import { FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
+import { ALL_OPTIONS, FEEDBACK_STATUSES, RATING_STARTS } from '@/lib/Constants'
+import { FeedbackStatus, FeedbackPriority } from '@/lib/Enums'
 import { formatDateToLocalDate, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-
 import { useAuthContext } from '../providers/AuthProvider'
-
-interface Feedback {
-  id: string
-  user_id: string
-  tenant_id: string
-  category: string
-  subject: string
-  message: string
-  status: string
-  priority: string
-  rating: number | null
-  admin_response: string | null
-  created_at: string
-  tenant: {
-    name: string
-    domain_id: string
-    email: string
-  }
-}
+import { UserFeedback } from '@/lib/types/Models'
+import { manageUserFeedbacks, saveFeedbackAdminResponse, updateFeedbackStatus } from '@/lib/server_actions/feedback'
 
 export function AdminFeedbackManager() {
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [feedbacks, setFeedbacks] = useState<UserFeedback[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null)
+  const [selectedFeedback, setSelectedFeedback] = useState<UserFeedback | null>(null)
   const [showResponseModal, setShowResponseModal] = useState(false)
   const [responseText, setResponseText] = useState('')
   const [filter, setFilter] = useState(ALL_OPTIONS)
-  const { supabase } = useAuthContext();
+
+  const { currentUser } = useAuthContext()
 
   useEffect(() => {
     loadFeedbacks()
   }, [])
 
   const loadFeedbacks = async () => {
-    if (!supabase) return
-
     try {
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.feedback)
-        .select(`
-          *,
-          tenant:tenants(name, domain)
-        `)
-        .order('created_at', { ascending: false })
+      const { data, error } = await manageUserFeedbacks(
+        {
+            selectedStatus: '',
+            selectedCategory: '',
+            selectedPriority: '',
+            selectedRating: 0,
+            searchTerm: '',
+            startIndex: 0,
+            endIndex: 100
+        }
+      )
 
       if (error) throw error
+
       setFeedbacks(data || [])
     } catch (error: any) {
       showErrorToast()
@@ -71,15 +57,11 @@ export function AdminFeedbackManager() {
   }
 
   const handleStatusUpdate = async (feedbackId: string, newStatus: string) => {
-    if (!supabase) return
-
     try {
-      const { error } = await supabase
-        .from(DATABASE_TABLE.feedback)
-        .update({ status: newStatus })
-        .eq('id', feedbackId)
+      const { error } = await updateFeedbackStatus({feedbackId, newStatus})
 
       if (error) throw error
+
       showSuccessToast('Status updated successfully')
       loadFeedbacks()
     } catch (error: any) {
@@ -88,16 +70,16 @@ export function AdminFeedbackManager() {
   }
 
   const handleResponseSubmit = async () => {
-    if (!supabase || !selectedFeedback) return
+    if (!selectedFeedback) return
 
     try {
-      const { error } = await supabase
-        .from(DATABASE_TABLE.feedback)
-        .update({ 
-          admin_response: responseText,
-          status: 'resolved'
-        })
-        .eq('id', selectedFeedback.id)
+      const response = {
+        feedbackId: selectedFeedback.id,
+        responseText: responseText,
+        status: FeedbackStatus.RESOLVED
+      }
+
+      const { error } = await saveFeedbackAdminResponse(response)
 
       if (error) throw error
 
@@ -112,7 +94,8 @@ export function AdminFeedbackManager() {
   }
 
   const getFilteredFeedbacks = () => {
-    if (filter === ALL_OPTIONS) return feedbacks
+    if (filter === ALL_OPTIONS) return feedbacks;
+
     return feedbacks.filter(f => f.status === filter)
   }
 
@@ -131,11 +114,11 @@ export function AdminFeedbackManager() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent':
+      case FeedbackPriority.URGENT:
         return 'bg-red-100 text-red-800'
-      case 'high':
+      case FeedbackPriority.HIGH:
         return 'bg-orange-100 text-orange-800'
-      case 'medium':
+      case FeedbackPriority.MEDIUM:
         return 'bg-yellow-100 text-yellow-800'
       default:
         return 'bg-gray-100 text-gray-800'
@@ -162,7 +145,7 @@ export function AdminFeedbackManager() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Open</p>
               <p className="text-2xl font-bold text-gray-900">
-                {feedbacks.filter(f => f.status === 'open').length}
+                {feedbacks.filter(f => f.status === FeedbackStatus.OPEN).length}
               </p>
             </div>
           </div>
@@ -227,7 +210,7 @@ export function AdminFeedbackManager() {
                 <div className="flex items-center mb-3">
                   <span className="text-sm text-gray-500 mr-2">Rating:</span>
                   <div className="flex">
-                    {[1, 2, 3, 4, 5].map((star) => (
+                    {RATING_STARTS.map((star) => (
                       <StarIconSolid
                         key={star}
                         className={`h-4 w-4 ${star <= feedback.rating! ? 'text-yellow-400' : 'text-gray-300'}`}

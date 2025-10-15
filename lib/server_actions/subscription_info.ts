@@ -10,7 +10,8 @@ export async function updateUserSubscriptionInfo(email: string, requestData: Par
     const { data, error } = await supabase
         .from(DATABASE_TABLE.tenants)
         .update(requestData)
-        .eq('email', email);
+        .eq('email', email)
+        .select();
 
     return { data, error };
 }
@@ -22,6 +23,7 @@ export async function updateTenantRecordStatus(id: string, requestData: RecordSt
         .from(DATABASE_TABLE.tenants)
         .update(requestData)
         .eq('id', id)
+        .select();
     
     return { data, error };
 }

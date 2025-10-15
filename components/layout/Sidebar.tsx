@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
@@ -20,20 +20,24 @@ import {
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import { FireIcon } from '@heroicons/react/24/solid'
-import { getCurrentUserRole } from '@/lib/db_queries/DBQuery'
 import { ROUTE_PATH, UserRole } from '@/lib/Enums'
 import { APP_NAME } from '@/lib/app_config/config'
 import { useAuthContext } from '../providers/AuthProvider'
+import MiniLoading from '../helpers/MiniLoading'
 
 export default function Sidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [options, setOptions] = useState([])
   const {currentUser} = useAuthContext()
   const pathname = usePathname()
 
+  useEffect(() => {
+    setOptions(navigationOptions())
+  }, [currentUser])
+
   const navigationOptions = () => {
-    return [
+    const paths = [
       { name: 'Dashboard', href: ROUTE_PATH.DASHBOARD, icon: HomeIcon },
-      { name: 'Domains', href: ROUTE_PATH.DOMAIN, icon: BuildingStorefrontIcon },
       { name: 'Stores', href: ROUTE_PATH.STORE, icon: BuildingStorefrontIcon },
       { name: 'Categories', href: ROUTE_PATH.CATEGORY, icon: WindowIcon },
       { name: 'Inventory Items', href: ROUTE_PATH.INVENTORY_ITEM, icon: CubeIcon },
@@ -43,11 +47,23 @@ export default function Sidebar() {
       { name: 'Sales Orders', href: ROUTE_PATH.SALES_ORDER, icon: ShoppingCartIcon },
       { name: 'Transactions', href: ROUTE_PATH.TRANSACTION, icon: FireIcon },
       { name: 'Reports', href: ROUTE_PATH.REPORT, icon: ChartBarIcon },
-      { name: 'Feedback', href: (getCurrentUserRole(currentUser) === UserRole.ADMIN ? ROUTE_PATH.FEEDBACK_MANAGEMENT : ROUTE_PATH.FEEDBACK), icon: ChatBubbleLeftRightIcon },
+      { name: 'Feedback', href: (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN ? ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT : ROUTE_PATH.FEEDBACK), icon: ChatBubbleLeftRightIcon },
       { name: 'Manual Payments', href: ROUTE_PATH.MANUAL_PAYMENT, icon: CurrencyDollarIcon },
       { name: 'Settings', href: ROUTE_PATH.SETTING, icon: Cog6ToothIcon },
+    ];
+
+    const adminPaths = [
+      { name: 'Domains', href: ROUTE_PATH.DOMAIN, icon: BuildingStorefrontIcon }
     ]
+
+    if (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN) {
+      return [...paths, ...adminPaths]
+    }
+
+    return paths;
   }
+
+  if (!currentUser) return <MiniLoading />
 
   return (
     <>
@@ -70,7 +86,7 @@ export default function Sidebar() {
           </div>
           
           <nav className="flex-1 space-y-1 px-2 py-4">
-            {navigationOptions().map((item) => {
+            {options.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
@@ -99,7 +115,7 @@ export default function Sidebar() {
           </div>
           
           <nav className="flex-1 space-y-1 px-2 py-4">
-            {navigationOptions().map((item) => {
+            {options.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link

@@ -1,9 +1,7 @@
 import toast from "react-hot-toast"
-import { PaymentStatus, PurchaseOrderStatus, RecordStatus, RPC_FUNCTION, SalesOrderStatus, TransactionDirection } from "../Enums"
-import { PurchaseOrderItem, SalesOrderItem, ServerActionsHeader, User, UserSubscriptionInfo } from "../types/Models"
+import { PaymentStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
+import { PurchaseOrderItem, SalesOrderItem } from "../types/Models"
 import { CUSTOM_SERVER_ERRORS, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
-import { User as SupabaseUser } from "@supabase/supabase-js"
-import { makeRpcCall } from "../server_actions/report"
 
 export const shortenText = (input: string | undefined | null, targetLength: number): string => {
     if (!input) return ''
@@ -189,31 +187,6 @@ export const isCustomServerError = (message: string): boolean => {
     if (message.includes(customError)) return true
   }
   return false
-}
-
-export const fetchUserProfile = async (user: SupabaseUser): Promise<User> => {
-  if (!user) return null;
-
-  const userData: User = {
-    id: user.id,
-    fullName: user.user_metadata.full_name,
-    email: user.email!,
-    picturePicture: user.user_metadata.picture,
-    subscriptionInfo: await fetchUserSubscriptionInfo(user)
-  };
-
-  return userData;
-}
-
-export const fetchUserSubscriptionInfo = async (user: SupabaseUser): Promise<UserSubscriptionInfo> => {
-  // RPC call to fetch subscription info
-  const searchParams = { current_user_id: user.id }
-  const { data, error } = await makeRpcCall(RPC_FUNCTION.FETCH_USER_SUBSCRIPTION_INFO, searchParams)
-  if (error) {
-    return null;
-  }
-
-  return data.length > 0 ? data[0] : null;
 }
   
 export const calculateStartAndEndIndex = ({currentPage, recordsPerPage}): { startIndex: number, endIndex: number } => {

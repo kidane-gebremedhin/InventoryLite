@@ -14,10 +14,10 @@ import React, { useState, useEffect } from 'react'
 // DatePicker both are required
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { makeRpcCall } from '@/lib/server_actions/report'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
 import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
+import { makeRpcCall } from '@/lib/server_actions/rpc'
 
 // === Main App Component ===
 export default function App() {

@@ -35,7 +35,8 @@ export async function approveManualPayment(id: string): Promise<ServerActionsRes
     const { data, error } = await supabase
         .from(DATABASE_TABLE.manual_payments)
         .update({ status: PaymentStatus.APPROVED })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
     
     return { data, error };
 }
@@ -46,7 +47,8 @@ export async function declineManualPayment(id: string): Promise<ServerActionsRes
     const { data, error } = await supabase
         .from(DATABASE_TABLE.manual_payments)
         .update({ status: PaymentStatus.DECLINED })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
     
     return { data, error };
 }
@@ -56,7 +58,8 @@ export async function saveManualPayment(requestData: ManualPayment): Promise<Ser
     
     const { data, error } = await supabase
         .from(DATABASE_TABLE.manual_payments)
-        .insert(requestData);
+        .insert(requestData)
+        .select();
     
     return { data, error };
 }
@@ -67,7 +70,8 @@ export async function updateManualPayment(id: string, requestData: ManualPayment
     const { data, error } = await supabase
         .from(DATABASE_TABLE.manual_payments)
         .update(requestData)
-        .eq('id', id);
+        .eq('id', id)
+        .select();
     
     return { data, error };
 }

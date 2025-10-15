@@ -1,43 +1,29 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-
 import { PlusIcon, StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import { FeedbackRating } from '@/components/feedback/FeedbackRating'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { formatDateToLocalDate, getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import { FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES } from '@/lib/Constants'
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, DATABASE_TABLE } from '@/lib/Enums'
-import { useAuthContext } from '@/components/providers/AuthProvider'
-
-interface Feedback {
-  id: string
-  category: FeedbackCategory.BUG | FeedbackCategory.FEATURE | FeedbackCategory.IMPROVEMENT | FeedbackCategory.GENERAL
-  subject: string
-  message: string
-  status: FeedbackStatus.OPEN | FeedbackStatus.IN_PROGRESS | FeedbackStatus.RESOLVED | FeedbackStatus.CLOSED
-  priority: FeedbackPriority.LOW | FeedbackPriority.MEDIUM | FeedbackPriority.HIGH | FeedbackPriority.URGENT
-  rating: number | null
-  admin_response: string | null
-  created_at: string
-  updated_at: string
-}
+import { FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, RATING_STARTS } from '@/lib/Constants'
+import { fetchUserFeedbacks, saveUserFeedback } from '@/lib/server_actions/feedback'
+import { UserFeedback } from '@/lib/types/Models'
+import { FeedbackCategory, FeedbackPriority, RatingStar } from '@/lib/Enums'
 
 export default function FeedbackPage() {
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [feedbacks, setFeedbacks] = useState<UserFeedback[]>([])
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
-    category: 'general' as const,
+    category: '',
     subject: '',
     message: '',
-    priority: 'medium' as const,
+    priority: '',
     rating: 0
   })
   // Global States
   const {loading, setLoading} = useLoadingContext()
-  const { supabase } = useAuthContext();
 
   useEffect(() => {
     loadFeedbacks()
@@ -46,12 +32,20 @@ export default function FeedbackPage() {
   const loadFeedbacks = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.feedback)
-        .select('*')
-        .order('created_at', { ascending: false })
+      const { data, error } = await fetchUserFeedbacks(
+        {
+          selectedStatus: '',
+          selectedCategory: '',
+          selectedPriority: '',
+          selectedRating: 0,
+          searchTerm: '',
+          startIndex: 0,
+          endIndex: 100
+        }
+      );
 
       if (error) throw error
+
       setFeedbacks(data || [])
     } catch (error: any) {
       showErrorToast()
@@ -62,25 +56,31 @@ export default function FeedbackPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (formData.rating == 0) {
+      showErrorToast('Rating is required')
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from(DATABASE_TABLE.feedback)
-        .insert({
-          category: formData.category,
-          subject: formData.subject,
-          message: formData.message,
-          priority: formData.priority,
-          rating: formData.rating > 0 ? formData.rating : null
-        })
+      const feedback = {
+        category: formData.category,
+        subject: formData.subject,
+        message: formData.message,
+        priority: formData.priority,
+        rating: formData.rating
+      };
+
+      const { error } = await saveUserFeedback(feedback);
 
       if (error) throw error
 
       showSuccessToast('Feedback submitted successfully!')
       setFormData({
-        category: 'general',
+        category: '',
         subject: '',
         message: '',
-        priority: 'medium',
+        priority: '',
         rating: 0
       })
       setShowForm(false)
@@ -131,6 +131,7 @@ export default function FeedbackPage() {
                   className="input-field"
                   required
                 >
+                  <option key='' value=''></option>
                   {FEEDBACK_CATEGORIES.map(category => (
                     <option key={category.value} value={category.value}>
                       {category.label}
@@ -185,10 +186,10 @@ export default function FeedbackPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rating (Optional)
+                  Rating
                 </label>
                 <div className="flex space-x-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
+                  {RATING_STARTS.map((star) => (
                     <button
                       key={star}
                       type="button"
@@ -259,7 +260,7 @@ export default function FeedbackPage() {
                 <div className="flex items-center mb-3">
                   <span className="text-sm text-gray-500 mr-2">Rating:</span>
                   <div className="flex">
-                    {[1, 2, 3, 4, 5].map((star) => (
+                    {RATING_STARTS.map((star) => (
                       <StarIconSolid
                         key={star}
                         className={`h-4 w-4 ${star <= feedback.rating! ? 'text-yellow-400' : 'text-gray-300'}`}

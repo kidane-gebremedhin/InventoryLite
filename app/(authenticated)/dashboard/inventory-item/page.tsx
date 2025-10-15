@@ -90,13 +90,13 @@ export default function InventoryPage() {
     loadInventoryItems()
   }, [searchTerm, selectedCategoryId, selectedStatus, recordsPerPage, currentPage])
 
-  const loadInventoryItems = async () => {
+  const loadInventoryItems = async (cacheEnabled: boolean = true) => {
     const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
 
     try {
       setLoading(true)
       
-      const { data, count, error } = await fetchInvetoryItems({ selectedCategoryId, selectedStatus, searchTerm, startIndex, endIndex });
+      const { data, count, error } = await fetchInvetoryItems({ selectedCategoryId, selectedStatus, searchTerm, startIndex, endIndex }, cacheEnabled);
 
       if (error) {
         showServerErrorToast(error.message)
@@ -188,7 +188,7 @@ export default function InventoryPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Created.')
-      loadInventoryItems()
+      loadInventoryItems(false)
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -207,7 +207,7 @@ export default function InventoryPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      loadInventoryItems()
+      loadInventoryItems(false)
     } catch (error: any) {
       showErrorToast()
     } finally {

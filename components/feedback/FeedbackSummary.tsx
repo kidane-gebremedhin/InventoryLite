@@ -11,9 +11,10 @@ import {
 } from '@heroicons/react/24/outline'
 import MiniLoading from '../helpers/MiniLoading'
 import { getCurrentDateTime } from '@/lib/helpers/Helper'
-import { DATABASE_TABLE } from '@/lib/Enums'
+import { FeedbackStatus } from '@/lib/Enums'
 
 import { useAuthContext } from '../providers/AuthProvider'
+import { fetchFeedbackStats } from '@/lib/server_actions/feedback'
 
 interface FeedbackSummaryProps {
   className?: string
@@ -36,26 +37,21 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
     recentCount: 0
   })
   const [loading, setLoading] = useState(true)
-  const { supabase } = useAuthContext();
 
   useEffect(() => {
     loadFeedbackStats()
   }, [])
 
   const loadFeedbackStats = async () => {
-    if (!supabase) return
-
     try {
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.feedback)
-        .select('*')
+      const { data, error } = await fetchFeedbackStats()
 
       if (error) throw error
 
       const feedbacks = data || []
       const total = feedbacks.length
-      const open = feedbacks.filter(f => f.status === 'open').length
-      const resolved = feedbacks.filter(f => f.status === 'resolved').length
+      const open = feedbacks.filter(f => f.status === FeedbackStatus.OPEN).length
+      const resolved = feedbacks.filter(f => f.status === FeedbackStatus.RESOLVED).length
       
       const ratings = feedbacks.filter(f => f.rating !== null).map(f => f.rating!)
       const averageRating = ratings.length > 0 

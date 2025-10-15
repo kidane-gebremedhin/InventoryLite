@@ -1,11 +1,11 @@
 'use client'
 
 import { ROUTE_PATH } from '@/lib/Enums'
-import { fetchUserProfile } from '@/lib/helpers/Helper'
+import { fetchUserProfile } from '@/lib/server_actions/user'
 import { User } from '@/lib/types/Models'
 import { createClient } from '@/supabase/client'
 import { useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect, useState, useRef } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 type AuthContextType = {
   supabase: ReturnType<typeof createClient>
@@ -27,15 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
   useEffect(() => {
     // 1. Get initial session on page reload
     supabase.auth.getSession().then(async ({ data }) => {
-        
-        const currentUser = await fetchUserProfile(data?.session?.user);
+        const currentUser = await fetchUserProfile(data?.session?.user, true);
         setCurrentUser(currentUser);
     });
 
     // 2. LISTEN to changes (login, logout, token refresh, OAuth redirect)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
-        const currentUser = await fetchUserProfile(newSession?.user);
+        const currentUser = await fetchUserProfile(newSession?.user, true);
         setCurrentUser(currentUser);
       }
     );

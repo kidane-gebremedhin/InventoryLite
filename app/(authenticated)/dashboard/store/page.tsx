@@ -21,8 +21,6 @@ import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { fetchStores, saveStore, updateStore, updateStoreRecordStatus } from '@/lib/server_actions/store'
-
-import { useAuthContext } from '@/components/providers/AuthProvider'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
 
@@ -132,7 +130,7 @@ export default function StorePage() {
       // Exclude id field while creating new record 
       const {id, ...storeWithNoId} = store
     try {
-      const { error } = await saveStore(storeWithNoId)
+      const { data, error } = await saveStore(storeWithNoId)
 
       if (error) {
         handleServerError(error)
@@ -141,7 +139,7 @@ export default function StorePage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Created.')
-      loadStores()
+      setStores(prev => [...data, ...prev])
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -151,7 +149,7 @@ export default function StorePage() {
 
   const handleUpdate = async (store: Store) => {
     try {
-      const { error } = await updateStore(store.id, store)
+      const { data, error } = await updateStore(store.id, store)
 
       if (error) {
         handleServerError(error)
@@ -160,7 +158,7 @@ export default function StorePage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      loadStores()
+      setStores(prev => prev.map(elem => elem.id === store.id ? data[0] : store))
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -289,7 +287,7 @@ export default function StorePage() {
                   </td>
                   <td style={{maxWidth: 200}} className="px-6 py-4 text-sm text-gray-900 o">
                     {canSeeMore ? shortenText(store.description, MAX_TABLE_TEXT_LENGTH) : store.description}
-                    {store.description.length > MAX_TABLE_TEXT_LENGTH && (
+                    {store.description?.length > MAX_TABLE_TEXT_LENGTH && (
                       <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
                     )}
                   </td>

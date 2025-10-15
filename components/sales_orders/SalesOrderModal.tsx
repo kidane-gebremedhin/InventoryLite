@@ -4,12 +4,10 @@ import { useState, useEffect } from 'react'
 
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { Customer, InventoryItem, SalesOrder, SalesOrderItem, Store } from '@/lib/types/Models'
-import { SalesOrderStatus, RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
-import { calculateOrderTotalProce, formatDateToLocalDate, showErrorToast } from '@/lib/helpers/Helper'
+import { SalesOrderStatus, RecordStatus } from '@/lib/Enums'
+import { calculateOrderTotalProce, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
 import { DECIMAL_REGEX, SALES_ORDER_STATUSES } from '@/lib/Constants'
-
-import { useAuthContext } from '../providers/AuthProvider'
 import { fetchStoreOptions } from '@/lib/server_actions/store'
 import { fetchCustomerOptions } from '@/lib/server_actions/customer'
 import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
@@ -39,7 +37,6 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<SalesOrder>>(emptyEntry)
   const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([])
-  const { supabase } = useAuthContext();
 
   useEffect(() => {
     // reset form
@@ -64,8 +61,6 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
   }, [isOpen, order])
 
   const loadStores = async () => {
-    if (!supabase) return
-
     try {
       const { data, error } = await fetchStoreOptions()
 
@@ -78,8 +73,6 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
   }
 
   const loadCustomers = async () => {
-    if (!supabase) return
-
     try {
       const { data, error } = await fetchCustomerOptions()
 
@@ -95,8 +88,6 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
   }
 
   const loadInventoryItems = async () => {
-    if (!supabase) return
-
     try {
       const { data, error } = await fetchInventoryItemOptions()
 

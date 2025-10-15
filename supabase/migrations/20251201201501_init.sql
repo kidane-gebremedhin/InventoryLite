@@ -6,12 +6,39 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
 ------------------------------------------------------------------------------------
 -- UP
 ------------------------------------------------------------------------------------
+-- FIXED OPTIONS(ENUMS)
+DROP TYPE IF EXISTS USER_ROLE CASCADE;
+DROP TYPE IF EXISTS RECORD_STATUS CASCADE;
+DROP TYPE IF EXISTS PAYMENT_METHOD CASCADE;
+DROP TYPE IF EXISTS CURRENCY_TYPE CASCADE;
+DROP TYPE IF EXISTS SUBSCRIPTION_STATUS CASCADE;
+DROP TYPE IF EXISTS TRANSACTION_DIRECTION CASCADE;
+DROP TYPE IF EXISTS FEEDBACK_CATEGORY CASCADE;
+DROP TYPE IF EXISTS FEEDBACK_STATUS CASCADE;
+DROP TYPE IF EXISTS FEEDBACK_PRIORITY CASCADE;
+DROP TYPE IF EXISTS MANUAL_PAYMENT_STATUS CASCADE;
+DROP TYPE IF EXISTS PURCHASE_ORDER_STATUS CASCADE;
+DROP TYPE IF EXISTS SALES_ORDER_STATUS CASCADE;
+--
+CREATE TYPE USER_ROLE AS ENUM('USER', 'TENANT_ADMIN', 'SUPER_ADMIN');
+CREATE TYPE RECORD_STATUS AS ENUM('active', 'archived');
+CREATE TYPE PAYMENT_METHOD AS ENUM('bank_transfer', 'payment_gateway');
+CREATE TYPE CURRENCY_TYPE AS ENUM('ETB', 'USD');
+CREATE TYPE SUBSCRIPTION_STATUS AS ENUM('free_trial', 'subscribed', 'unsubscribed', 'expired', 'terminated');
+CREATE TYPE PURCHASE_ORDER_STATUS AS ENUM('pending', 'received', 'canceled');
+CREATE TYPE SALES_ORDER_STATUS AS ENUM('pending', 'fulfilled', 'canceled');
+CREATE TYPE TRANSACTION_DIRECTION AS ENUM('in', 'out');
+CREATE TYPE FEEDBACK_CATEGORY AS ENUM('bug', 'feature', 'improvement', 'general');
+CREATE TYPE FEEDBACK_STATUS AS ENUM('open', 'in_progress', 'resolved', 'closed');
+CREATE TYPE FEEDBACK_PRIORITY AS ENUM('low', 'medium', 'high', 'urgent');
+CREATE TYPE MANUAL_PAYMENT_STATUS AS ENUM('pending', 'approved', 'declined');
+
 -- DOMAINS TABLE
 CREATE TABLE IF NOT EXISTS public.domains (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -25,14 +52,14 @@ CREATE TABLE IF NOT EXISTS public.tenants (
     name VARCHAR(255) UNIQUE NOT NULL,
     domain_id UUID REFERENCES public.domains(id) ON DELETE CASCADE,
     price_id TEXT,
-    payment_type VARCHAR NOT NULL DEFAULT 'payment_gateway' CHECK (payment_type IN ('bank_transfer', 'payment_gateway')),
-    currency_type VARCHAR NOT NULL DEFAULT 'USD' CHECK (currency_type IN ('ETB', 'USD')),
+    payment_method PAYMENT_METHOD NOT NULL DEFAULT 'payment_gateway',
+    currency_type CURRENCY_TYPE NOT NULL DEFAULT 'USD',
     current_payment_expiry_date DATE NOT NULL,
     expected_payment_amount DECIMAL(10,2) NOT NULL CHECK (expected_payment_amount >= 0),
-    subscription_status VARCHAR(255) NOT NULL DEFAULT 'free_trial' CHECK (subscription_status IN ('free_trial', 'subscribed', 'unsubscribed', 'expired', 'terminated')),
+    subscription_status SUBSCRIPTION_STATUS NOT NULL DEFAULT 'free_trial',
     profile_complete BOOLEAN NOT NULL DEFAULT FALSE,
     description TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -41,8 +68,8 @@ CREATE TABLE IF NOT EXISTS public.tenants (
 CREATE TABLE IF NOT EXISTS public.user_tenant_mappings (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-    role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    role USER_ROLE NOT NULL DEFAULT 'USER',
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -52,7 +79,7 @@ CREATE TABLE IF NOT EXISTS public.stores (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -66,7 +93,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -85,7 +112,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
     quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     min_quantity INTEGER NOT NULL DEFAULT 0 CHECK (min_quantity >= 0),
     unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -102,7 +129,7 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
     email VARCHAR(255),
     phone VARCHAR(50),
     address TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -116,10 +143,10 @@ CREATE TABLE IF NOT EXISTS public.purchase_orders (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     po_number VARCHAR(100) NOT NULL,
     supplier_id UUID NOT NULL REFERENCES public.suppliers(id) ON DELETE RESTRICT,
-    order_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (order_status IN ('pending', 'received', 'canceled')),
+    order_status PURCHASE_ORDER_STATUS NOT NULL DEFAULT 'pending',
     expected_date DATE NOT NULL,
     received_date TIMESTAMP,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -137,7 +164,7 @@ CREATE TABLE IF NOT EXISTS public.purchase_order_items (
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -151,7 +178,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
     email VARCHAR(255),
     phone VARCHAR(50),
     address TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -165,10 +192,10 @@ CREATE TABLE IF NOT EXISTS public.sales_orders (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     so_number VARCHAR(100) NOT NULL,
     customer_id UUID NOT NULL REFERENCES public.customers(id) ON DELETE RESTRICT,
-    order_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (order_status IN ('pending', 'fulfilled', 'canceled')),
+    order_status SALES_ORDER_STATUS NOT NULL DEFAULT 'pending',
     expected_date DATE,
     fulfilled_date TIMESTAMP,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -186,7 +213,7 @@ CREATE TABLE IF NOT EXISTS public.sales_order_items (
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -197,13 +224,13 @@ CREATE TABLE IF NOT EXISTS public.sales_order_items (
 CREATE TABLE IF NOT EXISTS public.transactions (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-    type VARCHAR(10) NOT NULL CHECK (type IN ('in', 'out')),
+    direction TRANSACTION_DIRECTION NOT NULL,
     item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL CHECK (quantity >= 0),
     current_item_quantity INTEGER NOT NULL CHECK (current_item_quantity >= 0),
     reference_id UUID NOT NULL,
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -214,11 +241,11 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 CREATE TABLE IF NOT EXISTS public.feedback (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-    category VARCHAR(50) NOT NULL CHECK (category IN ('bug', 'feature', 'improvement', 'general')),
+    category FEEDBACK_CATEGORY NOT NULL,
     subject VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
-    priority VARCHAR(20) NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    status FEEDBACK_STATUS NOT NULL DEFAULT 'open',
+    priority FEEDBACK_PRIORITY NOT NULL DEFAULT 'medium',
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     admin_response TEXT,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -233,7 +260,7 @@ CREATE TABLE IF NOT EXISTS public.manual_payments (
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     amount DECIMAL(10,2) NOT NULL CHECK (amount >= 0),
     reference_number VARCHAR(255) UNIQUE NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'declined')),
+    status MANUAL_PAYMENT_STATUS NOT NULL DEFAULT 'pending',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -260,7 +287,7 @@ BEGIN
     INSERT INTO public.tenants (email, name, current_payment_expiry_date, expected_payment_amount) VALUES (NEW.email, NEW.email, NOW(), 0)
     RETURNING id INTO newTenantId;
     -- Create user-ternant mapping
-    INSERT INTO public.user_tenant_mappings (user_id, tenant_id) VALUES (NEW.id, newTenantId);
+    INSERT INTO public.user_tenant_mappings (user_id, tenant_id, role) VALUES (NEW.id, newTenantId, 'TENANT_ADMIN');
     RETURN NEW;
 END;
 $$ language plpgsql SECURITY DEFINER;
@@ -275,7 +302,7 @@ CREATE OR REPLACE FUNCTION public.sync_transactions_with_purchase_orders()
     RETURNS TRIGGER AS $$
     DECLARE
         currentItemQuantity INTEGER;
-        orderStatus VARCHAR;
+        orderStatus PURCHASE_ORDER_STATUS;
         orderItem RECORD;
     BEGIN
         FOR orderItem IN (
@@ -286,7 +313,7 @@ CREATE OR REPLACE FUNCTION public.sync_transactions_with_purchase_orders()
             SELECT quantity INTO currentItemQuantity 
                 FROM public.inventory_items WHERE id = orderItem.inventory_item_id;
 
-            INSERT INTO public.transactions (type, store_id, item_id, quantity, current_item_quantity, reference_id) 
+            INSERT INTO public.transactions (direction, store_id, item_id, quantity, current_item_quantity, reference_id) 
                 VALUES ('in', orderItem.store_id, orderItem.inventory_item_id, orderItem.quantity, (currentItemQuantity + orderItem.quantity), orderItem.id);
         END LOOP;
         RETURN NEW;
@@ -302,17 +329,17 @@ RETURNS TABLE(
     name VARCHAR,
     domain_id UUID,
     price_id TEXT,
-    payment_type VARCHAR,
-    currency_type VARCHAR,
-    subscription_status VARCHAR,
+    payment_method PAYMENT_METHOD,
+    currency_type CURRENCY_TYPE,
+    subscription_status SUBSCRIPTION_STATUS,
     current_payment_expiry_date DATE,
     expected_payment_amount DECIMAL,
     profile_complete BOOLEAN,
     description TEXT,
-    status VARCHAR,
+    status RECORD_STATUS,
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE,
-    role VARCHAR
+    role USER_ROLE
 )
 LANGUAGE plpgsql
 AS $$
@@ -323,7 +350,7 @@ BEGIN
         t.name, 
         t.domain_id, 
         t.price_id, 
-        t.payment_type,
+        t.payment_method,
         t.currency_type,
         t.subscription_status,
         t.current_payment_expiry_date, 
@@ -366,7 +393,7 @@ CREATE OR REPLACE FUNCTION public.sync_transactions_with_sales_orders()
     RETURNS TRIGGER AS $$
     DECLARE
         currentItemQuantity INTEGER;
-        orderStatus VARCHAR;
+        orderStatus SALES_ORDER_STATUS;
         orderItem RECORD;
     BEGIN
         FOR orderItem IN (
@@ -376,7 +403,7 @@ CREATE OR REPLACE FUNCTION public.sync_transactions_with_sales_orders()
             -- Fetch Current Inventory Item Quantity
             SELECT quantity INTO currentItemQuantity FROM public.inventory_items WHERE id = orderItem.inventory_item_id;
 
-            INSERT INTO public.transactions (type, store_id, item_id, quantity, current_item_quantity, reference_id) 
+            INSERT INTO public.transactions (direction, store_id, item_id, quantity, current_item_quantity, reference_id) 
                 VALUES ('out', orderItem.store_id, orderItem.inventory_item_id, orderItem.quantity, (currentItemQuantity - orderItem.quantity), orderItem.id);
         END LOOP;
         RETURN NEW;
@@ -409,7 +436,7 @@ CREATE INDEX idx_tenants_email ON public.tenants(email);
 CREATE INDEX idx_tenants_name ON public.tenants(name);
 CREATE INDEX idx_tenants_domain_id ON public.tenants(domain_id);
 CREATE INDEX idx_tenants_price_id ON public.tenants(price_id);
-CREATE INDEX idx_tenants_payment_type ON public.tenants(payment_type);
+CREATE INDEX idx_tenants_payment_method ON public.tenants(payment_method);
 CREATE INDEX idx_tenants_current_payment_expiry_date ON public.tenants(current_payment_expiry_date);
 CREATE INDEX idx_tenants_subscription_status ON public.tenants(subscription_status);
 CREATE INDEX idx_tenants_currency_type ON public.tenants(currency_type);
@@ -650,47 +677,66 @@ ALTER TABLE public.manual_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
 
 
+-- CHECK IF SUPER_ADMIN
+CREATE OR REPLACE FUNCTION public.isSuperAdmin()
+    RETURNS BOOLEAN AS $$
+    BEGIN
+        RETURN EXISTS (
+            SELECT 1 FROM public.user_tenant_mappings 
+            WHERE user_id = auth.uid() 
+            AND role IN ('SUPER_ADMIN')
+        );
+    END;
+    $$ LANGUAGE plpgsql;
+
+
 -- DOMAINS POLICIES
 CREATE POLICY "Domains are viewable by authenticated users" ON public.domains
     FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Domains are insertable by authenticated users" ON public.domains
+CREATE POLICY "Domains are insertable by superadmin users" ON public.domains
     FOR INSERT WITH CHECK (
-        auth.role() = 'authenticated'
+        auth.role() = 'authenticated' AND public.isSuperAdmin()
     );
 
-CREATE POLICY "Domains are updatable by authenticated users" ON public.domains
-    FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Domains are updatable by superadmin users" ON public.domains
+    FOR UPDATE USING (auth.role() = 'authenticated' AND public.isSuperAdmin());
 
 -- TENANTS POLICIES
-CREATE POLICY "Tenants are viewable by authenticated users" ON public.tenants
-    FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Tenants are viewable by tenant users or superadmin users" ON public.tenants
+    FOR SELECT USING (
+        auth.role() = 'authenticated' AND
+        (id = public.user_tenant_id() OR public.isSuperAdmin())
+    );
 
 CREATE POLICY "Tenants are insertable by authenticated users" ON public.tenants
     FOR INSERT WITH CHECK (
         auth.role() = 'authenticated'
     );
 
-CREATE POLICY "Tenants are updatable by authenticated users" ON public.tenants
-    FOR UPDATE USING (auth.role() = 'authenticated');
-
--- USER_TTENANT_MAPPING POLICIES
-CREATE POLICY "user_tenant_mappings are viewable by authenticated users" ON public.user_tenant_mappings
-    FOR SELECT USING (
-        auth.role() = 'authenticated' AND 
-        user_id = auth.uid()
+CREATE POLICY "Tenants are updatable by tenant users or superadmin users" ON public.tenants
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND
+        (id = public.user_tenant_id() OR public.isSuperAdmin())
     );
 
-CREATE POLICY "user_tenant_mappings are insertable by authenticated users" ON public.user_tenant_mappings
+-- USER_TENANT_MAPPING POLICIES
+CREATE POLICY "user_tenant_mappings are viewable by tenant users" ON public.user_tenant_mappings
+    FOR SELECT USING (
+        auth.role() = 'authenticated'/* AND 
+        (tenant_id = public.user_tenant_id() OR public.isSuperAdmin())*/
+    );
+
+CREATE POLICY "user_tenant_mappings are insertable by tenant users" ON public.user_tenant_mappings
     FOR INSERT WITH CHECK (
         auth.role() = 'authenticated' AND 
-        user_id = auth.uid()
+        tenant_id = public.user_tenant_id()
     );
 
-CREATE POLICY "user_tenant_mappings are updatable by authenticated users" ON public.user_tenant_mappings
+CREATE POLICY "user_tenant_mappings are updatable by tenant users" ON public.user_tenant_mappings
     FOR UPDATE USING (
         auth.role() = 'authenticated' AND 
-        user_id = auth.uid()
+        tenant_id = public.user_tenant_id()
     );
 
 -- CATEGORIES POLICIES
@@ -944,10 +990,10 @@ CREATE POLICY "Users can delete transactions in their tenant" ON public.transact
     );
 
 -- FEEDBACK POLICIES
-CREATE POLICY "Users can view their own feedback" ON public.feedback
+CREATE POLICY "Users can view their tenant feedback" ON public.feedback
     FOR SELECT USING (
         auth.role() = 'authenticated' AND 
-        tenant_id = public.user_tenant_id()
+        (tenant_id = public.user_tenant_id() OR public.isSuperAdmin())
     );
 
 CREATE POLICY "Users can insert feedback in their tenant" ON public.feedback
@@ -960,25 +1006,14 @@ CREATE POLICY "Users can insert feedback in their tenant" ON public.feedback
 CREATE POLICY "Users can update their own feedback" ON public.feedback
     FOR UPDATE USING (
         auth.role() = 'authenticated' AND 
-        created_by = auth.uid()
-    );
-
-CREATE POLICY "Admins can update any feedback in their tenant" ON public.feedback
-    FOR UPDATE USING (
-        auth.role() = 'authenticated' AND 
-        tenant_id = public.user_tenant_id() AND
-        EXISTS (
-            SELECT 1 FROM public.user_tenant_mappings 
-            WHERE user_id = auth.uid() 
-            AND role IN ('admin')
-        )
+        (created_by = auth.uid() OR public.isSuperAdmin())
     );
 
 -- MANUAL_PAYMENTS POLICIES
 CREATE POLICY "Users can view their own manual_payments" ON public.manual_payments
     FOR SELECT USING (
         auth.role() = 'authenticated' AND 
-        tenant_id = public.user_tenant_id()
+        (tenant_id = public.user_tenant_id() OR public.isSuperAdmin())
     );
 
 CREATE POLICY "Users can insert manual_payments in their tenant" ON public.manual_payments
@@ -990,21 +1025,12 @@ CREATE POLICY "Users can insert manual_payments in their tenant" ON public.manua
 
 CREATE POLICY "Users can update their own manual_payments" ON public.manual_payments
     FOR UPDATE USING (
-        auth.role() = 'authenticated' AND created_by = auth.uid()
+        auth.role() = 'authenticated' 
+        AND (tenant_id = public.user_tenant_id() OR public.isSuperAdmin())
     );
 
-CREATE POLICY "Admins can update any manual_payments in their tenant" ON public.manual_payments
-    FOR UPDATE USING (
-        auth.role() = 'authenticated' AND 
-        tenant_id = public.user_tenant_id() AND
-        EXISTS (
-            SELECT 1 FROM public.user_tenant_mappings 
-            WHERE user_id = auth.uid() 
-            AND role IN ('admin')
-        )
-    );
 
--- FUNCTIONS FOR AUTOMATIC INVENTORY UPDATES
+-- FUNCTIONS & TRIGGERS
 
 -- Function to sync inventory quantity to transactions
 CREATE OR REPLACE FUNCTION public.update_inventory_on_transaction()
@@ -1030,7 +1056,7 @@ CREATE OR REPLACE FUNCTION public.validate_inventory_transaction()
         currentQuantity INTEGER;
         inventoryItemName VARCHAR;
     BEGIN
-        IF NEW.type = 'out' THEN
+        IF NEW.direction = 'out' THEN
             SELECT quantity, name INTO currentQuantity, inventoryItemName 
             FROM public.inventory_items 
             WHERE id = NEW.item_id;
@@ -1065,7 +1091,7 @@ DECLARE
     supplierId UUID := (purchase_order_data ->> 'supplier_id')::UUID;
     expectedDate DATE := (purchase_order_data ->> 'expected_date')::DATE;
     orderId UUID;
-    orderStatus VARCHAR;
+    orderStatus PURCHASE_ORDER_STATUS;
 BEGIN
     -- 2. Handle purchase_orders: insert/update
     IF is_for_update THEN
@@ -1146,7 +1172,7 @@ DECLARE
     customerId UUID := (sales_order_data ->> 'customer_id')::UUID;
     expectedDate DATE := (sales_order_data ->> 'expected_date')::DATE;
     orderId UUID;
-    orderStatus VARCHAR;
+    orderStatus SALES_ORDER_STATUS;
 BEGIN
     -- 2. Handle sales_orders: insert/update
     IF is_for_update THEN
@@ -1365,7 +1391,7 @@ $$ LANGUAGE plpgsql;
 
 -- Unreceived(Pending/Canceled) Orders Report
 CREATE OR REPLACE FUNCTION public.generate_unreceived_purchase_orders_report(
-        target_order_status VARCHAR,
+        target_order_status PURCHASE_ORDER_STATUS,
         records_per_page INTEGER,
         selected_item_id UUID DEFAULT NULL, 
         expected_date_start TIMESTAMP DEFAULT NULL,
@@ -1375,7 +1401,7 @@ CREATE OR REPLACE FUNCTION public.generate_unreceived_purchase_orders_report(
         item_id UUID, 
         item_name VARCHAR, 
         total_ordered_quantity BIGINT,
-        order_status VARCHAR
+        order_status PURCHASE_ORDER_STATUS
     ) AS $$
     BEGIN
         RETURN QUERY 
@@ -1409,7 +1435,7 @@ CREATE OR REPLACE FUNCTION public.generate_unreceived_purchase_orders_report(
 
 -- Unfulfilled(Pending/Canceled) Orders Report
 CREATE OR REPLACE FUNCTION public.generate_unfulfilled_sales_orders_report(
-        target_order_status VARCHAR,
+        target_order_status SALES_ORDER_STATUS,
         records_per_page INTEGER,
         selected_item_id UUID DEFAULT NULL, 
         expected_date_start TIMESTAMP DEFAULT NULL,
@@ -1419,7 +1445,7 @@ CREATE OR REPLACE FUNCTION public.generate_unfulfilled_sales_orders_report(
         item_id UUID, 
         item_name VARCHAR, 
         total_ordered_quantity BIGINT,
-        order_status VARCHAR
+        order_status SALES_ORDER_STATUS
     ) AS $$
     BEGIN
         RETURN QUERY 
@@ -1563,11 +1589,11 @@ BEGIN
         COALESCE(SUM(poi.quantity) FILTER (WHERE po.order_status = 'canceled'), 0) AS canceled_quantity,
         COALESCE(SUM(poi.quantity) FILTER (WHERE po.order_status = 'fulfilled'), 0) AS fulfilled_quantity
     FROM public.sales_orders po
-        INNER JOIN public.sales_order_items poi
-            ON poi.sales_order_id = po.id
-            WHERE po.status = 'active' 
-            AND poi.status = 'active' 
-            AND po.created_at >= DATE_TRUNC('month', NOW() - INTERVAL '6 months')
+    INNER JOIN public.sales_order_items poi
+        ON poi.sales_order_id = po.id
+        WHERE po.status = 'active' 
+        AND poi.status = 'active' 
+        AND po.created_at >= DATE_TRUNC('month', NOW() - INTERVAL '6 months')
     GROUP BY
         month_name
     ORDER BY

@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
-import { DEFAULT_USER_ROLE } from '@/lib/Constants'
-import { DATABASE_TABLE, ROUTE_PATH } from '@/lib/Enums'
-
+import { ROUTE_PATH, UserRole } from '@/lib/Enums'
+import { fetchUnreadCount } from '@/lib/server_actions/feedback'
 import { useAuthContext } from '../providers/AuthProvider'
 
 interface FeedbackNotificationProps {
@@ -15,23 +14,17 @@ interface FeedbackNotificationProps {
 
 export function FeedbackNotification({ className = '' }: FeedbackNotificationProps) {
   const [unreadCount, setUnreadCount] = useState(0)
-  const [userRole, setUserRole] = useState<string>(DEFAULT_USER_ROLE)
-  const { supabase } = useAuthContext();
+  const {currentUser} = useAuthContext()
 
   useEffect(() => {
-    if (userRole === 'admin') {
+    if (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN) {
       loadUnreadCount()
     }
-  }, [userRole])
+  }, [currentUser])
 
   const loadUnreadCount = async () => {
-    if (!supabase) return
-
     try {
-      const { data, error } = await supabase
-        .from(DATABASE_TABLE.feedback)
-        .select('id')
-        .eq('status', 'open')
+      const { data, error } = await fetchUnreadCount();
 
       if (error) throw error
       setUnreadCount(data?.length || 0)
@@ -39,10 +32,7 @@ export function FeedbackNotification({ className = '' }: FeedbackNotificationPro
     }
   }
 
-  // Only show for admins and managers
-  if (userRole !== 'admin' && userRole !== 'manager') {
-    return null
-  }
+  if (currentUser?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN) return <></>
 
   return (
     <Link 

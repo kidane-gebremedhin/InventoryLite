@@ -1,41 +1,16 @@
-'use server'; // MANDATORY directive for Server Actions
+'use server';
 
 import { redisClient } from "../../lib/redis-client";
+import { REDIS_CACHE_TTL } from "../Constants";
+import { ServerActionsResponse } from "../types/Models";
 
-/**
- * Server Action to handle the Redis interaction. This function runs only on the server.
- * @param formData - The form data object from the submitted form.
- */
-export async function cacheData(formData: FormData) {
-  const key = formData.get('key') as string;
-  const value = formData.get('value') as string;
+export const getCacheData = async (cacheKey): Promise<ServerActionsResponse> => {
+    const cachedData = await redisClient.get(cacheKey);
+    if (!cachedData) return null;
+    
+    return JSON.parse(cachedData);
+}
 
-  if (!key || !value) {
-    return { success: false, message: 'Key and Value are required.' };
-  }
-
-  const cachedValue = await redisClient.get(key);
-  if (cachedValue) {
-    return {
-      success: true,
-      message: `Returing from cache: "${cachedValue}"`
-    };
-  }
-
-  try {
-    // EX 60 means the key will expire in 60 seconds (a common caching pattern)
-    await redisClient.set(key, value, 'EX', 60);
-    const savedValue = await redisClient.get(key);
-
-    return {
-      success: true,
-      message: `Successfully cached key "${key}". Retrieved confirmation: "${savedValue}"`,
-    };
-  } catch (error) {
-    console.error('Redis operation failed:', error);
-    return {
-      success: false,
-      message: 'Failed to connect to Redis or execute command. Check server logs.',
-    };
-  }
+export const setCacheData = async (cacheKey, data) => {
+  redisClient.set(cacheKey, JSON.stringify(data), 'EX', REDIS_CACHE_TTL)
 }

@@ -92,6 +92,7 @@ export async function updatePurchaseOrderRecordStatus(id: string, requestData: R
         .from(DATABASE_TABLE.purchase_orders)
         .update(requestData)
         .eq('id', id)
+        .select();
     
     return { data, error };
 }
@@ -103,6 +104,7 @@ export async function updatePurchaseOrderStatus(id: string, requestData: Purchas
         .from(DATABASE_TABLE.purchase_orders)
         .update(requestData)
         .eq('id', id)
+        .select();
     
     return { data, error };
 }

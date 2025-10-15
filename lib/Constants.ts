@@ -1,4 +1,4 @@
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PaymentStatus, PurchaseOrderStatus, RecordStatus, ROUTE_PATH, SalesOrderStatus, TransactionDirection } from "./Enums"
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PaymentStatus, PurchaseOrderStatus, RatingStar, RecordStatus, ROUTE_PATH, SalesOrderStatus, TransactionDirection } from "./Enums"
 
 export const ALL_OPTIONS = ''
 export const TEXT_SEARCH_TRIGGER_KEY = 'Enter'
@@ -22,6 +22,11 @@ export const MAX_TABLE_TEXT_LENGTH = 50
 export const MAX_DROPDOWN_TEXT_LENGTH = 25
 export const RECORDS_PER_PAGE = 10
 export const FIRST_PAGE_NUMBER = 1
+
+// Redis
+// in seconds
+export const REDIS_CACHE_TTL = 60
+export const REDIS_CACHE_TTL_USER_SUBSCRIPTION_INFO = 24 * 3600
 
 export const RECORD_STATUSES: string[] = [
     RecordStatus.ACTIVE,
@@ -84,6 +89,20 @@ export const PUBLIC_PATHS = [
     ROUTE_PATH.TERMS_OF_SERVICE.toString(),
     ROUTE_PATH.OAUTH_GOOGLE_WEBHOOK.toString(),
     '/redis-test'
+]
+
+export const ADMIN_PATHS = [
+    ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT.toString(),
+    ROUTE_PATH.DOMAIN.toString(),
+    ROUTE_PATH.MANAGE_MANUAL_PAYMENT.toString()
+]
+
+export const RATING_STARTS = [
+    RatingStar.VERY_POOR,
+    RatingStar.POOR,
+    RatingStar.GOOD,
+    RatingStar.VERY_GOOD,
+    RatingStar.EXCELLENT
 ]
 
 export const VALIDATION_ERRORS_MAPPING = {

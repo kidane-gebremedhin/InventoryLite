@@ -42,7 +42,7 @@ export default function SalesOrderPage() {
   const {loading, setLoading} = useLoadingContext()
 
   const reportHeaders = {
-    type: 'Direction',
+    direction: 'Direction',
     store_id: 'From Store',
     item: 'Item',
     quantity: 'Quantity',
@@ -118,7 +118,7 @@ export default function SalesOrderPage() {
   const getReportFields = (transaction: any, idx: number) => {
     return {
       row_no: idx > 0 ? idx : 'Row No.', 
-      type: transaction.type,
+      direction: transaction.direction,
       store_id: transaction.store?.name,
       item: transaction.item?.name,
       quantity: transaction.quantity,
@@ -239,15 +239,15 @@ export default function SalesOrderPage() {
               {transactions.map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-gray-50">
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTransactionDirectionColor(transaction.type)}`}>
-                      {transaction.type} 
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTransactionDirectionColor(transaction.direction)}`}>
+                      {transaction.direction} 
                     </span>
                   </td>
                   <td className="text-sm font-medium text-gray-900 text-center px-1 py-4">
                     {transaction.item?.name}
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    {transaction.type === TransactionDirection.IN ? '+' : '-'}{transaction.quantity}
+                    {transaction.direction === TransactionDirection.IN ? '+' : '-'}{transaction.quantity}
                   </td>
                   <td className="px-1 py-4 text-sm text-gray-900 text-center">
                     {transaction.store?.name} 

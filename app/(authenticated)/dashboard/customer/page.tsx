@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 import { Customer } from '@/lib/types/Models'
-import { RecordStatus, DATABASE_TABLE } from '@/lib/Enums'
+import { RecordStatus } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { calculateStartAndEndIndex, getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
@@ -21,7 +21,6 @@ import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { PostgrestError } from '@supabase/supabase-js'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { fetchCustomers, saveCustomer, updateCustomer, updateCustomerRecordStatus } from '@/lib/server_actions/customer'
-import { useAuthContext } from '@/components/providers/AuthProvider'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
 
@@ -131,7 +130,7 @@ export default function CustomerPage() {
       // Exclude id field while creating new record 
       const {id, ...customerWithNoId} = customer
       try {
-        const { error } = await saveCustomer(customerWithNoId)
+        const { data, error } = await saveCustomer(customerWithNoId)
 
         if (error) {
           handleServerError(error)
@@ -140,7 +139,7 @@ export default function CustomerPage() {
 
         setIsModalOpen(false)
         showSuccessToast('Record Created.')
-        loadCustomers()
+        setCustomers(prev => [...data, ...prev])
       } catch (error: any) {
         showErrorToast()
       } finally {
@@ -150,7 +149,7 @@ export default function CustomerPage() {
 
   const handleUpdate = async (customer: Customer) => {
     try {
-      const { error } = await updateCustomer(customer.id, customer)
+      const { data, error } = await updateCustomer(customer.id, customer)
 
       if (error) {
         handleServerError(error)
@@ -159,7 +158,7 @@ export default function CustomerPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      loadCustomers()
+      setCustomers(prev => prev.map(elem => elem.id === customer.id ? data[0] : customer))
     } catch (error: any) {
       showErrorToast()
     } finally {

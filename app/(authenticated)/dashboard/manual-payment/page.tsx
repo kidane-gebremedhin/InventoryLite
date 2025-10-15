@@ -10,7 +10,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { ManualPaymentModal } from '@/components/manual_payment/ManualPaymentModal'
 import { ManualPayment } from '@/lib/types/Models'
-import { DATABASE_TABLE, PaymentStatus } from '@/lib/Enums'
+import { PaymentStatus, UserRole } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, PAYMENT_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { calculateStartAndEndIndex, formatDateToLocalDate, getDateWithoutTime, getPaymentStatusColor, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
@@ -22,6 +22,7 @@ import { CheckmarkIcon } from 'react-hot-toast'
 import { approveManualPayment, declineManualPayment, fetchManualPayments, saveManualPayment, updateManualPayment } from '@/lib/server_actions/manual_payment'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
+import { useAuthContext } from '@/components/providers/AuthProvider'
 
 export default function ManualPaymentPage() {
   const router = useRouter()
@@ -42,6 +43,7 @@ export default function ManualPaymentPage() {
   const [isDeclinePaymentConfirmationModalOpen, setIsDeclinePaymentConfirmationModalOpen] = useState(false)
   // Global States
   const {loading, setLoading} = useLoadingContext()
+  const { currentUser } = useAuthContext();
 
   const reportHeaders = {amount: 'Paid Amount', reference_number: 'Reference Number', created_at: 'Paymment Date'}
 
@@ -320,7 +322,7 @@ export default function ManualPaymentPage() {
                           },
                           {
                             id: manualPayment.id!,
-                            hideOption: manualPayment.status === PaymentStatus.APPROVED || false/*'user' !== 'admin'*/,
+                            hideOption: manualPayment.status === PaymentStatus.APPROVED || currentUser?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN,
                             icon: <CheckmarkIcon className="h-4 w-4" />,
                             label: 'Approve Payment',
                             class: "w-full text-green-600 hover:text-yellow-900",
@@ -331,7 +333,7 @@ export default function ManualPaymentPage() {
                           },
                           {
                             id: manualPayment.id!,
-                            hideOption: manualPayment.status === PaymentStatus.DECLINED || false/*'user' !== 'admin'*/,
+                            hideOption: manualPayment.status === PaymentStatus.DECLINED || currentUser?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN,
                             icon: <TrashIcon className="h-4 w-4" />,
                             label: 'Decline Payment',
                             class: "w-full text-red-600 hover:text-red-900",

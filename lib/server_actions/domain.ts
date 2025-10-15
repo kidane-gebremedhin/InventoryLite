@@ -44,7 +44,8 @@ export async function saveDomain(requestData: Domain): Promise<ServerActionsResp
     
     const { data, error } = await supabase
         .from(DATABASE_TABLE.domains)
-        .insert(requestData);
+        .insert(requestData)
+        .select();
     
     return { data, error };
 }
@@ -55,7 +56,8 @@ export async function updateDomain(id: string, requestData: Domain): Promise<Ser
     const { data, error } = await supabase
         .from(DATABASE_TABLE.domains)
         .update(requestData)
-        .eq('id', id);
+        .eq('id', id)
+        .select();
     
     return { data, error };
 }
@@ -67,6 +69,7 @@ export async function updateDomainRecordStatus(id: string, requestData: RecordSt
         .from(DATABASE_TABLE.domains)
         .update(requestData)
         .eq('id', id)
+        .select();
     
     return { data, error };
 }

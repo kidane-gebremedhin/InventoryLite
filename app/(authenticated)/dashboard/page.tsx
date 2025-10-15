@@ -23,16 +23,17 @@ import {
   Pie,
   Cell
 } from 'recharts'
-import { DEFAULT_USER_ROLE, MONTH_NAME_MAPPING } from '@/lib/Constants'
+import { MONTH_NAME_MAPPING } from '@/lib/Constants'
 
-import { RPC_FUNCTION } from '@/lib/Enums'
-import { showServerErrorToast, showErrorToast } from '@/lib/helpers/Helper'
+import { DATABASE_TABLE, RPC_FUNCTION, UserRole } from '@/lib/Enums'
+import { showServerErrorToast, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { PurchaseOrderMonthlyTrendsData, SalesOrderMonthlyTrendsData } from '@/lib/types/Models'
 import { CheckmarkIcon } from 'react-hot-toast'
 
 import { useAuthContext } from '@/components/providers/AuthProvider'
-import { makeRpcCall } from '@/lib/server_actions/report'
+import { makeRpcCall } from '@/lib/server_actions/rpc'
+import { createClient } from '@supabase/supabase-js'
 
 interface DashboardStats {
   totalItems: number
@@ -56,74 +57,92 @@ export default function DashboardPage() {
     totalValue: 0,
     monthlyGrowth: 0
   })
-  const [userRole, setUserRole] = useState<string>(DEFAULT_USER_ROLE)
   const [purchaseOrderMonthlyTrendsData, setPurchaseOrderMonthlyTrendsData] = useState<PurchaseOrderMonthlyTrendsData[]>([])
   const [salesOrderMonthlyTrendsData, setSalesOrderMonthlyTrendsData] = useState<SalesOrderMonthlyTrendsData[]>([])
   const {loading, setLoading} = useLoadingContext()
   const { currentUser } = useAuthContext();
+  
+  useEffect(() => {
+    // For live streaming
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+
+    const channel = supabase.channel('change-listener');
+
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: DATABASE_TABLE.inventory_items }, () => loadDashboardStats());
+    channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: DATABASE_TABLE.inventory_items }, () => loadDashboardStats());
+    channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table: DATABASE_TABLE.inventory_items }, () => loadDashboardStats());
+    
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
-    const loadDashboardStats = async () => {
-  
-      try {
-        setLoading(true)
-  
-        const { data, error } = await makeRpcCall(RPC_FUNCTION.DASHBOARD_STATS)
-  
-        if (error) {
-          showServerErrorToast(error.message)
-          setLoading(false)
-          return
-        }
-        setStats(data)
-      } catch (error: any) {
-          showErrorToast()
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    
-    const loadOrderMonthlyTrends = async () => {  
-      try {
-        setLoading(true)
-        const { data: poData, error: poError } = await makeRpcCall(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS);
-  
-        if (poError) {
-          showServerErrorToast(poError.message)
-          setLoading(false)
-          return
-        }
-
-        const podataProcessed: PurchaseOrderMonthlyTrendsData[] = poData.map((item: PurchaseOrderMonthlyTrendsData) => { 
-          item.month_name = MONTH_NAME_MAPPING.get(item.month_name.split('-')[1])!
-          return item
-        })
-        setPurchaseOrderMonthlyTrendsData(podataProcessed)
-        
-        const { data: soData, error: soError } = await makeRpcCall(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS);
-  
-        if (soError) {
-          showServerErrorToast(soError.message)
-          setLoading(false)
-          return
-        }
-        
-        const soDataProcessed: SalesOrderMonthlyTrendsData[] = soData.map((item: SalesOrderMonthlyTrendsData) => { 
-          item.month_name = MONTH_NAME_MAPPING.get(item.month_name.split('-')[1])!
-          return item
-        })
-        setSalesOrderMonthlyTrendsData(soDataProcessed)
-      } catch (error: any) {
-          showErrorToast()
-      } finally {
-        setLoading(false)
-      }
-    }
-
     loadDashboardStats()
     loadOrderMonthlyTrends()
-  }, [currentUser])
+  }, [])
+
+  const loadDashboardStats = async () => {
+    showSuccessToast('fetching...')
+    try {
+      setLoading(true)
+
+      const { data, error } = await makeRpcCall(RPC_FUNCTION.DASHBOARD_STATS)
+
+      if (error) {
+        showServerErrorToast(error.message)
+        setLoading(false)
+        return
+      }
+      setStats(data)
+    } catch (error: any) {
+        showErrorToast()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadOrderMonthlyTrends = async () => {  
+    try {
+      setLoading(true)
+      const { data: poData, error: poError } = await makeRpcCall(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS);
+
+      if (poError) {
+        showServerErrorToast(poError.message)
+        setLoading(false)
+        return
+      }
+
+      const podataProcessed: PurchaseOrderMonthlyTrendsData[] = poData.map((item: PurchaseOrderMonthlyTrendsData) => { 
+        item.month_name = MONTH_NAME_MAPPING.get(item.month_name.split('-')[1])!
+        return item
+      })
+      setPurchaseOrderMonthlyTrendsData(podataProcessed)
+      
+      const { data: soData, error: soError } = await makeRpcCall(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS);
+
+      if (soError) {
+        showServerErrorToast(soError.message)
+        setLoading(false)
+        return
+      }
+      
+      const soDataProcessed: SalesOrderMonthlyTrendsData[] = soData.map((item: SalesOrderMonthlyTrendsData) => { 
+        item.month_name = MONTH_NAME_MAPPING.get(item.month_name.split('-')[1])!
+        return item
+      })
+      setSalesOrderMonthlyTrendsData(soDataProcessed)
+    } catch (error: any) {
+        showErrorToast()
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const orderReceiveRate = () => {
     if (!stats.receivedPurchaseOrders || !stats.pendingPurchaseOrders) {
@@ -188,10 +207,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Items"
-          value={stats.totalItems.toLocaleString()}
+          value={stats.totalItems.toString()}
           icon={CubeIcon}
           color="bg-blue-500"
-          trend={stats.monthlyGrowth}
         />
         <StatCard
           title="Pending Purchase Orders"
@@ -298,7 +316,7 @@ export default function DashboardPage() {
       {/* Recent Activity and Feedback */}
       <div className="grid grid-cols-1 gap-6">
         <div>
-          {userRole === 'admin' ? (
+          {currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN ? (
             <FeedbackSummary />
           ) : (
             <FeedbackWidget />

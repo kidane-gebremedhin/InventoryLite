@@ -1,4 +1,4 @@
-import { PurchaseOrderStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PurchaseOrderStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
 
 export interface Domain {
   id?: string
@@ -145,7 +145,7 @@ export interface SalesOrder {
 
 export interface Transaction {
   id?: string
-  type: TransactionDirection.IN | TransactionDirection.OUT
+  direction: TransactionDirection.IN | TransactionDirection.OUT
   store_id: string
   item_id: string
   quantity: number
@@ -173,9 +173,22 @@ export interface PurchaseOrderOrderItems {
   updated_by?: string
 }
 
-export interface FeedbackStatus {
-    key: string
-    label: string
+export interface UserFeedback {
+  id?: string
+  category: string
+  subject: string
+  message: string
+  status?: string
+  priority: string
+  rating: number | null
+  admin_response?: string | null
+  created_at?: string
+  updated_at?: string
+  tenant?: {
+    name: string
+    domain_id: string
+    email: string
+  }
 }
 
 export interface InventoryTurnoverReport {
@@ -265,7 +278,7 @@ export interface UserSubscriptionInfo {
   name: string
   domain_id: string
   price_id: string
-  payment_type: string
+  payment_method: string
   currency_type: string
   subscription_status: string
   current_payment_expiry_date?: Date

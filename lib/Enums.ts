@@ -40,6 +40,14 @@ export enum SalesOrderStatus {
     CANCELED = OrderStatus.CANCELED
 }
 
+export enum RatingStar {
+    VERY_POOR = 1,
+    POOR = 2,
+    GOOD = 3,
+    VERY_GOOD = 4,
+    EXCELLENT = 5
+}
+
 export enum TransactionDirection {
     IN = 'in',
     OUT = 'out'
@@ -73,8 +81,9 @@ export enum FeedbackPriority {
 }
 
 export enum UserRole {
-    ADMIN = 'admin',
-    USER = 'user'
+    SUPER_ADMIN = 'SUPER_ADMIN',
+    TENANT_ADMIN = 'TENANT_ADMIN',
+    USER = 'USER'
 }
 
 export enum DATABASE_TABLE {
@@ -92,6 +101,30 @@ export enum DATABASE_TABLE {
     feedback = 'feedback',
     manual_payments = 'manual_payments',
     domains = 'domains',
+}
+
+export enum RedisCacheKey {
+    tenants = 'tenants',
+    categories = 'categories',
+    customers = 'customers',
+    inventory_items = 'inventory_items',
+    purchase_orders = 'purchase_orders',
+    purchase_order_items = 'purchase_order_items',
+    sales_orders = 'sales_orders',
+    sales_order_items = 'sales_order_items',
+    stores = 'stores',
+    suppliers = 'suppliers',
+    transactions = 'transactions',
+    feedback = 'feedback',
+    manual_payments = 'manual_payments',
+    domains = 'domains',
+    feedback_stats = 'feedback_stats',
+    feedback_unread_count = 'feedback_unread_count',
+    user_subscription_info = 'user_subscription_info'
+}
+
+export enum CookiesKey {
+    ucookiesinfo = 'ucookiesinfo'
 }
 
 export enum ReportType {
@@ -137,9 +170,10 @@ export enum ROUTE_PATH {
     CUSTOMER = '/dashboard/customer',
     DOMAIN = '/dashboard/domain',
     FEEDBACK = '/dashboard/feedback',
-    FEEDBACK_MANAGEMENT = '/dashboard/feedback-management',
+    ADMIN_FEEDBACK_MANAGEMENT = '/dashboard/feedback-management',
     INVENTORY_ITEM = '/dashboard/inventory-item',
     MANUAL_PAYMENT = '/dashboard/manual-payment',
+    MANAGE_MANUAL_PAYMENT = '/dashboard/manage-manual-payment',
     PURCHASE_ORDER = '/dashboard/purchase-order',
     REPORT = '/dashboard/report',
     SALES_ORDER = '/dashboard/sales-order',

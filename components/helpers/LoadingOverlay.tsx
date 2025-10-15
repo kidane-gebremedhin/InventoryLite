@@ -1,4 +1,8 @@
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+
 export default function LoadingOverlay ({ loading }) {
+  const {setLoading} = useLoadingContext()
   // Use opacity and visibility instead of conditional rendering for smooth transitions
   const transitionClasses = loading
     ? 'opacity-100 visible'
@@ -15,9 +19,12 @@ export default function LoadingOverlay ({ loading }) {
         ${transitionClasses}
       `}
     >
+      <button onClick={() => setLoading(false)} style={{position: "fixed", top: 0, right: 0}} className="text-red-400 m-4">
+        <strong>✕</strong>
+      </button>
       <div className="flex flex-col items-center">
         <svg
-          className="animate-spin h-12 w-12 text-indigo-400"
+          className="animate-spin h-12 w-12 text-green-400"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"

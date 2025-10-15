@@ -131,7 +131,7 @@ export default function CategoryPage() {
       // Exclude id field while creating new record 
       const {id, ...categoryWithNoId} = category
     try {
-      const { error } = await saveCategory(categoryWithNoId/**/)
+      const { data, error } = await saveCategory(categoryWithNoId)
 
       if (error) {
         handleServerError(error)
@@ -141,7 +141,7 @@ export default function CategoryPage() {
       setIsModalOpen(false)
 
       showSuccessToast('Record Created.')
-      loadCategories()
+      setCategories(prev => [...data, ...prev])
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -151,7 +151,7 @@ export default function CategoryPage() {
 
   const handleUpdate = async (category: Category) => {
     try {
-      const { error } = await updateCategory(category.id, category)
+      const { data, error } = await updateCategory(category.id, category)
 
       if (error) {
         handleServerError(error)
@@ -160,7 +160,7 @@ export default function CategoryPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      loadCategories()
+      setCategories(prev => prev.map(elem => elem.id === category.id ? data[0] : category))
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -291,7 +291,7 @@ export default function CategoryPage() {
                   </td>
                   <td style={{maxWidth: 200}} className="px-6 py-4 text-sm text-gray-900 o">
                     {canSeeMore ? shortenText(category.description, MAX_TABLE_TEXT_LENGTH) : category.description}
-                    {category.description.length > MAX_TABLE_TEXT_LENGTH && (
+                    {category.description?.length > MAX_TABLE_TEXT_LENGTH && (
                       <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
                     )}
                   </td>

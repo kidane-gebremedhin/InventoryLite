@@ -91,6 +91,7 @@ export async function updateSalesOrderRecordStatus(id: string, requestData: Reco
         .from(DATABASE_TABLE.sales_orders)
         .update(requestData)
         .eq('id', id)
+        .select();
     
     return { data, error };
 }
@@ -102,6 +103,7 @@ export async function updateSalesOrderStatus(id: string, requestData: SalesOrder
         .from(DATABASE_TABLE.sales_orders)
         .update(requestData)
         .eq('id', id)
+        .select();
     
     return { data, error };
 }
