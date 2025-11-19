@@ -15,8 +15,9 @@ export default function HomePage() {
     if (!isMounted) return <MiniLoading />
 
   return (
-    <div className="bg-gradient-to-tr from-green-500 to-teal-500 py-20 md:py-16 text-white">
-      <div className="container mx-auto px-4 py-8">
+    <>
+    <div className="bg-gradient-to-tr from-green-500 to-teal-500 py-20 md:py-16 text-white" style={{height: 700}}>
+      <div className="container mx-auto px-4 py-14">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold mb-2">
@@ -32,5 +33,6 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+    </>
   )
 }

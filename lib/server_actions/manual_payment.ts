@@ -1,9 +1,10 @@
 'use server';
 
 import { createClient } from '@/supabase/server';
-import { DATABASE_TABLE, PaymentStatus } from '../Enums';
+import { DATABASE_TABLE, PaymentStatus, RedisCacheKey } from '../Enums';
 import { ManualPayment, ServerActionsResponse } from '../types/Models';
 import { ALL_OPTIONS } from '../Constants';
+import { deleteCacheKeyByKeyPrefix, getCacheData, setCacheData } from './redis';
 
 interface SearchParams {
     selectedStatus: string,
@@ -14,19 +15,27 @@ interface SearchParams {
 
 export async function fetchManualPayments({selectedStatus, searchTerm, startIndex, endIndex}: SearchParams): Promise<ServerActionsResponse> {
     const supabase = await createClient();
-    
-    let query = supabase.from(DATABASE_TABLE.manual_payments).select('*', {count: 'exact', head: false})
-    if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus)
-    }
-    if (searchTerm) {
-        query = query.or(`reference_number.ilike.%${searchTerm}%`)
+        
+    const cacheKey = `${RedisCacheKey.manual_payments}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
+    const cachedData = await getCacheData(cacheKey);
+    if (!cachedData) {
+        let query = supabase.from(DATABASE_TABLE.manual_payments).select('*', {count: 'exact', head: false})
+        if (selectedStatus !== ALL_OPTIONS) {
+            query = query.eq('status', selectedStatus)
+        }
+        if (searchTerm) {
+            query = query.or(`reference_number.ilike.%${searchTerm}%`)
+        }
+
+        const { data, count, error } = await query.order('created_at', { ascending: false })
+            .range(startIndex, endIndex)
+
+        // Return from DB and update the cache asyncronously
+        setCacheData(cacheKey, { data, count, error });
+        return { data, count, error };
     }
 
-    const { data, count, error } = await query.order('created_at', { ascending: false })
-        .range(startIndex, endIndex)
-
-    return { data, count, error };
+    return cachedData;
 }
 
 export async function approveManualPayment(id: string): Promise<ServerActionsResponse> {
@@ -38,6 +47,7 @@ export async function approveManualPayment(id: string): Promise<ServerActionsRes
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.manual_payments);
     return { data, error };
 }
 
@@ -50,6 +60,7 @@ export async function declineManualPayment(id: string): Promise<ServerActionsRes
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.manual_payments);
     return { data, error };
 }
 
@@ -61,6 +72,7 @@ export async function saveManualPayment(requestData: ManualPayment): Promise<Ser
         .insert(requestData)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.manual_payments);
     return { data, error };
 }
 
@@ -73,5 +85,6 @@ export async function updateManualPayment(id: string, requestData: ManualPayment
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.manual_payments);
     return { data, error };
 }

@@ -1,9 +1,10 @@
 'use server';
 
 import { createClient } from '@/supabase/server';
-import { DATABASE_TABLE, RecordStatus } from '../Enums';
-import { Domain, RecordStatusPayload, ServerActionsResponse } from '../types/Models';
+import { DATABASE_TABLE, RecordStatus, RedisCacheKey } from '../Enums';
+import { Domain, StatusPayload, ServerActionsResponse } from '../types/Models';
 import { ALL_OPTIONS } from '../Constants';
+import { deleteCacheKeyByKeyPrefix, getCacheData, setCacheData } from './redis';
 
 interface SearchParams {
     selectedStatus: string,
@@ -15,28 +16,43 @@ interface SearchParams {
 export async function fetchDomains({selectedStatus, searchTerm, startIndex, endIndex}: SearchParams): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
-    let query = supabase.from(DATABASE_TABLE.domains).select('*', {count: 'exact', head: false})
-    if (selectedStatus !== ALL_OPTIONS) {
-        query = query.eq('status', selectedStatus)
-    }
-    if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%, description.ilike.%${searchTerm}%`)
-    }
-    const { data, count, error } = await query.order('created_at', { ascending: false })
-    .range(startIndex, endIndex)
+    const cacheKey = `${RedisCacheKey.domains}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
+    const cachedData = await getCacheData(cacheKey);
+    if (!cachedData) {
+        let query = supabase.from(DATABASE_TABLE.domains).select('*', {count: 'exact', head: false})
+        if (selectedStatus !== ALL_OPTIONS) {
+            query = query.eq('status', selectedStatus)
+        }
+        if (searchTerm) {
+            query = query.or(`name.ilike.%${searchTerm}%, description.ilike.%${searchTerm}%`)
+        }
+        const { data, count, error } = await query.order('created_at', { ascending: false })
+        .range(startIndex, endIndex)
 
-    return { data, count, error };
+        // Return from DB and update the cache asyncronously
+        setCacheData(cacheKey, { data, count, error });
+        return { data, count, error };
+    }
+
+    return cachedData;
 }
 
 export async function fetchDomainOptions(): Promise<ServerActionsResponse> {
     const supabase = await createClient();
 
-    const { data, count, error } = await supabase.from(DATABASE_TABLE.domains)
-        .select('id, name', {count: 'exact', head: false})
-        .eq('status', RecordStatus.ACTIVE)
-        .order('name', { ascending: true })
+    const cachedData = await getCacheData(RedisCacheKey.domains);
+    if (!cachedData) {
+        const { data, count, error } = await supabase.from(DATABASE_TABLE.domains)
+            .select('id, name', {count: 'exact', head: false})
+            .eq('status', RecordStatus.ACTIVE)
+            .order('name', { ascending: true })
 
-    return { data, count, error };
+        // Return from DB and update the cache asyncronously
+        setCacheData(RedisCacheKey.domains, { data, count, error });
+        return { data, count, error };
+    }
+
+    return cachedData;
 }
 
 export async function saveDomain(requestData: Domain): Promise<ServerActionsResponse> {
@@ -47,6 +63,7 @@ export async function saveDomain(requestData: Domain): Promise<ServerActionsResp
         .insert(requestData)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.domains);
     return { data, error };
 }
 
@@ -59,10 +76,11 @@ export async function updateDomain(id: string, requestData: Domain): Promise<Ser
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.domains);
     return { data, error };
 }
 
-export async function updateDomainRecordStatus(id: string, requestData: RecordStatusPayload): Promise<ServerActionsResponse> {
+export async function updateDomainRecordStatus(id: string, requestData: StatusPayload): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
     const { data, error } = await supabase
@@ -71,5 +89,6 @@ export async function updateDomainRecordStatus(id: string, requestData: RecordSt
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.domains);
     return { data, error };
 }

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  PlusIcon, 
+import {
+  PlusIcon,
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
@@ -19,7 +19,7 @@ import { SalesOrderStatus, RecordStatus } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, SALES_ORDER_STATUSES, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { calculateStartAndEndIndex, canShowLoadingScreen, formatDateToLocalDate, getDateWithoutTime, getOrderStatusColor, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
-import { SalesOrder, Customer } from '@/lib/types/Models'
+import { SalesOrder, Customer, Store, Supplier, InventoryItem, Variant } from '@/lib/types/Models'
 // DatePicker both are required
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -31,7 +31,10 @@ import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { fetchSalesOrders, saveSalesOrder, updateSalesOrder, updateSalesOrderRecordStatus, updateSalesOrderStatus } from '@/lib/server_actions/sales_order'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
-import { fetchCategoryOptions } from '@/lib/server_actions/category'
+import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
+import { fetchVariantOptions } from '@/lib/server_actions/variant'
+import { fetchCustomerOptions } from '@/lib/server_actions/customer'
+import { fetchStoreOptions } from '@/lib/server_actions/store'
 
 export default function SalesOrderPage() {
   const router = useRouter()
@@ -50,6 +53,9 @@ export default function SalesOrderPage() {
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null)
   const [selectedOrderStatus, setSelectedOrderStatus] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [stores, setStores] = useState<Store[]>([])
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [variants, setVariants] = useState<Variant[]>([])
   const [selectedCustomerId, setSelectedCustomer] = useState(ALL_OPTIONS)
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
@@ -63,15 +69,15 @@ export default function SalesOrderPage() {
   const [isMoveToFulfilledConfirmationModalOpen, setIsMoveToFulfilledConfirmationModalOpen] = useState(false)
   const [isMoveToCanceledConfirmationModalOpen, setIsMoveToCanceledConfirmationModalOpen] = useState(false)
   // Global States
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
 
   const reportHeaders = {
     row_no: 'Row No.',
-    so_number: 'SO Number', 
-    supplier: 'customer Name', 
+    so_number: 'SO Number',
+    supplier: 'customer Name',
     order_status: 'Order Status',
-    expected_date: 'Expected Date', 
-    fulfilled_date: 'Fulfilled Date', 
+    expected_date: 'Expected Date',
+    fulfilled_date: 'Fulfilled Date',
     created_at: 'Ordered Date',
     store: 'Store',
     item_name: 'Item',
@@ -82,27 +88,53 @@ export default function SalesOrderPage() {
   }
 
   useEffect(() => {
-    const loadCustomers = async () => {
-      try {
-        const { data, error } = await fetchCategoryOptions()
-
-        if (error) {
-          showServerErrorToast(error.message)
-        }
-
-        const selectableCustomers: Customer[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
-        setCustomers(selectableCustomers)
-      } catch (error: any) {
-          showErrorToast()
-      } finally {
-        setLoading(false)
-      }
-    }
-
+    loadSalesOrders()
+    loadInventoryItems()
+    loadStores()
+    loadVariants()
     loadCustomers()
   }, [])
 
+
+  const loadStores = async () => {
+    fetchStoreOptions().then(({ data, error }) => {
+      if (error) return
+
+      setStores(data || [])
+    })
+  }
+
+  const loadCustomers = async () => {
+    fetchCustomerOptions().then(({ data, error }) => {
+      if (error) return
+
+      const selectableCustomers: Customer[] = [{ id: ALL_OPTIONS, name: '' }, ...data!]
+      setCustomers(selectableCustomers)
+    })
+  }
+
+  const loadVariants = async () => {
+    fetchVariantOptions().then(({ data, error }) => {
+      if (error) return
+
+      setVariants(data || [])
+    })
+  }
+
+  const loadInventoryItems = async () => {
+    fetchInventoryItemOptions().then(({ data, error }) => {
+      if (error) return
+
+      setInventoryItems(data || [])
+    })
+  }
+
   useEffect(() => {
+    if (searchTerm || selectedCustomerId != RecordStatus.ACTIVE || selectedOrderStatus || selectedStatus || startDate || endDate || fulfilledDateStart || fulfilledDateEnd || recordsPerPage != RECORDS_PER_PAGE || currentPage != FIRST_PAGE_NUMBER) {
+      // return shorty on mount
+      return
+    }
+
     // reset pagination
     router.push(`?page=${currentPage}`)
     loadSalesOrders()
@@ -111,7 +143,7 @@ export default function SalesOrderPage() {
   const loadSalesOrders = async () => {
     setLoading(canShowLoadingScreen(startDate, endDate, fulfilledDateStart, fulfilledDateEnd))
 
-    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
+    const { startIndex, endIndex } = calculateStartAndEndIndex({ currentPage, recordsPerPage });
 
     try {
       const { data, count, error } = await fetchSalesOrders({ selectedOrderStatus, selectedStatus, selectedCustomerId, searchTerm, startDate, endDate, fulfilledDateStart, fulfilledDateEnd, startIndex, endIndex });
@@ -144,7 +176,7 @@ export default function SalesOrderPage() {
     resetModalState()
 
     try {
-      const { error } = await updateSalesOrderRecordStatus(id, {status: RecordStatus.ARCHIVED})
+      const { error } = await updateSalesOrderRecordStatus(id, { status: RecordStatus.ARCHIVED })
 
       if (error) {
         showServerErrorToast(error.message)
@@ -165,7 +197,7 @@ export default function SalesOrderPage() {
     resetModalState()
 
     try {
-      const { error } = await updateSalesOrderRecordStatus(id, {status: RecordStatus.ACTIVE})
+      const { error } = await updateSalesOrderRecordStatus(id, { status: RecordStatus.ACTIVE })
 
       if (error) {
         showErrorToast(error.name)
@@ -182,13 +214,13 @@ export default function SalesOrderPage() {
 
   const handleCreate = async (salesOrder: SalesOrder) => {
     // Exclude id field while creating new record 
-    const {id, order_items, ...salesOrderWithNoId} = salesOrder
+    const { id, order_items, ...salesOrderWithNoId } = salesOrder
 
     try {
       const payload = {
-          sales_order_data: salesOrderWithNoId,
-          sales_order_items_data: salesOrder.order_items,
-        };
+        sales_order_data: salesOrderWithNoId,
+        sales_order_items_data: salesOrder.order_items,
+      };
       const { data, error } = await saveSalesOrder(payload)
       if (error) {
         handleServerError(error)
@@ -207,7 +239,7 @@ export default function SalesOrderPage() {
 
   const handleUpdate = async (salesOrder: SalesOrder) => {
     // Exclude id field while creating new record 
-    const {order_items, ...salesOrderWithNoOrderItems} = salesOrder
+    const { order_items, ...salesOrderWithNoOrderItems } = salesOrder
 
     try {
       const payload = {
@@ -307,26 +339,26 @@ export default function SalesOrderPage() {
 
   const getReportFields = (salesOrder: any, idx: number) => {
     return salesOrder.order_items?.map((orderItem, innerIdx) => {
-        // Show row number for SalesOrders not Items
-        const showRowNo = innerIdx === 0;
+      // Show row number for SalesOrders not Items
+      const showRowNo = innerIdx === 0;
 
-        return {
-          row_no: showRowNo ? idx + 1 : '', 
-          // Order Details
-          so_number: showRowNo ? salesOrder.so_number : '', 
-          supplier: showRowNo ? salesOrder.customer?.name : '', 
-          order_status: showRowNo ? salesOrder.order_status : '',
-          expected_date: showRowNo ? salesOrder.expected_date : '', 
-          fulfilled_date: showRowNo ? getDateWithoutTime(salesOrder.fulfilled_date) : '', 
-          created_at: showRowNo ? getDateWithoutTime(salesOrder.created_at) : '',
-          // Order Item Details
-          store: orderItem.store.name,
-          item_name: orderItem.item.name,
-          item_sku: orderItem.item.sku,
-          quantity: orderItem.quantity,
-          unit_price: orderItem.unit_price,
-        }
-      })
+      return {
+        row_no: showRowNo ? idx + 1 : '',
+        // Order Details
+        so_number: showRowNo ? salesOrder.so_number : '',
+        supplier: showRowNo ? salesOrder.customer?.name : '',
+        order_status: showRowNo ? salesOrder.order_status : '',
+        expected_date: showRowNo ? salesOrder.expected_date : '',
+        fulfilled_date: showRowNo ? getDateWithoutTime(salesOrder.fulfilled_date) : '',
+        created_at: showRowNo ? getDateWithoutTime(salesOrder.created_at) : '',
+        // Order Item Details
+        store: orderItem.store.name,
+        item_name: orderItem.item.name,
+        item_sku: orderItem.item.sku,
+        quantity: orderItem.quantity,
+        unit_price: orderItem.unit_price,
+      }
+    })
   }
 
   return (
@@ -349,7 +381,7 @@ export default function SalesOrderPage() {
       <div className="card">
         <div className="overflow-x-auto">
           <div className="w-full text-right items-right mb-4">
-            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
+            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
               <b>Show Filters</b>
             </button>
             <span className="px-1"></span>
@@ -385,50 +417,50 @@ export default function SalesOrderPage() {
                 </th>
               </tr>
               {showFilters && (
-              <tr className="card">
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search & Press ENTER"
-                      value={searchTermTemp}
+                <tr className="card">
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search & Press ENTER"
+                        value={searchTermTemp}
+                        onChange={(e) => {
+                          setSearchTermTemp(e.target.value)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                            handleTextSearch();
+                          }
+                        }}
+                        onBlur={handleTextSearch}
+                        className="input-field pl-10"
+                      />
+                    </div>
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <select
+                      value={selectedCustomerId}
                       onChange={(e) => {
-                        setSearchTermTemp(e.target.value)
+                        setCurrentPage(FIRST_PAGE_NUMBER)
+                        setSelectedCustomer(e.target.value)
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
-                          handleTextSearch();
-                        }
-                      }}
-                      onBlur={handleTextSearch}
-                      className="input-field pl-10"
-                    />
-                  </div>
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedCustomerId}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedCustomer(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.id === ALL_OPTIONS ? 'All Customers' : shortenText(customer.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className='w-full'>
+                      className="input-field"
+                    >
+                      {customers.map(customer => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.id === ALL_OPTIONS ? 'All Customers' : shortenText(customer.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className='w-full'>
                       <select
                         value={selectedOrderStatus}
-                        onChange={(e) => { 
+                        onChange={(e) => {
                           setCurrentPage(FIRST_PAGE_NUMBER)
                           setSelectedOrderStatus(e.target.value)
                         }}
@@ -439,54 +471,54 @@ export default function SalesOrderPage() {
                             {status === ALL_OPTIONS ? 'All Statuses' : status}
                           </option>
                         ))}
+                      </select>
+                    </div>
+                  </th>
+                  <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <DatePicker
+                      selected={startDate}
+                      onChange={onDateRangeChange}
+                      startDate={startDate}
+                      endDate={endDate}
+                      selectsRange
+                      monthsShown={2}
+                      placeholderText="Select date range"
+                      isClearable={true}
+                      className="input-field"
+                    />
+                  </th>
+                  <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <DatePicker
+                      selected={fulfilledDateStart}
+                      onChange={onFulfilledDateRangeChange}
+                      startDate={fulfilledDateStart}
+                      endDate={fulfilledDateEnd}
+                      selectsRange
+                      monthsShown={2}
+                      placeholderText="Select date range"
+                      isClearable={true}
+                      className="input-field"
+                    />
+                  </th>
+                  <th className="px-1 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => {
+                        setCurrentPage(FIRST_PAGE_NUMBER)
+                        setSelectedStatus(e.target.value)
+                      }}
+                      className="input-field"
+                    >
+                      {RECORD_STATUSES.map(status => (
+                        <option key={status} value={status}>
+                          {status === ALL_OPTIONS ? ALL_OPTIONS : status}
+                        </option>
+                      ))}
                     </select>
-                  </div>
-                </th>
-                <th style={{maxWidth: 30}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <DatePicker
-                    selected={startDate}
-                    onChange={onDateRangeChange}
-                    startDate={startDate}
-                    endDate={endDate}
-                    selectsRange
-                    monthsShown={2}
-                    placeholderText="Select date range"
-                    isClearable={true}
-                    className="input-field"
-                  />
-                </th>
-                <th style={{maxWidth: 30}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <DatePicker
-                    selected={fulfilledDateStart}
-                    onChange={onFulfilledDateRangeChange}
-                    startDate={fulfilledDateStart}
-                    endDate={fulfilledDateEnd}
-                    selectsRange
-                    monthsShown={2}
-                    placeholderText="Select date range"
-                    isClearable={true}
-                    className="input-field"
-                  />
-                </th>
-                <th className="px-1 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedStatus(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {RECORD_STATUSES.map(status => (
-                      <option key={status} value={status}>
-                        {status === ALL_OPTIONS ? ALL_OPTIONS : status}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
-                </th>
-              </tr>
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
+                  </th>
+                </tr>
               )}
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -522,7 +554,7 @@ export default function SalesOrderPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2 items-center">                       
+                    <div className="flex justify-center space-x-2 items-center">
                       <ActionsMenu
                         actions={[
                           {
@@ -606,11 +638,11 @@ export default function SalesOrderPage() {
           </table>
         </div>
         <Pagination
-          currentPage = {currentPage}
-          recordsPerPage = {recordsPerPage}
-          totalRecordsCount = {totalRecordsCount}
-          setCurrentPage = {setCurrentPage}
-          setRecordsPerPage = {setRecordsPerPage}
+          currentPage={currentPage}
+          recordsPerPage={recordsPerPage}
+          totalRecordsCount={totalRecordsCount}
+          setCurrentPage={setCurrentPage}
+          setRecordsPerPage={setRecordsPerPage}
         />
       </div>
 
@@ -619,6 +651,10 @@ export default function SalesOrderPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         order={editingSalesOrder}
+        stores={stores}
+        customers={customers}
+        inventoryItems={inventoryItems}
+        variants={variants}
         onSave={(order) => {
           setLoading(true)
           if (editingSalesOrder) {
@@ -628,7 +664,7 @@ export default function SalesOrderPage() {
           }
         }}
       />
-      
+
       <OrderDetailsModal
         isOpen={showDetailsModal && selectedOrder !== null}
         onClose={() => setShowDetailsModal(false)}
@@ -643,7 +679,7 @@ export default function SalesOrderPage() {
         onConfirmationSuccess={handleArchive}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal for Restore */}
       <ConfirmationModal
         isOpen={isRestoreConfirmationModalOpen}
@@ -652,7 +688,7 @@ export default function SalesOrderPage() {
         onConfirmationSuccess={handleRestore}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal to move order to pending */}
       <ConfirmationModal
         isOpen={isMoveToPendingConfirmationModalOpen}
@@ -662,7 +698,7 @@ export default function SalesOrderPage() {
         onConfirmationSuccess={handleOrderStatusChange}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal to move order to fulfilled */}
       <ConfirmationModal
         isOpen={isMoveToFulfilledConfirmationModalOpen}
@@ -672,7 +708,7 @@ export default function SalesOrderPage() {
         onConfirmationSuccess={handleOrderStatusChange}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal to move order to canceled */}
       <ConfirmationModal
         isOpen={isMoveToCanceledConfirmationModalOpen}

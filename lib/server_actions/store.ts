@@ -2,9 +2,9 @@
 
 import { createClient } from '@/supabase/server';
 import { DATABASE_TABLE, RecordStatus, RedisCacheKey } from '../Enums';
-import { Store, RecordStatusPayload, ServerActionsResponse } from '../types/Models';
+import { Store, StatusPayload, ServerActionsResponse } from '../types/Models';
 import { ALL_OPTIONS } from '../Constants';
-import { getCacheData, setCacheData } from './redis';
+import { deleteCacheKeyByKeyPrefix, getCacheData, setCacheData } from './redis';
 
 interface SearchParams {
     selectedStatus: string,
@@ -64,6 +64,7 @@ export async function saveStore(requestData: Store): Promise<ServerActionsRespon
         .insert(requestData)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.stores);
     return { data, error };
 }
 
@@ -76,10 +77,11 @@ export async function updateStore(id: string, requestData: Store): Promise<Serve
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.stores);
     return { data, error };
 }
 
-export async function updateStoreRecordStatus(id: string, requestData: RecordStatusPayload): Promise<ServerActionsResponse> {
+export async function updateStoreRecordStatus(id: string, requestData: StatusPayload): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
     const { data, error } = await supabase
@@ -88,5 +90,6 @@ export async function updateStoreRecordStatus(id: string, requestData: RecordSta
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.stores);
     return { data, error };
 }

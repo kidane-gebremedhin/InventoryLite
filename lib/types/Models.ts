@@ -22,7 +22,6 @@ export interface Category {
   updated_by?: string
 }
 
-
 export interface Store {
   id?: string
   name: string
@@ -49,8 +48,33 @@ export interface InventoryItem {
   updated_at?: string
   updated_by?: string
   category?: Category
+  item_variants?: InventoryItemVariant[]
   purchase_order_items?: PurchaseOrderItem[]
   sales_order_items?: SalesOrderItem[]
+}
+
+export interface Variant {
+  id?: string
+  name: string
+  description?: string
+  status?: string
+  created_at?: string
+  created_by?: string
+  updated_at?: string
+  updated_by?: string
+}
+
+export interface InventoryItemVariant {
+  id?: string
+  inventory_item_id: string
+  variant_id: string
+  status?: string
+  created_at?: string
+  created_by?: string
+  updated_at?: string
+  updated_by?: string
+  item?: InventoryItem
+  variant?: Variant
 }
 
 export interface Supplier {
@@ -86,12 +110,14 @@ export interface PurchaseOrderItem {
   inventory_item_id: string
   quantity: number
   unit_price: number
+  variant_id?: string
   status?: string
   created_at?: string
   created_by?: string
   updated_at?: string
   updated_by?: string
   item?: InventoryItem
+  variant?: Variant
   store?: Store
 }
 
@@ -102,12 +128,14 @@ export interface SalesOrderItem {
   inventory_item_id: string
   quantity: number
   unit_price: number
+  variant_id?: string
   status?: string
   created_at?: string
   created_by?: string
   updated_at?: string
   updated_by?: string
   item?: InventoryItem
+  variant?: Variant
   store?: Store
 }
 
@@ -239,7 +267,19 @@ export interface ManualPayment {
   updated_by?: string
 }
 
-export interface RecordStatusPayload {
+export interface UserInvitation {
+  id?: string
+  email: string
+  status?: string
+  token: string
+  expires_at: string
+  created_at?: string
+  created_by?: string
+  updated_at?: string
+  updated_by?: string
+}
+
+export interface StatusPayload {
   status: string
 }
 
@@ -251,6 +291,12 @@ export interface ServerActionsResponse {
   error: any
   data: any,
   count?: number
+}
+
+export interface InventoryItemData {
+  inventory_item_data: any
+  inventory_item_variants_data: any
+  is_for_update?: boolean
 }
 
 export interface PurchaseOrderData {

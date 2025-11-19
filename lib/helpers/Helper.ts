@@ -1,7 +1,7 @@
 import toast from "react-hot-toast"
-import { PaymentStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
+import { ConsentCookieStatus, InvitationStatus, PaymentStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
 import { PurchaseOrderItem, SalesOrderItem } from "../types/Models"
-import { CUSTOM_SERVER_ERRORS, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
+import { CONSENT_COOKIE_KEY, CUSTOM_SERVER_ERRORS, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
 
 export const shortenText = (input: string | undefined | null, targetLength: number): string => {
     if (!input) return ''
@@ -32,6 +32,19 @@ export const getRecordStatusColor = (status: string): string => {
         return 'bg-green-100 text-green-800'
       case RecordStatus.ARCHIVED:
         return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+}
+
+export const getInvitationStatusColor = (status: string): string => {
+    switch (status) {
+      case InvitationStatus.OPEN:
+        return 'bg-yellow-100 text-yellow-800'
+      case InvitationStatus.ACCEPTTED:
+        return 'bg-green-100 text-green-800'
+      case InvitationStatus.EXPIRED:
+        return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -154,6 +167,10 @@ export const getCurrentDate = (): String => {
 
 export const getDateWithoutTime = (dateStr?: string): string => {
   if (!dateStr) return ''
+  
+  // Return as is when non date string is passed
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
 
   if (dateStr.includes('T')) return dateStr.split('T')[0];
   if (dateStr.includes(' ')) return `${dateStr.split(' ').slice(0, 4).join(' ').toString()} ${dateStr.split(' ').reverse()[0]}`;
@@ -194,4 +211,46 @@ export const calculateStartAndEndIndex = ({currentPage, recordsPerPage}): { star
   const endIndex = currentPage * recordsPerPage - 1;
 
   return { startIndex, endIndex }
+}
+
+// --- GDPR POPUP LOGIC ---
+
+/**
+ * Sets the client-accessible consent cookie.
+ */
+export function setConsentCookie(value) {
+    let expires = "";
+    const date = new Date();
+    date.setTime(date.getTime() + (ConsentCookieStatus.expireAfterDays * 24 * 60 * 60 * 1000));
+    expires = "; expires=" + date.toUTCString();
+    document.cookie = CONSENT_COOKIE_KEY + "=" + (value || "")  + expires + "; path=/; secure; samesite=Lax";
+}
+
+/**
+ * Get a specific cookie value from document.cookie
+ */
+export function getClientCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for(let i=0; i < ca.length; i++) {
+        let c = ca[i].trim();
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+export function acceptCookies() {
+   // Set for 1 year
+    setConsentCookie(ConsentCookieStatus.accepted.toString());
+}
+
+export function consentGiven() {
+  return getClientCookie(CONSENT_COOKIE_KEY) === ConsentCookieStatus.accepted.toString();
+}
+
+/**
+ * Clears the client-accessible consent cookie.
+ */
+function clearConsentCookie() {
+    document.cookie = CONSENT_COOKIE_KEY + "=; path=/;";
 }

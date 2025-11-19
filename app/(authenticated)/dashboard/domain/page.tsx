@@ -190,8 +190,8 @@ export default function DomainPage() {
     <div className="space-y-6">
       <div className="md:flex md:justify-between md:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Domain Management</h1>
-          <p className="text-gray-600">Manage your domains of items</p>
+          <h1 className="text-2xl font-bold text-gray-900">Business Domain Management</h1>
+          <p className="text-gray-600">Manage your business industries</p>
         </div>
         <button
           onClick={handleAdd}

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { PUBLIC_PATHS } from './lib/Constants'
-import { CookiesKey, ROUTE_PATH, UserRole } from './lib/Enums'
+import { CACHE_TTL_USER_SUBSCRIPTION_INFO, PUBLIC_PATHS } from './lib/Constants'
+import { CookiesKey, ROUTE_PATH, SubscriptionStatus, UserRole } from './lib/Enums'
 import { fetchUserProfile } from './lib/server_actions/user'
 
 export async function middleware(request: NextRequest) {
@@ -9,29 +9,31 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
 
   let user = null;
   const userSubscriptionInfo = request.cookies.get(CookiesKey.ucookiesinfo)?.value;
-  if (!userSubscriptionInfo) {
+  // Reauthenticate when not sufficient cookies
+  if (!userSubscriptionInfo || request.cookies.getAll().length <= 1) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+            supabaseResponse = NextResponse.next({
+              request,
+            })
+            cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+
     const { data } = await supabase.auth.getUser()
     if (data) {
       user = await fetchUserProfile(data.user)
@@ -42,18 +44,14 @@ export async function middleware(request: NextRequest) {
         secure: true,
         sameSite: "strict",
         path: '/',
+        maxAge: CACHE_TTL_USER_SUBSCRIPTION_INFO
       });
 
       console.log("User details From DB")
     }
   } else {
-    // Clear cookies on logout
-    if (request.cookies.getAll().length == 1) {
-      supabaseResponse.cookies.delete(CookiesKey.ucookiesinfo);
-    } else {
-      console.log("User details From Cookies")
-      user = JSON.parse(userSubscriptionInfo);
-    }
+    user = JSON.parse(userSubscriptionInfo);
+    console.log("User details From Cookies")
   }
 
   // Redirect unauthenticated users to login page except for public ones
@@ -62,11 +60,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, request.url));
     }
 
-    // Redirect to complete profile when needed
-    if (user?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN && !user?.subscriptionInfo?.profile_complete && request.nextUrl.pathname !== ROUTE_PATH.COMPLETE_PROFILE) {
+    // Redirect tenant admins to complete profile
+    if (user?.subscriptionInfo?.role === UserRole.TENANT_ADMIN && !user?.subscriptionInfo?.profile_complete && request.nextUrl.pathname !== ROUTE_PATH.COMPLETE_PROFILE) {
       return NextResponse.redirect(new URL(ROUTE_PATH.COMPLETE_PROFILE, request.url))
     }
-    // Redirect to complete profile when needed
     if (user?.subscriptionInfo?.profile_complete && request.nextUrl.pathname === ROUTE_PATH.COMPLETE_PROFILE) {
       return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, request.url))
     }
@@ -75,9 +72,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, request.url))
     }
   
-    // Redirect to payment page when needed
-    if (user && false/*!user.hasPaymentDue*/) {
-      return NextResponse.redirect(new URL('/payment', request.url))
+    // Redirect to payment page when expired
+    if (user?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN && user?.subscriptionInfo?.subscription_status == SubscriptionStatus.EXPIRED && request.nextUrl.pathname !== ROUTE_PATH.MANUAL_PAYMENT) {
+      return NextResponse.redirect(new URL(ROUTE_PATH.MANUAL_PAYMENT, request.url))
     }
   } else {
     // Redirec authenticated users to dashboard from landing page

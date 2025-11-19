@@ -1,20 +1,30 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { PlusIcon, StarIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, PlusIcon, StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
 import { FeedbackRating } from '@/components/feedback/FeedbackRating'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
-import { formatDateToLocalDate, getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import { FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, RATING_STARTS } from '@/lib/Constants'
+import { calculateStartAndEndIndex, formatDateToLocalDate, getDateWithoutTime, getFeedbackCategoryColor, getFeedbackCategoryLabel, getFeedbackPriorityColor, getFeedbackStatusColor, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES, FIRST_PAGE_NUMBER, RATING_STARS, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY } from '@/lib/Constants'
 import { fetchUserFeedbacks, saveUserFeedback } from '@/lib/server_actions/feedback'
 import { UserFeedback } from '@/lib/types/Models'
-import { FeedbackCategory, FeedbackPriority, RatingStar } from '@/lib/Enums'
+import ExportExcel from '@/components/file_import_export/ExportExcel'
+import ExportPDF from '@/components/file_import_export/ExportPDF'
+import Pagination from '@/components/helpers/Pagination'
 
 export default function FeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<UserFeedback[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTermTemp, setSearchTermTemp] = useState('')
+  const [selectedFeedbackRating, setSelectedFeedbackRating] = useState(0)
+  const [selectedFeedbackCategory, setSelectedFeedbackCategory] = useState('')
+  const [selectedFeedbackPriority, setSelectedFeedbackPriority] = useState('')
+  const [selectedFeedbackStatus, setSelectedFeedbackStatus] = useState('')
+
   const [formData, setFormData] = useState({
     category: '',
     subject: '',
@@ -22,31 +32,40 @@ export default function FeedbackPage() {
     priority: '',
     rating: 0
   })
+  // Pagination
+  const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
+  const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
+  const [totalRecordsCount, setTotalRecordsCount] = useState(0)
   // Global States
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
+
+  const reportHeaders = { subject: 'Subject', rating: 'rating', category: 'category', priority: 'Priority', status: 'Status', created_at: 'Date', admin_response: 'Admin Response' }
 
   useEffect(() => {
     loadFeedbacks()
-  }, [])
+  }, [searchTerm, selectedFeedbackCategory, selectedFeedbackPriority, selectedFeedbackRating, selectedFeedbackStatus, recordsPerPage, currentPage])
 
   const loadFeedbacks = async () => {
+    const { startIndex, endIndex } = calculateStartAndEndIndex({ currentPage, recordsPerPage });
+
     try {
       setLoading(true)
-      const { data, error } = await fetchUserFeedbacks(
+      const { data, count, error } = await fetchUserFeedbacks(
         {
-          selectedStatus: '',
-          selectedCategory: '',
-          selectedPriority: '',
-          selectedRating: 0,
-          searchTerm: '',
-          startIndex: 0,
-          endIndex: 100
+          selectedStatus: selectedFeedbackStatus,
+          selectedCategory: selectedFeedbackCategory,
+          selectedPriority: selectedFeedbackPriority,
+          selectedRating: selectedFeedbackRating,
+          searchTerm: searchTerm,
+          startIndex: startIndex,
+          endIndex: endIndex
         }
       );
 
       if (error) throw error
 
       setFeedbacks(data || [])
+      setTotalRecordsCount(count || 0)
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -88,6 +107,11 @@ export default function FeedbackPage() {
     } catch (error: any) {
       showErrorToast('Failed to submit feedback')
     }
+  }
+
+  const handleTextSearch = () => {
+    setCurrentPage(FIRST_PAGE_NUMBER)
+    setSearchTerm(searchTermTemp.trim())
   }
 
   return (
@@ -176,6 +200,7 @@ export default function FeedbackPage() {
                   className="input-field"
                   required
                 >
+                  <option key='' value=''></option>
                   {FEEDBACK_PRIORITIES.map(priority => (
                     <option key={priority.value} value={priority.value}>
                       {priority.label}
@@ -189,7 +214,7 @@ export default function FeedbackPage() {
                   Rating
                 </label>
                 <div className="flex space-x-1">
-                  {RATING_STARTS.map((star) => (
+                  {RATING_STARS.map((star) => (
                     <button
                       key={star}
                       type="button"
@@ -223,6 +248,114 @@ export default function FeedbackPage() {
         </div>
       )}
 
+      {/* Filter */}
+      <div>
+        <div className="w-full text-right items-right mb-4">
+          <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
+            <b>Show Filters</b>
+          </button>
+          <span className="px-1"></span>
+          <ExportExcel reportName="Feedbacks" records={[reportHeaders, ...feedbacks].map((feedback, idx) => {
+            return { row_no: idx > 0 ? idx : 'Row No.', subject: feedback.subject, rating: feedback.rating, category: feedback.category, priority: feedback.priority, status: feedback.status, created_at: getDateWithoutTime(feedback.created_at), admin_response: feedback.admin_response }
+          })} />
+          <span className="px-1"></span>
+          <ExportPDF reportName="Feedbacks" records={[reportHeaders, ...feedbacks].map((feedback, idx) => {
+            return { row_no: idx > 0 ? idx : 'Row No.', subject: feedback.subject, rating: feedback.rating, category: feedback.category, priority: feedback.priority, status: feedback.status, created_at: getDateWithoutTime(feedback.created_at), admin_response: feedback.admin_response }
+          })} />
+        </div>
+      </div>
+      {showFilters && (
+        <div className='w-full flex'>
+          <div className='w-1/4 flex'>
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by subject or message... and press ENTER key"
+                value={searchTermTemp}
+                onChange={(e) => {
+                  setSearchTermTemp(e.target.value)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                    handleTextSearch();
+                  }
+                }}
+                onBlur={handleTextSearch}
+                className="input-field pl-10 mr-4"
+              />
+            </div>
+          </div>
+          <div className='w-1/6 flex'>
+            <select
+              value={selectedFeedbackRating}
+              onChange={(e) => {
+                setCurrentPage(FIRST_PAGE_NUMBER)
+                setSelectedFeedbackRating(parseInt(e.target.value))
+              }}
+              className="input-field mx-2"
+            >
+              <option value="">All Ratings</option>
+              {RATING_STARS.map(feedbackStar => (
+                <option key={feedbackStar} value={feedbackStar}>
+                  {feedbackStar}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className='w-1/6 flex'>
+            <select
+              value={selectedFeedbackCategory}
+              onChange={(e) => {
+                setCurrentPage(FIRST_PAGE_NUMBER)
+                setSelectedFeedbackCategory(e.target.value)
+              }}
+              className="input-field mx-2"
+            >
+              <option value="">All Categories</option>
+              {FEEDBACK_CATEGORIES.map(feedbackCategory => (
+                <option key={feedbackCategory.value} value={feedbackCategory.value}>
+                  {feedbackCategory.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className='w-1/6 flex'>
+            <select
+              value={selectedFeedbackPriority}
+              onChange={(e) => {
+                setCurrentPage(FIRST_PAGE_NUMBER)
+                setSelectedFeedbackPriority(e.target.value)
+              }}
+              className="input-field mx-2"
+            >
+              <option value="">All Priorities</option>
+              {FEEDBACK_PRIORITIES.map(feedbackPriority => (
+                <option key={feedbackPriority.value} value={feedbackPriority.value}>
+                  {feedbackPriority.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className='w-1/6 flex'>
+            <select
+              value={selectedFeedbackStatus}
+              onChange={(e) => {
+                setCurrentPage(FIRST_PAGE_NUMBER)
+                setSelectedFeedbackStatus(e.target.value)
+              }}
+              className="input-field mx-2"
+            >
+              <option value="">All Statuses</option>
+              {FEEDBACK_STATUSES.map(feedbackStatus => (
+                <option key={feedbackStatus.value} value={feedbackStatus.value}>
+                  {feedbackStatus.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
       {/* Feedback List */}
       <div className="space-y-4">
         {feedbacks.length === 0 ? (
@@ -234,50 +367,62 @@ export default function FeedbackPage() {
             </p>
           </div>
         ) : (
-          feedbacks.map((feedback) => (
-            <div key={feedback.id} className="card">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackCategoryColor(feedback.category)}`}>
-                    {getFeedbackCategoryLabel(feedback.category)}
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackPriorityColor(feedback.priority)}`}>
-                    {feedback.priority}
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackStatusColor(feedback.status)}`}>
-                    {feedback.status.replace('_', ' ')}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-500">
-                  {formatDateToLocalDate(feedback.created_at)}
-                </div>
-              </div>
-
-              <h3 className="font-medium text-gray-900 mb-2">{feedback.subject}</h3>
-              <p className="text-gray-600 mb-3">{feedback.message}</p>
-
-              {feedback.rating && (
-                <div className="flex items-center mb-3">
-                  <span className="text-sm text-gray-500 mr-2">Rating:</span>
-                  <div className="flex">
-                    {RATING_STARTS.map((star) => (
-                      <StarIconSolid
-                        key={star}
-                        className={`h-4 w-4 ${star <= feedback.rating! ? 'text-yellow-400' : 'text-gray-300'}`}
-                      />
-                    ))}
+          <>
+            {
+              feedbacks.map((feedback) => (
+                <div key={feedback.id} className="card">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackCategoryColor(feedback.category)}`}>
+                        {getFeedbackCategoryLabel(feedback.category)}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackPriorityColor(feedback.priority)}`}>
+                        {feedback.priority}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackStatusColor(feedback.status)}`}>
+                        {feedback.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {formatDateToLocalDate(feedback.created_at)}
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {feedback.admin_response && (
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-1">Admin Response:</h4>
-                  <p className="text-gray-600 text-sm">{feedback.admin_response}</p>
+                  <h3 className="font-medium text-gray-900 mb-2">{feedback.subject}</h3>
+                  <p className="text-gray-600 mb-3">{feedback.message}</p>
+
+                  {feedback.rating && (
+                    <div className="flex items-center mb-3">
+                      <span className="text-sm text-gray-500 mr-2">Rating:</span>
+                      <div className="flex">
+                        {RATING_STARS.map((star) => (
+                          <StarIconSolid
+                            key={star}
+                            className={`h-4 w-4 ${star <= feedback.rating! ? 'text-yellow-400' : 'text-gray-300'}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {feedback.admin_response && (
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-1">Admin Response:</h4>
+                      <p className="text-gray-600 text-sm">{feedback.admin_response}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))
+              ))
+            }
+
+            <Pagination
+              currentPage={currentPage}
+              recordsPerPage={recordsPerPage}
+              totalRecordsCount={totalRecordsCount}
+              setCurrentPage={setCurrentPage}
+              setRecordsPerPage={setRecordsPerPage}
+            />
+          </>
         )}
       </div>
     </div>

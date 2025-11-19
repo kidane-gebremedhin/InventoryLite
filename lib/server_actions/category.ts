@@ -2,9 +2,9 @@
 
 import { ALL_OPTIONS } from '../Constants';
 import { DATABASE_TABLE, RecordStatus, RedisCacheKey } from '../Enums';
-import { Category, RecordStatusPayload, ServerActionsResponse } from '../types/Models';
+import { Category, StatusPayload, ServerActionsResponse } from '../types/Models';
 import { createClient } from '@/supabase/server';
-import { getCacheData, setCacheData } from './redis';
+import { deleteCacheKeyByKeyPrefix, getCacheData, setCacheData } from './redis';
 
 interface SearchParams {
     selectedStatus: string,
@@ -63,6 +63,7 @@ export async function saveCategory(requestData: Category): Promise<ServerActions
         .insert(requestData)
         .select();
 
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.categories);
     return { data, error };
 }
 
@@ -75,10 +76,11 @@ export async function updateCategory(id: string, requestData: Category): Promise
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.categories);
     return { data, error };
 }
 
-export async function updateCategoryRecordStatus(id: string, requestData: RecordStatusPayload): Promise<ServerActionsResponse> {
+export async function updateCategoryRecordStatus(id: string, requestData: StatusPayload): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
     const { data, error } = await supabase
@@ -87,5 +89,6 @@ export async function updateCategoryRecordStatus(id: string, requestData: Record
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.categories);
     return { data, error };
 }

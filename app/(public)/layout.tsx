@@ -1,20 +1,8 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './../globals.css'
 import Navbar from '@/components/layout/Navbar'
-import { APP_DESCRIPTION, APP_NAME, APP_TITLE } from '@/lib/app_config/config'
 import CallToAction from '@/components/layout/CallToAction'
 import Footer from '@/components/layout/Footer'
-
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: `${APP_NAME} - ${APP_TITLE}`,
-  description: APP_DESCRIPTION,
-  icons: {
-    icon: '/images/logos/logo 1.JPG',
-  },
-}
+import PartnersLogoLoop from '@/components/helpers/PartnersLogoLoop'
 
 export default async function RootLayout({
   children,
@@ -22,19 +10,18 @@ export default async function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className} suppressHydrationWarning={true}>
-        {/* Navbar */}
-        <Navbar />
-        <div className="min-h-screen bg-gray-50 font-sans text-gray-800 antialiased">
-          <div className='pb-8'>
-            {children}
-          </div>
+    <>
+      {/* Navbar */}
+      <Navbar />
+      <div className="min-h-screen bg-gray-50 font-sans text-gray-800 antialiased">
+        <div className='pb-8'>
+          {children}
         </div>
-        {/* Call to Action Section */}
-        <CallToAction />
-        <Footer />
-      </body>
-    </html>
+      </div>
+      <PartnersLogoLoop />
+      {/* Call to Action Section */}
+      <CallToAction />
+      <Footer />
+    </>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { ROUTE_PATH } from '@/lib/Enums'
-import { fetchUserProfile } from '@/lib/server_actions/user'
+import { clearSubscriptionInfoCookies, clearUserSubscriptionInfo, fetchUserProfile } from '@/lib/server_actions/user'
 import { User } from '@/lib/types/Models'
 import { createClient } from '@/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -21,14 +21,14 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
   const [currentUser, setCurrentUser] = useState<User>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  
+
   const supabase = createClient();
-  
+
   useEffect(() => {
     // 1. Get initial session on page reload
     supabase.auth.getSession().then(async ({ data }) => {
-        const currentUser = await fetchUserProfile(data?.session?.user, true);
-        setCurrentUser(currentUser);
+      const currentUser = await fetchUserProfile(data?.session?.user, true);
+      setCurrentUser(currentUser);
     });
 
     // 2. LISTEN to changes (login, logout, token refresh, OAuth redirect)
@@ -44,6 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
   }, [supabase]);
 
   const signOut = async () => {
+    clearUserSubscriptionInfo(currentUser);
+    clearSubscriptionInfoCookies();
+    // This should be below cookie clearance
     await supabase.auth.signOut()
     router.push(ROUTE_PATH.SIGNIN)
   }

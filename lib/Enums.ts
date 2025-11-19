@@ -28,6 +28,12 @@ export enum OrderStatus {
     CANCELED = 'canceled',
 }
 
+export enum InvitationStatus {
+    OPEN = 'open',
+    ACCEPTTED = 'accepted',
+    EXPIRED = 'expired'
+}
+
 export enum PurchaseOrderStatus {
     PENDING = OrderStatus.PENDING,
     RECEIVED = OrderStatus.RECEIVED,
@@ -91,6 +97,7 @@ export enum DATABASE_TABLE {
     categories = 'categories',
     customers = 'customers',
     inventory_items = 'inventory_items',
+    variants = 'variants',
     purchase_orders = 'purchase_orders',
     purchase_order_items = 'purchase_order_items',
     sales_orders = 'sales_orders',
@@ -101,6 +108,7 @@ export enum DATABASE_TABLE {
     feedback = 'feedback',
     manual_payments = 'manual_payments',
     domains = 'domains',
+    tenant_user_invites = 'tenant_user_invites',
 }
 
 export enum RedisCacheKey {
@@ -108,6 +116,7 @@ export enum RedisCacheKey {
     categories = 'categories',
     customers = 'customers',
     inventory_items = 'inventory_items',
+    variants = 'variants',
     purchase_orders = 'purchase_orders',
     purchase_order_items = 'purchase_order_items',
     sales_orders = 'sales_orders',
@@ -118,13 +127,19 @@ export enum RedisCacheKey {
     feedback = 'feedback',
     manual_payments = 'manual_payments',
     domains = 'domains',
+    tenant_user_invites = 'tenant_user_invites',
     feedback_stats = 'feedback_stats',
     feedback_unread_count = 'feedback_unread_count',
     user_subscription_info = 'user_subscription_info'
 }
 
 export enum CookiesKey {
-    ucookiesinfo = 'ucookiesinfo'
+    ucookiesinfo = 'ucookiesinfo',
+}
+
+export enum ConsentCookieStatus {
+    accepted = 'accepted',
+    expireAfterDays = 365,
 }
 
 export enum ReportType {
@@ -137,6 +152,7 @@ export enum ReportType {
 }
 
 export enum RPC_FUNCTION {
+    TRANSACTION_INVENTORY_ITEM_HANDLER = 'inventory_item_transaction',
     TRANSACTION_PURCHASE_ORDER_HANDLER = 'purchase_order_transaction',
     TRANSACTION_SALES_ORDER_HANDLER = 'sales_order_transaction',
     INVENTORY_AGING = 'generate_inventory_aging_report',
@@ -146,7 +162,8 @@ export enum RPC_FUNCTION {
     DASHBOARD_STATS = 'build_dashboard_stats',
     PURCHASE_ORDER_MONTHLY_TRENDS = 'purchase_order_monthly_trends',
     SALES_ORDER_MONTHLY_TRENDS = 'sales_order_monthly_trends',
-    FETCH_USER_SUBSCRIPTION_INFO = 'fetch_user_subscription_info'
+    FETCH_USER_SUBSCRIPTION_INFO = 'fetch_user_subscription_info',
+    DELETE_USER_ACCOUNT = 'delete_user_account',
 }
 
 export enum STRIPE_PAYMENT_EVENT {
@@ -171,6 +188,7 @@ export enum ROUTE_PATH {
     DOMAIN = '/dashboard/domain',
     FEEDBACK = '/dashboard/feedback',
     ADMIN_FEEDBACK_MANAGEMENT = '/dashboard/feedback-management',
+    VARIANT = '/dashboard/variant',
     INVENTORY_ITEM = '/dashboard/inventory-item',
     MANUAL_PAYMENT = '/dashboard/manual-payment',
     MANAGE_MANUAL_PAYMENT = '/dashboard/manage-manual-payment',
@@ -180,5 +198,12 @@ export enum ROUTE_PATH {
     SETTING = '/dashboard/setting',
     STORE = '/dashboard/store',
     SUPPLIER = '/dashboard/supplier',
-    TRANSACTION = '/dashboard/transaction'
+    TRANSACTION = '/dashboard/transaction',
+    INVITE_USER = '/dashboard/user-invitation'
+}
+
+export enum SettingSection {
+    PROFILE = 'Profile',
+    SECURITY = 'Security',
+    PERFERENCES = 'Preferences'
 }

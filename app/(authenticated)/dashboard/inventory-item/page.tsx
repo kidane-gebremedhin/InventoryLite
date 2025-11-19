@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  PlusIcon, 
+import {
+  PlusIcon,
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { InventoryItemModal } from '@/components/inventory_items/InventoryItemModal'
 
-import { Category, InventoryItem } from '@/lib/types/Models';
+import { Category, InventoryItem, Variant } from '@/lib/types/Models';
 import { RecordStatus } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { calculateStartAndEndIndex, getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
@@ -27,6 +27,7 @@ import { fetchInvetoryItems, saveInventoryItem, updateInventoryItem, updateInven
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
 import { fetchCategoryOptions } from '@/lib/server_actions/category'
+import { fetchVariantOptions } from '@/lib/server_actions/variant'
 
 export default function InventoryPage() {
   const router = useRouter()
@@ -34,6 +35,7 @@ export default function InventoryPage() {
   const [searchTermTemp, setSearchTermTemp] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
+  const [variants, setVariants] = useState<Variant[]>([])
   const [selectedCategoryId, setSelectedCategory] = useState(ALL_OPTIONS)
   const [selectedStatus, setSelectedStatus] = useState(RecordStatus.ACTIVE.toString())
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -43,7 +45,7 @@ export default function InventoryPage() {
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
-  
+
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   // Record Actions
@@ -51,13 +53,13 @@ export default function InventoryPage() {
   const [isArchiveConfirmationModalOpen, setIsArchiveConfirmationModalOpen] = useState(false)
   const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] = useState(false)
   // Global States
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
 
   const reportHeaders = {
-    sku: 'SKU Code', 
-    name: 'Item Name', 
-    description: 'Description', 
-    category: 'Category', 
+    sku: 'SKU Code',
+    name: 'Item Name',
+    description: 'Description',
+    category: 'Category',
     quantity: 'Available Quantity',
     min_quantity: 'Minimum Quantity',
     unit_price: 'Unit Price',
@@ -65,37 +67,19 @@ export default function InventoryPage() {
   }
 
   useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const { data, error } = await fetchCategoryOptions()
-
-        if (error) {
-          showServerErrorToast(error.message)
-        }
-
-        setCategories(data || [])
-      } catch (error: any) {
-          showErrorToast()
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadCategories()
-  }, [])
-
-  useEffect(() => {
     // reset pagination
     router.push(`?page=${currentPage}`)
     loadInventoryItems()
+    loadCategories()
+    loadVariants()
   }, [searchTerm, selectedCategoryId, selectedStatus, recordsPerPage, currentPage])
 
   const loadInventoryItems = async (cacheEnabled: boolean = true) => {
-    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
+    const { startIndex, endIndex } = calculateStartAndEndIndex({ currentPage, recordsPerPage });
 
     try {
       setLoading(true)
-      
+
       const { data, count, error } = await fetchInvetoryItems({ selectedCategoryId, selectedStatus, searchTerm, startIndex, endIndex }, cacheEnabled);
 
       if (error) {
@@ -104,12 +88,44 @@ export default function InventoryPage() {
       setItems(data || [])
       setTotalRecordsCount(count || 0)
     } catch (error: any) {
-        showErrorToast()
+      showErrorToast()
     } finally {
       setLoading(false)
     }
   }
-  
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await fetchCategoryOptions()
+
+      if (error) {
+        showServerErrorToast(error.message)
+      }
+
+      setCategories(data || [])
+    } catch (error: any) {
+      showErrorToast()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadVariants = async () => {
+    try {
+      const { data, error } = await fetchVariantOptions()
+
+      if (error) {
+        showServerErrorToast(error.message)
+      }
+
+      setVariants(data || [])
+    } catch (error: any) {
+      showErrorToast()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getCategoryName = (categoryId: string) => {
     const category = categories.find(category => category.id === categoryId)
     return category?.name
@@ -134,9 +150,9 @@ export default function InventoryPage() {
 
   const handleArchive = async (id: string) => {
     resetModalState()
-    
+
     try {
-      const { error } = await updateInventoryItemRecordStatus(id, {status: RecordStatus.ARCHIVED})
+      const { error } = await updateInventoryItemRecordStatus(id, { status: RecordStatus.ARCHIVED })
 
       if (error) {
         showServerErrorToast(error.message)
@@ -157,7 +173,7 @@ export default function InventoryPage() {
     resetModalState()
 
     try {
-      const { error } = await updateInventoryItemRecordStatus(id, {status: RecordStatus.ACTIVE})
+      const { error } = await updateInventoryItemRecordStatus(id, { status: RecordStatus.ACTIVE })
 
       if (error) {
         showServerErrorToast(error.message)
@@ -178,8 +194,13 @@ export default function InventoryPage() {
 
     try {
       // Exclude id when creating new records
-      const {id, ...inventoryItemWithNoId} = inventoryItem
-      const { error } = await saveInventoryItem(inventoryItemWithNoId)
+      const { id, item_variants, ...inventoryItemWithNoId } = inventoryItem
+
+      const payload = {
+        inventory_item_data: inventoryItemWithNoId,
+        inventory_item_variants_data: inventoryItem.item_variants,
+      };
+      const { error } = await saveInventoryItem(payload)
 
       if (error) {
         handleServerError(error)
@@ -198,7 +219,14 @@ export default function InventoryPage() {
 
   const handleUpdate = async (inventoryItem: InventoryItem) => {
     try {
-      const { error } = await updateInventoryItem(inventoryItem.id, inventoryItem)
+      const { item_variants, ...inventoryItemWithNoId } = inventoryItem
+
+      const payload = {
+        inventory_item_data: inventoryItemWithNoId,
+        inventory_item_variants_data: inventoryItem.item_variants,
+        is_for_update: true
+      };
+      const { error } = await updateInventoryItem(payload)
 
       if (error) {
         handleServerError(error)
@@ -238,15 +266,16 @@ export default function InventoryPage() {
 
   const getReportFields = (item: any, idx: number) => {
     return {
-      row_no: idx > 0 ? idx : 'Row No.', 
-      sku: item.sku, 
-      name: item.name, 
-      description: item.description, 
-      category: getCategoryName(item.category_id), 
+      row_no: idx > 0 ? idx : 'Row No.',
+      sku: item.sku,
+      name: item.name,
+      description: item.description,
+      category: getCategoryName(item.category_id),
       quantity: item.quantity,
       min_quantity: item.min_quantity,
       unit_price: item.unit_price,
-      created_at: getDateWithoutTime(item.created_at)}
+      created_at: getDateWithoutTime(item.created_at)
+    }
   }
 
   return (
@@ -269,7 +298,7 @@ export default function InventoryPage() {
       <div className="card">
         <div className="overflow-x-auto">
           <div className="w-full text-right items-right mb-4">
-            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
+            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
               <b>Show Filters</b>
             </button>
             <span className="px-1"></span>
@@ -305,48 +334,48 @@ export default function InventoryPage() {
                 </th>
               </tr>
               {showFilters && (
-              <tr className='card'>
-                <th colSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search & Press ENTER"
-                      value={searchTermTemp}
+                <tr className='card'>
+                  <th colSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search & Press ENTER"
+                        value={searchTermTemp}
+                        onChange={(e) => {
+                          setSearchTermTemp(e.target.value)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                            handleTextSearch();
+                          }
+                        }}
+                        onBlur={handleTextSearch}
+                        className="input-field pl-10"
+                      />
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <select
+                      value={selectedCategoryId}
                       onChange={(e) => {
-                        setSearchTermTemp(e.target.value)
+                        setCurrentPage(FIRST_PAGE_NUMBER)
+                        setSelectedCategory(e.target.value)
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
-                          handleTextSearch();
-                        }
-                      }}
-                      onBlur={handleTextSearch}
-                      className="input-field pl-10"
-                    />
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedCategoryId}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedCategory(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {[{id: ALL_OPTIONS, name: ''}, ...categories!].map(category => (
-                      <option key={category.id} value={category.id}>
-                        {category.id === ALL_OPTIONS ? 'All Categories' : shortenText(category.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-                <th></th>
-                <th></th>
-                <th></th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
+                      className="input-field"
+                    >
+                      {[{ id: ALL_OPTIONS, name: '' }, ...categories!].map(category => (
+                        <option key={category.id} value={category.id}>
+                          {category.id === ALL_OPTIONS ? 'All Categories' : shortenText(category.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th></th>
+                  <th></th>
+                  <th></th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <select
                       value={selectedStatus}
                       onChange={(e) => {
                         setCurrentPage(FIRST_PAGE_NUMBER)
@@ -360,9 +389,9 @@ export default function InventoryPage() {
                         </option>
                       ))}
                     </select>
-                </th>
-                <th></th>
-              </tr>
+                  </th>
+                  <th></th>
+                </tr>
               )}
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -401,48 +430,48 @@ export default function InventoryPage() {
                   <td className="px-6 py-4 text-right text-sm font-medium">
                     <div className="flex justify-center space-x-2 items-center">
                       <ActionsMenu
-                          actions={[
-                            {
-                              id: item.id!,
-                              hideOption: false,
-                              icon: <EyeIcon className="h-4 w-4" />,
-                              label: 'View Details',
-                              class: "w-full text-primary-600 hover:text-primary-900",
-                              listener: handleViewDetails
-                            },
-                            {
-                              id: item.id!,
-                              hideOption: selectedStatus === RecordStatus.ARCHIVED,
-                              icon: <PencilIcon className="h-4 w-4" />,
-                              label: 'Edit',
-                              class: "w-full text-primary-600 hover:text-primary-900",
-                              listener: handleEdit
-                            },
-                            {
-                              id: item.id!,
-                              hideOption: selectedStatus !== RecordStatus.ACTIVE,
-                              icon: <TrashIcon className="h-4 w-4" />,
-                              label: 'Archive',
-                              class: "w-full text-red-600 hover:text-red-900",
-                              listener: () => {
-                                setCurrentActiveId(item.id!)
-                                setIsArchiveConfirmationModalOpen(true)
-                              }
-                            },
-                            {
-                              id: item.id!,
-                              hideOption: selectedStatus === RecordStatus.ACTIVE,
-                              icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
-                              label: 'Restore',
-                              class: "w-full text-yellow-600 hover:text-yellow-900",
-                              listener: () => {
-                                setCurrentActiveId(item.id!)
-                                setIsRestoreConfirmationModalOpen(true)
-                              }
-                            },
-                          ]}
-                        />
-                      </div>
+                        actions={[
+                          {
+                            id: item.id!,
+                            hideOption: false,
+                            icon: <EyeIcon className="h-4 w-4" />,
+                            label: 'View Details',
+                            class: "w-full text-primary-600 hover:text-primary-900",
+                            listener: handleViewDetails
+                          },
+                          {
+                            id: item.id!,
+                            hideOption: selectedStatus === RecordStatus.ARCHIVED,
+                            icon: <PencilIcon className="h-4 w-4" />,
+                            label: 'Edit',
+                            class: "w-full text-primary-600 hover:text-primary-900",
+                            listener: handleEdit
+                          },
+                          {
+                            id: item.id!,
+                            hideOption: selectedStatus !== RecordStatus.ACTIVE,
+                            icon: <TrashIcon className="h-4 w-4" />,
+                            label: 'Archive',
+                            class: "w-full text-red-600 hover:text-red-900",
+                            listener: () => {
+                              setCurrentActiveId(item.id!)
+                              setIsArchiveConfirmationModalOpen(true)
+                            }
+                          },
+                          {
+                            id: item.id!,
+                            hideOption: selectedStatus === RecordStatus.ACTIVE,
+                            icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
+                            label: 'Restore',
+                            class: "w-full text-yellow-600 hover:text-yellow-900",
+                            listener: () => {
+                              setCurrentActiveId(item.id!)
+                              setIsRestoreConfirmationModalOpen(true)
+                            }
+                          },
+                        ]}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -450,11 +479,11 @@ export default function InventoryPage() {
           </table>
         </div>
         <Pagination
-          currentPage = {currentPage}
-          recordsPerPage = {recordsPerPage}
-          totalRecordsCount = {totalRecordsCount}
-          setCurrentPage = {setCurrentPage}
-          setRecordsPerPage = {setRecordsPerPage}
+          currentPage={currentPage}
+          recordsPerPage={recordsPerPage}
+          totalRecordsCount={totalRecordsCount}
+          setCurrentPage={setCurrentPage}
+          setRecordsPerPage={setRecordsPerPage}
         />
       </div>
 
@@ -464,6 +493,7 @@ export default function InventoryPage() {
         onClose={() => setIsModalOpen(false)}
         item={editingItem}
         categories={categories}
+        variants={variants}
         onSave={(item) => {
           setLoading(true)
           if (editingItem) {
@@ -473,13 +503,13 @@ export default function InventoryPage() {
           }
         }}
       />
-      
+
       <InventoryItemDetailsModal
         isOpen={showDetailsModal && selectedItem !== null}
         onClose={() => setShowDetailsModal(false)}
         item={selectedItem!}
       />
-      
+
       {/* Confirmation Modal for Archive */}
       <ConfirmationModal
         isOpen={isArchiveConfirmationModalOpen}
@@ -488,7 +518,7 @@ export default function InventoryPage() {
         onConfirmationSuccess={handleArchive}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal for Restore */}
       <ConfirmationModal
         isOpen={isRestoreConfirmationModalOpen}

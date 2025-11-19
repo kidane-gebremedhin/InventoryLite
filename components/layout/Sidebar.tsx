@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
-import { 
-  HomeIcon, 
-  CubeIcon, 
-  TruckIcon, 
+import {
+  HomeIcon,
+  CubeIcon,
+  TruckIcon,
   ShoppingCartIcon,
   ChartBarIcon,
   Cog6ToothIcon,
@@ -17,7 +17,8 @@ import {
   WindowIcon,
   UserGroupIcon,
   BuildingStorefrontIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline'
 import { FireIcon } from '@heroicons/react/24/solid'
 import { ROUTE_PATH, UserRole } from '@/lib/Enums'
@@ -28,7 +29,7 @@ import MiniLoading from '../helpers/MiniLoading'
 export default function Sidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [options, setOptions] = useState([])
-  const {currentUser} = useAuthContext()
+  const { currentUser } = useAuthContext()
   const pathname = usePathname()
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function Sidebar() {
       { name: 'Dashboard', href: ROUTE_PATH.DASHBOARD, icon: HomeIcon },
       { name: 'Stores', href: ROUTE_PATH.STORE, icon: BuildingStorefrontIcon },
       { name: 'Categories', href: ROUTE_PATH.CATEGORY, icon: WindowIcon },
+      { name: 'Variants', href: ROUTE_PATH.VARIANT, icon: CubeIcon },
       { name: 'Inventory Items', href: ROUTE_PATH.INVENTORY_ITEM, icon: CubeIcon },
       { name: 'Suppliers', href: ROUTE_PATH.SUPPLIER, icon: BuildingStorefrontIcon },
       { name: 'Purchase Orders', href: ROUTE_PATH.PURCHASE_ORDER, icon: TruckIcon },
@@ -52,15 +54,20 @@ export default function Sidebar() {
       { name: 'Settings', href: ROUTE_PATH.SETTING, icon: Cog6ToothIcon },
     ];
 
-    const adminPaths = [
-      { name: 'Domains', href: ROUTE_PATH.DOMAIN, icon: BuildingStorefrontIcon }
-    ]
-
+    let tenantAdminPaths = []
+    let superAdminPaths = []
+    if ([UserRole.SUPER_ADMIN.toString(), UserRole.TENANT_ADMIN.toString()].includes(currentUser?.subscriptionInfo?.role)) {
+      tenantAdminPaths = [
+        { name: 'Staff Members', href: ROUTE_PATH.INVITE_USER, icon: UsersIcon }
+      ]
+    }
     if (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN) {
-      return [...paths, ...adminPaths]
+      superAdminPaths = [
+        { name: 'Business Domains', href: ROUTE_PATH.DOMAIN, icon: BuildingStorefrontIcon }
+      ]
     }
 
-    return paths;
+    return [...paths, ...tenantAdminPaths, ...superAdminPaths]
   }
 
   if (!currentUser) return <MiniLoading />
@@ -73,7 +80,7 @@ export default function Sidebar() {
         sidebarOpen ? 'block' : 'hidden'
       )}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        
+
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
             <h1 className="text-xl font-bold text-gray-900">{APP_NAME}</h1>
@@ -84,7 +91,7 @@ export default function Sidebar() {
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
-          
+
           <nav className="flex-1 space-y-1 px-2 py-4">
             {options.map((item) => {
               const isActive = pathname === item.href
@@ -113,7 +120,7 @@ export default function Sidebar() {
           <div className="flex h-16 items-center px-4">
             <h1 className="text-xl font-bold text-gray-900">{APP_NAME}</h1>
           </div>
-          
+
           <nav className="flex-1 space-y-1 px-2 py-4">
             {options.map((item) => {
               const isActive = pathname === item.href

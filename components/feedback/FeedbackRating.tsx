@@ -7,7 +7,7 @@ import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { FeedbackPriority, RatingStar } from '@/lib/Enums'
 import { APP_NAME } from '@/lib/app_config/config'
 import { saveRatingFeedback } from '@/lib/server_actions/feedback'
-import { RATING_STARTS } from '@/lib/Constants'
+import { RATING_STARS } from '@/lib/Constants'
 
 interface FeedbackRatingProps {
   onFeedbackSubmitted?: () => void
@@ -43,12 +43,12 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
     setSubmitting(true)
     try {
       const { error } = await saveRatingFeedback({
-          category: formData.category,
-          subject: formData.subject,
-          message: formData.message,
-          priority: rating <= 2 ? FeedbackPriority.HIGH : FeedbackPriority.MEDIUM,
-          rating: rating
-        })
+        category: formData.category,
+        subject: formData.subject,
+        message: formData.message,
+        priority: rating <= 2 ? FeedbackPriority.HIGH : FeedbackPriority.MEDIUM,
+        rating: rating
+      })
 
       if (error) throw error
 
@@ -76,7 +76,7 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
 
         {/* Star Rating */}
         <div className="flex justify-center space-x-1 mb-4">
-          {RATING_STARTS.map((star) => (
+          {RATING_STARS.map((star) => (
             <button
               key={star}
               type="button"
@@ -155,8 +155,8 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="btn-primary"
                   disabled={submitting}
                 >

@@ -12,7 +12,7 @@ interface orderModalProps {
 
 export default function orderModal({ isOpen, onClose, order }: orderModalProps) {
 
-  if (!isOpen) return null
+  if (!isOpen) return <></>
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
@@ -122,6 +122,9 @@ export default function orderModal({ isOpen, onClose, order }: orderModalProps) 
                       Total
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Variant
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Store
                     </th>
                   </tr>
@@ -145,6 +148,11 @@ export default function orderModal({ isOpen, onClose, order }: orderModalProps) 
                         {(orderItem.quantity * orderItem.unit_price).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
+                        <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                          {orderItem.variant?.name}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
                         {orderItem.store?.name}
                       </td>
                     </tr>
@@ -160,7 +168,7 @@ export default function orderModal({ isOpen, onClose, order }: orderModalProps) 
             </div>
           </div>
         </div>
-      
+
         {/* Close Button */}
         <div className="flex justify-end mt-6 pt-6 border-t">
           <button

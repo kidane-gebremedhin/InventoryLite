@@ -3,19 +3,20 @@
 import { useState, useEffect } from 'react'
 
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { Customer, InventoryItem, SalesOrder, SalesOrderItem, Store } from '@/lib/types/Models'
+import { Customer, InventoryItem, SalesOrder, SalesOrderItem, Store, Variant } from '@/lib/types/Models'
 import { SalesOrderStatus, RecordStatus } from '@/lib/Enums'
 import { calculateOrderTotalProce, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
 import { DECIMAL_REGEX, SALES_ORDER_STATUSES } from '@/lib/Constants'
-import { fetchStoreOptions } from '@/lib/server_actions/store'
-import { fetchCustomerOptions } from '@/lib/server_actions/customer'
-import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
 
 interface SalesOrderModalProps {
   isOpen: boolean
   onClose: () => void
   order: SalesOrder | null
+  stores: Store[]
+  customers: Customer[]
+  inventoryItems: InventoryItem[]
+  variants: Variant[]
   onSave: (order: SalesOrder) => void
 }
 
@@ -30,22 +31,17 @@ const emptyEntry: SalesOrder = {
   order_items: [],
 }
 
-export default function SalesOrderModal({ isOpen, onClose, order, onSave }: SalesOrderModalProps) {
-  const [stores, setStores] = useState<Store[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [inventoryItems, setInventoryItems] = useState<Partial<InventoryItem>[]>([])
+export default function SalesOrderModal({ isOpen, onClose, order, stores, customers, inventoryItems, variants, onSave }: SalesOrderModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<SalesOrder>>(emptyEntry)
   const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([])
+  const [itemVariants, setItemVariants] = useState<Variant[]>([])
 
   useEffect(() => {
     // reset form
     setFormData(emptyEntry)
 
     if (isOpen) {
-      loadStores()
-      loadCustomers()
-      loadInventoryItems()
       if (order) {
         setFormData({
           so_number: order.so_number || '',
@@ -60,44 +56,6 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
     }
   }, [isOpen, order])
 
-  const loadStores = async () => {
-    try {
-      const { data, error } = await fetchStoreOptions()
-
-      if (error) throw error
-
-      setStores(data || [])
-    } catch (error: any) {
-      showErrorToast()
-    }
-  }
-
-  const loadCustomers = async () => {
-    try {
-      const { data, error } = await fetchCustomerOptions()
-
-      if (error) throw error
-      setCustomers(data || [])
-      // When single option, select it by default
-      if (!order && data.length == 1) {
-        setFormData({...formData, customer_id: data[0].id})
-      }
-    } catch (error: any) {
-      showErrorToast()
-    }
-  }
-
-  const loadInventoryItems = async () => {
-    try {
-      const { data, error } = await fetchInventoryItemOptions()
-
-      if (error) throw error
-      setInventoryItems(data || [])
-    } catch (error: any) {
-      showErrorToast()
-    }
-  }
-
   const resetForm = () => {
     setFormData({
       so_number: '',
@@ -110,7 +68,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
   const addItem = () => {
     const unitPrice = inventoryItems.length === 1 ? inventoryItems[0].unit_price! : 0
-    setSalesOrderItems([...salesOrderItems, { inventory_item_id: '', quantity: 1, unit_price: unitPrice, store_id: (stores.length === 1 ? stores[0].id! : '') }])
+    setSalesOrderItems([...salesOrderItems, { inventory_item_id: '', quantity: 1, unit_price: unitPrice, variant_id: '', store_id: (stores.length === 1 ? stores[0].id! : '') }])
   }
 
   const removeItem = (index: number) => {
@@ -121,23 +79,29 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
     if (value && field === 'unit_price' && !DECIMAL_REGEX.test(value)) {
       return
     }
-    
+
     const preSelectedItem = salesOrderItems.find(item => item.inventory_item_id === value)
     if (preSelectedItem) {
-        showErrorToast('Item already selected.')
-        return
+      showErrorToast('Item already selected.')
+      return
     }
     const newItems = [...salesOrderItems]
     newItems[index] = { ...newItems[index], [field]: value }
-    
+
     // Auto-fill unit price when item is selected
     if (field === 'inventory_item_id') {
       const selectedItem = inventoryItems.find(item => item.id === value)
       if (selectedItem) {
         newItems[index].unit_price = selectedItem.unit_price!
+
+        // Filter item variants
+        const currentItemVariants = variants.filter(variant => {
+          return selectedItem.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
+        });
+        setItemVariants(currentItemVariants)
       }
     }
-    
+
     setSalesOrderItems(newItems)
   }
 
@@ -156,8 +120,9 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
     try {
       const itemsToInsert: SalesOrderItem[] = salesOrderItems.map(item => ({
-        ...item.id && {id: item.id},
+        ...item.id && { id: item.id },
         store_id: item.store_id,
+        variant_id: item?.variant_id,
         sales_order_id: order?.id || '',
         inventory_item_id: item.inventory_item_id || '',
         quantity: item.quantity || 0,
@@ -173,7 +138,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
         expected_date: formData.expected_date,
         order_items: itemsToInsert
       }
-  
+
       onSave(newSalesOrder)
     } catch (error: any) {
       showErrorToast('Failed to save sales order')
@@ -182,7 +147,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen) return <></>
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
@@ -286,7 +251,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
             ) : (
               <div className="space-y-4">
                 {salesOrderItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Item *
@@ -337,6 +302,25 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Variant
+                      </label>
+                      <select
+                        value={item.variant_id}
+                        onChange={(e) => updateItem(index, 'variant_id', e.target.value)}
+                        className="input-field"
+                        required
+                      >
+                        <option value="">Select Variant</option>
+                        {itemVariants.map(variant => (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Store *
                       </label>
                       <select
@@ -353,27 +337,26 @@ export default function SalesOrderModal({ isOpen, onClose, order, onSave }: Sale
                         ))}
                       </select>
                     </div>
-
                     <div className="items-center">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         &nbsp;
                       </label>
                       <Tooltip text="Remove">
-                          <button
-                            type="button"
-                            onClick={() => removeItem(index)}
-                            className="mt-3 text-red-600 hover:text-red-900"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="mt-3 text-red-600 hover:text-red-900"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                 ))}
 
                 <div className="text-right">
                   <p className="text-lg font-medium">
-                    Total: {calculateOrderTotalProce(salesOrderItems).toFixed(2)}
+                    Total Value: {calculateOrderTotalProce(salesOrderItems).toFixed(2)}
                   </p>
                 </div>
               </div>

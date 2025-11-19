@@ -57,8 +57,8 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                   <span className="text-gray-600">Available Quantity:</span>
                   <span className="mx-2 font-medium">{item.quantity}</span>
                   {item.quantity <= item.min_quantity && (
-                      <LowStock />
-                    )}
+                    <LowStock />
+                  )}
                 </div>
                 <div>
                   <span className="text-gray-600">Min Quantity:</span>
@@ -68,6 +68,14 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                   <span className="text-gray-600">Description:</span>
                   <span className="ml-2 font-medium">{item.description}</span>
                 </div>
+                <h3 className="font-medium text-gray-900 mb-2">
+                  Variants
+                </h3>
+                {item.item_variants?.map(iv => (
+                  <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                    {iv.variant?.name}
+                  </span>
+                ))}
                 <div>
                   <span className="text-gray-600">Record Status:</span>
                   <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(item.status!)}`}>
@@ -102,8 +110,8 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
             </div>
           </div>
         </div>
-      
-        <CloseModal onClose={onClose}/>
+
+        <CloseModal onClose={onClose} />
       </div>
     </div>
   )

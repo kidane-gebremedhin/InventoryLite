@@ -2,9 +2,9 @@
 
 import { createClient } from '@/supabase/server';
 import { DATABASE_TABLE, RecordStatus, RedisCacheKey } from '../Enums';
-import { Customer, RecordStatusPayload, ServerActionsResponse } from '../types/Models';
+import { Customer, StatusPayload, ServerActionsResponse } from '../types/Models';
 import { ALL_OPTIONS } from '../Constants';
-import { getCacheData, setCacheData } from './redis';
+import { deleteCacheKeyByKeyPrefix, getCacheData, setCacheData } from './redis';
 
 interface SearchParams {
     selectedStatus: string,
@@ -20,14 +20,14 @@ export async function fetchCustomers({selectedStatus, searchTerm, startIndex, en
     const cachedData = await getCacheData(cacheKey);
     if (!cachedData) {
         let query = supabase.from(DATABASE_TABLE.customers).select('*', {count: 'exact', head: false})
-            if (selectedStatus !== ALL_OPTIONS) {
-                query = query.eq('status', selectedStatus)
-            }
-            if (searchTerm) {
-                query = query.or(`name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, phone.ilike.%${searchTerm}%, address.ilike.%${searchTerm}%`)
-            }
-            const { data, count, error } = await query.order('created_at', { ascending: false })
-            .range(startIndex, endIndex)
+        if (selectedStatus !== ALL_OPTIONS) {
+            query = query.eq('status', selectedStatus)
+        }
+        if (searchTerm) {
+            query = query.or(`name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, phone.ilike.%${searchTerm}%, address.ilike.%${searchTerm}%`)
+        }
+        const { data, count, error } = await query.order('created_at', { ascending: false })
+        .range(startIndex, endIndex)
 
         // Return from DB and update the cache asyncronously
         setCacheData(cacheKey, { data, count, error });
@@ -63,6 +63,7 @@ export async function saveCustomer(requestData: Customer): Promise<ServerActions
         .insert(requestData)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.customers);
     return { data, error };
 }
 
@@ -75,10 +76,11 @@ export async function updateCustomer(id: string, requestData: Customer): Promise
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.customers);
     return { data, error };
 }
 
-export async function updateCustomerRecordStatus(id: string, requestData: RecordStatusPayload): Promise<ServerActionsResponse> {
+export async function updateCustomerRecordStatus(id: string, requestData: StatusPayload): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
     const { data, error } = await supabase
@@ -87,5 +89,6 @@ export async function updateCustomerRecordStatus(id: string, requestData: Record
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.customers);
     return { data, error };
 }

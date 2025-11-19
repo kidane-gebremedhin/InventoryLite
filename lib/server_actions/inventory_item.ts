@@ -1,10 +1,10 @@
 'use server';
 
 import { createClient } from '@/supabase/server';
-import { DATABASE_TABLE, RecordStatus, RedisCacheKey } from '../Enums';
-import { InventoryItem, RecordStatusPayload, ServerActionsResponse } from '../types/Models';
+import { DATABASE_TABLE, RecordStatus, RedisCacheKey, RPC_FUNCTION } from '../Enums';
+import { InventoryItem, StatusPayload, ServerActionsResponse, InventoryItemData } from '../types/Models';
 import { ALL_OPTIONS } from '../Constants';
-import { getCacheData, setCacheData } from './redis';
+import { deleteCacheKeyByKeyPrefix, getCacheData, setCacheData } from './redis';
 
 interface SearchParams {
     selectedCategoryId: string,
@@ -24,7 +24,11 @@ export async function fetchInvetoryItems({selectedCategoryId, selectedStatus, se
             *,
             category:categories(*),
             purchase_order_items:purchase_order_items(*),
-            sales_order_items:sales_order_items(*)
+            sales_order_items:sales_order_items(*),
+            item_variants:inventory_item_variants(
+            *,
+            variant:variants(*)
+            )
             `, {count: 'exact', head: false})
 
         if (selectedStatus !== ALL_OPTIONS) {
@@ -40,7 +44,6 @@ export async function fetchInvetoryItems({selectedCategoryId, selectedStatus, se
         const { data, count, error } = await query.order('created_at', { ascending: false })
         .range(startIndex, endIndex)
 
-
         // Return from DB and update the cache asyncronously
         setCacheData(cacheKey, { data, count, error });
         return { data, count, error };
@@ -55,7 +58,11 @@ export async function fetchInventoryItemOptions(): Promise<ServerActionsResponse
     const cachedData = await getCacheData(RedisCacheKey.inventory_items);
     if (!cachedData) {
         const { data, count, error } = await supabase.from(DATABASE_TABLE.inventory_items)
-            .select('id, sku, name, unit_price, quantity', {count: 'exact', head: false})
+            .select(`id, sku, name, unit_price, quantity,
+                item_variants:inventory_item_variants(
+                    *,
+                    variant:variants(*)
+                )`, {count: 'exact', head: false})
             .eq('status', RecordStatus.ACTIVE)
             .order('name', { ascending: true })
         
@@ -67,18 +74,27 @@ export async function fetchInventoryItemOptions(): Promise<ServerActionsResponse
     return cachedData;
 }
 
-export async function saveInventoryItem(requestData: InventoryItem): Promise<ServerActionsResponse> {
+export async function saveInventoryItem(requestData: InventoryItemData): Promise<ServerActionsResponse> {
     const supabase = await createClient();
-    
+
     const { data, error } = await supabase
-        .from(DATABASE_TABLE.inventory_items)
-        .insert(requestData)
-        .select();
+            .rpc(RPC_FUNCTION.TRANSACTION_INVENTORY_ITEM_HANDLER, requestData)
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.inventory_items);
     return { data, error };
 }
 
-export async function updateInventoryItem(id: string, requestData: InventoryItem): Promise<ServerActionsResponse> {
+export async function updateInventoryItem(requestData: InventoryItemData): Promise<ServerActionsResponse> {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+        .rpc(RPC_FUNCTION.TRANSACTION_INVENTORY_ITEM_HANDLER, requestData)
+
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.inventory_items);
+    return { data, error };
+}
+
+export async function updateInventoryItemRecordStatus(id: string, requestData: StatusPayload): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
     const { data, error } = await supabase
@@ -87,17 +103,6 @@ export async function updateInventoryItem(id: string, requestData: InventoryItem
         .eq('id', id)
         .select();
     
-    return { data, error };
-}
-
-export async function updateInventoryItemRecordStatus(id: string, requestData: RecordStatusPayload): Promise<ServerActionsResponse> {
-    const supabase = await createClient();
-    
-    const { data, error } = await supabase
-        .from(DATABASE_TABLE.inventory_items)
-        .update(requestData)
-        .eq('id', id)
-        .select();
-    
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.inventory_items);
     return { data, error };
 }

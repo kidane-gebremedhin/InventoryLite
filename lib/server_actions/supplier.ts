@@ -2,9 +2,9 @@
 
 import { createClient } from '@/supabase/server';
 import { DATABASE_TABLE, RecordStatus, RedisCacheKey } from '../Enums';
-import { Supplier, RecordStatusPayload, ServerActionsResponse } from '../types/Models';
+import { Supplier, StatusPayload, ServerActionsResponse } from '../types/Models';
 import { ALL_OPTIONS } from '../Constants';
-import { getCacheData, setCacheData } from './redis';
+import { deleteCacheKeyByKeyPrefix, getCacheData, setCacheData } from './redis';
 
 interface SearchParams {
     selectedStatus: string,
@@ -63,6 +63,7 @@ export async function saveSupplier(requestData: Supplier): Promise<ServerActions
         .insert(requestData)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.suppliers);
     return { data, error };
 }
 
@@ -75,10 +76,11 @@ export async function updateSupplier(id: string, requestData: Supplier): Promise
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.suppliers);
     return { data, error };
 }
 
-export async function updateSupplierRecordStatus(id: string, requestData: RecordStatusPayload): Promise<ServerActionsResponse> {
+export async function updateSupplierRecordStatus(id: string, requestData: StatusPayload): Promise<ServerActionsResponse> {
     const supabase = await createClient();
     
     const { data, error } = await supabase
@@ -87,5 +89,6 @@ export async function updateSupplierRecordStatus(id: string, requestData: Record
         .eq('id', id)
         .select();
     
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.suppliers);
     return { data, error };
 }

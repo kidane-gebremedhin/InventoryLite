@@ -1,20 +1,12 @@
 
 import { STRIPE_PAYMENT_EVENT, DATABASE_TABLE } from "@/lib/Enums";
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { headers } from 'next/headers';
 import { Stripe } from 'stripe'
+import { createServerClientWithServiceKey } from "@/supabase/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-// Do not export this, only use it for webhooks
-const createServerClientWithServiceKey = () => {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-}
 
 export async function POST(req) {
     const supabase = createServerClientWithServiceKey();

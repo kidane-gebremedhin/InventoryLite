@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  PlusIcon, 
+import {
+  PlusIcon,
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline'
 import { ManualPaymentModal } from '@/components/manual_payment/ManualPaymentModal'
 import { ManualPayment } from '@/lib/types/Models'
-import { PaymentStatus, UserRole } from '@/lib/Enums'
+import { PaymentStatus, SubscriptionStatus, UserRole } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, PAYMENT_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { calculateStartAndEndIndex, formatDateToLocalDate, getDateWithoutTime, getPaymentStatusColor, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { calculateStartAndEndIndex, formatDateToLocalDate, formatDateToYYMMDD, getDateWithoutTime, getPaymentStatusColor, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
@@ -23,6 +23,7 @@ import { approveManualPayment, declineManualPayment, fetchManualPayments, saveMa
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
 import { useAuthContext } from '@/components/providers/AuthProvider'
+import { SiCashapp } from 'react-icons/si'
 
 export default function ManualPaymentPage() {
   const router = useRouter()
@@ -32,6 +33,7 @@ export default function ManualPaymentPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [editingManualPayment, setEditingManualPayment] = useState<ManualPayment | null>(null)
+  const [subscriptionMessage, setSubscriptionMessage] = useState('')
   const [selectedStatus, setSelectedStatus] = useState(ALL_OPTIONS)
   // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
@@ -42,23 +44,30 @@ export default function ManualPaymentPage() {
   const [isApprovePaymentConfirmationModalOpen, setIsApprovePaymentConfirmationModalOpen] = useState(false)
   const [isDeclinePaymentConfirmationModalOpen, setIsDeclinePaymentConfirmationModalOpen] = useState(false)
   // Global States
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
   const { currentUser } = useAuthContext();
 
-  const reportHeaders = {amount: 'Paid Amount', reference_number: 'Reference Number', created_at: 'Paymment Date'}
+  const reportHeaders = { amount: 'Paid Amount', reference_number: 'Reference Number', created_at: 'Paymment Date' }
 
   useEffect(() => {
+    if (currentUser?.subscriptionInfo?.subscription_status == SubscriptionStatus.EXPIRED) {
+      const message = `Dear ${currentUser.subscriptionInfo.name}, your subscription is expired at ${formatDateToYYMMDD(currentUser?.subscriptionInfo?.current_payment_expiry_date)}.
+      Please make payment of ${currentUser.subscriptionInfo.currency_type}${currentUser.subscriptionInfo.expected_payment_amount} to renew your subscription and continue using the service.`;
+      setSubscriptionMessage(message)
+      handleAdd()
+    }
+
     // reset pagination
     router.push(`?page=${currentPage}`)
     loadManualPayments()
-  }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
+  }, [currentUser, searchTerm, selectedStatus, recordsPerPage, currentPage])
 
   const loadManualPayments = async () => {
-    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
+    const { startIndex, endIndex } = calculateStartAndEndIndex({ currentPage, recordsPerPage });
 
     try {
       setLoading(true)
-      
+
       const { data, count, error } = await fetchManualPayments({ selectedStatus, searchTerm, startIndex, endIndex });
 
       if (error) {
@@ -86,7 +95,7 @@ export default function ManualPaymentPage() {
 
   const handleApprovePayment = async (id: string) => {
     resetModalState()
-    
+
     try {
       const { data, error } = await approveManualPayment(id)
       if (error) {
@@ -94,15 +103,15 @@ export default function ManualPaymentPage() {
       } else {
         showSuccessToast('Payment Approved.')
         const updatedRecords = manualPayments
-        .map(manualPayment => {
+          .map(manualPayment => {
             return manualPayment.id !== id ?
               manualPayment
               : {
-              ...manualPayment,
-              status: PaymentStatus.APPROVED
-            }
-        });
-        
+                ...manualPayment,
+                status: PaymentStatus.APPROVED
+              }
+          });
+
         setManualPayments(updatedRecords)
       }
     } catch (error: any) {
@@ -123,15 +132,15 @@ export default function ManualPaymentPage() {
       } else {
         showSuccessToast('Record Declined.')
         const updatedRecords = manualPayments
-        .map(manualPayment => {
+          .map(manualPayment => {
             return manualPayment.id !== id ?
               manualPayment
               : {
-              ...manualPayment,
-              status: PaymentStatus.DECLINED
-            }
-        });
-        
+                ...manualPayment,
+                status: PaymentStatus.DECLINED
+              }
+          });
+
         setManualPayments(updatedRecords)
       }
     } catch (error: any) {
@@ -142,8 +151,8 @@ export default function ManualPaymentPage() {
   }
 
   const handleCreate = async (manualPayment: ManualPayment) => {
-      // Exclude id field while creating new record 
-      const {id, ...manualPaymentWithNoId} = manualPayment
+    // Exclude id field while creating new record 
+    const { id, ...manualPaymentWithNoId } = manualPayment
     try {
       const { error } = await saveManualPayment(manualPaymentWithNoId)
 
@@ -204,15 +213,15 @@ export default function ManualPaymentPage() {
     <div className="space-y-6">
       <div className="md:flex md:justify-between md:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN ? 'Subscription Payment Management' : 'Subscription Payments'}</h1>
           <p className="text-gray-600">Your payments</p>
         </div>
         <button
           onClick={handleAdd}
           className="btn-primary flex items-center items-center"
         >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Payment
+          <SiCashapp className="h-5 w-5 mr-2" />
+          Make Payment
         </button>
       </div>
 
@@ -220,16 +229,16 @@ export default function ManualPaymentPage() {
       <div className="card">
         <div className="overflow-x-auto">
           <div className="w-full text-right items-right mb-4">
-            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
+            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
               <b>Show Filters</b>
             </button>
             <span className="px-1"></span>
             <ExportExcel reportName="Manual Payments" records={[reportHeaders, ...manualPayments].map((manualPayment, idx) => {
-              return {row_no: idx > 0 ? idx : 'Row No.', amount: manualPayment.amount, reference_number: manualPayment.reference_number, created_at: getDateWithoutTime(manualPayment.created_at)}
+              return { row_no: idx > 0 ? idx : 'Row No.', amount: manualPayment.amount, reference_number: manualPayment.reference_number, created_at: getDateWithoutTime(manualPayment.created_at) }
             })} />
             <span className="px-1"></span>
             <ExportPDF reportName="Manual Payments" records={[reportHeaders, ...manualPayments].map((manualPayment, idx) => {
-              return {row_no: idx > 0 ? idx : 'Row No.', amount: manualPayment.amount, reference_number: manualPayment.reference_number, created_at: getDateWithoutTime(manualPayment.created_at)}
+              return { row_no: idx > 0 ? idx : 'Row No.', amount: manualPayment.amount, reference_number: manualPayment.reference_number, created_at: getDateWithoutTime(manualPayment.created_at) }
             })} />
           </div>
           <table className="min-w-full divide-y divide-gray-200">
@@ -241,39 +250,39 @@ export default function ManualPaymentPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
                   Payment Status
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 </th>
               </tr>
               {showFilters && (
-              <tr>
-                <th colSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search payment by reference number... and press ENTER key"
-                      value={searchTermTemp}
-                      onChange={(e) => {
-                        setSearchTermTemp(e.target.value)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
-                          handleTextSearch();
-                        }
-                      }}
-                      onBlur={handleTextSearch}
-                      className="input-field pl-10"
-                    />
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
+                <tr>
+                  <th colSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search payment by reference number... and press ENTER key"
+                        value={searchTermTemp}
+                        onChange={(e) => {
+                          setSearchTermTemp(e.target.value)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                            handleTextSearch();
+                          }
+                        }}
+                        onBlur={handleTextSearch}
+                        className="input-field pl-10"
+                      />
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
                     <div className='w-full'>
                       <select
                         value={selectedStatus}
-                        onChange={(e) => { 
+                        onChange={(e) => {
                           setCurrentPage(FIRST_PAGE_NUMBER)
                           setSelectedStatus(e.target.value)
                         }}
@@ -286,10 +295,10 @@ export default function ManualPaymentPage() {
                         ))}
                       </select>
                     </div>
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-              </tr>
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </th>
+                </tr>
               )}
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -309,7 +318,7 @@ export default function ManualPaymentPage() {
                     {formatDateToLocalDate(manualPayment.created_at)}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2 items-center">                        
+                    <div className="flex justify-center space-x-2 items-center">
                       <ActionsMenu
                         actions={[
                           {
@@ -352,11 +361,11 @@ export default function ManualPaymentPage() {
           </table>
         </div>
         <Pagination
-          currentPage = {currentPage}
-          recordsPerPage = {recordsPerPage}
-          totalRecordsCount = {totalRecordsCount}
-          setCurrentPage = {setCurrentPage}
-          setRecordsPerPage = {setRecordsPerPage}
+          currentPage={currentPage}
+          recordsPerPage={recordsPerPage}
+          totalRecordsCount={totalRecordsCount}
+          setCurrentPage={setCurrentPage}
+          setRecordsPerPage={setRecordsPerPage}
         />
       </div>
 
@@ -365,6 +374,7 @@ export default function ManualPaymentPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         manualPayment={editingManualPayment}
+        subscriptionMessage={subscriptionMessage}
         onSave={(manualPayment) => {
           setLoading(true)
           if (editingManualPayment) {
@@ -383,7 +393,7 @@ export default function ManualPaymentPage() {
         onConfirmationSuccess={handleApprovePayment}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal for decline manual payment */}
       <ConfirmationModal
         isOpen={isDeclinePaymentConfirmationModalOpen}

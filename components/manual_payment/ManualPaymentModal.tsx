@@ -11,13 +11,14 @@ interface ManualPaymentModalProps {
   isOpen: boolean
   onClose: () => void
   manualPayment: ManualPayment | null
+  subscriptionMessage: string
   onSave: (manualPayment: ManualPayment) => void
 }
 
 
 
-export function ManualPaymentModal({ isOpen, onClose, manualPayment, onSave }: ManualPaymentModalProps) {
-  const {currentUser} = useAuthContext()
+export function ManualPaymentModal({ isOpen, onClose, manualPayment, subscriptionMessage, onSave }: ManualPaymentModalProps) {
+  const { currentUser } = useAuthContext()
   const emptyEntry: Partial<ManualPayment> = {
     reference_number: '',
     amount: 0
@@ -35,7 +36,7 @@ export function ManualPaymentModal({ isOpen, onClose, manualPayment, onSave }: M
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.reference_number) {
       showErrorToast('Please fill in all required fields.')
       return
@@ -65,7 +66,7 @@ export function ManualPaymentModal({ isOpen, onClose, manualPayment, onSave }: M
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">
-            {manualPayment ? 'Edit' : 'Add New'}
+            {manualPayment ? 'Edit' : 'Make Payment'}
           </h3>
           <button
             onClick={onClose}
@@ -81,7 +82,7 @@ export function ManualPaymentModal({ isOpen, onClose, manualPayment, onSave }: M
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name *
+              Reference number *
             </label>
             <input
               type="text"
@@ -103,8 +104,11 @@ export function ManualPaymentModal({ isOpen, onClose, manualPayment, onSave }: M
               type="submit"
               className="btn-primary"
             >
-              {manualPayment ? 'Update' : 'Create'}
+              {manualPayment ? 'Update' : 'Make Payment'}
             </button>
+          </div>
+          <div className="w-full bg-white rounded-lg shadow border p-6">
+            <p>{subscriptionMessage}</p>
           </div>
         </form>
       </div>

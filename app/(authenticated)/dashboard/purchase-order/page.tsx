@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  PlusIcon, 
+import {
+  PlusIcon,
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
@@ -19,7 +19,7 @@ import { PurchaseOrderStatus, RecordStatus } from '@/lib/Enums'
 import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_DROPDOWN_TEXT_LENGTH, PURCHASE_ORDER_STATUSES, RECORD_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
 import { calculateStartAndEndIndex, canShowLoadingScreen, formatDateToLocalDate, getDateWithoutTime, getRecordStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
-import { PurchaseOrder, Supplier } from '@/lib/types/Models'
+import { InventoryItem, PurchaseOrder, Store, Supplier, Variant } from '@/lib/types/Models'
 // DatePicker both are required
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -32,6 +32,9 @@ import { fetchPurchaseOrders, savePurchaseOrder, updatePurchaseOrder, updatePurc
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
 import { fetchSupplierOptions } from '@/lib/server_actions/supplier'
+import { fetchVariantOptions } from '@/lib/server_actions/variant'
+import { fetchStoreOptions } from '@/lib/server_actions/store'
+import { fetchInventoryItemOptions } from '@/lib/server_actions/inventory_item'
 
 export default function PurchaseOrderPage() {
   const router = useRouter()
@@ -45,12 +48,15 @@ export default function PurchaseOrderPage() {
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
   const [totalRecordsCount, setTotalRecordsCount] = useState(0)
-  
+
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null)
   const [selectedOrderStatus, setSelectedOrderStatus] = useState('')
+  const [stores, setStores] = useState<Store[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [variants, setVariants] = useState<Variant[]>([])
   const [selectedSupplierId, setSelectedSupplier] = useState(ALL_OPTIONS)
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
@@ -64,15 +70,15 @@ export default function PurchaseOrderPage() {
   const [isMoveToReceivedConfirmationModalOpen, setIsMoveToReceivedConfirmationModalOpen] = useState(false)
   const [isMoveToCanceledConfirmationModalOpen, setIsMoveToCanceledConfirmationModalOpen] = useState(false)
   // Global States
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
 
   const reportHeaders = {
     row_no: 'Row No.',
-    po_number: 'PO Number', 
-    supplier: 'Supplier Name', 
+    po_number: 'PO Number',
+    supplier: 'Supplier Name',
     order_status: 'Order Status',
-    expected_date: 'Expected Date', 
-    received_date: 'Received Date', 
+    expected_date: 'Expected Date',
+    received_date: 'Received Date',
     created_at: 'Ordered Date',
     store: 'Store',
     item_name: 'Item',
@@ -83,40 +89,33 @@ export default function PurchaseOrderPage() {
   }
 
   useEffect(() => {
-    const loadSuppliers = async () => {
-      try {
-        const { data, error } = await fetchSupplierOptions()
-
-        if (error) {
-          showServerErrorToast(error.message)
-        }
-
-        const selectableSuppliers: Supplier[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
-        setSuppliers(selectableSuppliers)
-      } catch (error: any) {
-          showErrorToast()
-      } finally {
-        setLoading(false)
-      }
-    }
-
+    loadPurchaseOrders()
+    loadInventoryItems()
+    loadStores()
+    loadVariants()
     loadSuppliers()
   }, [])
 
   useEffect(() => {
+    if (searchTerm || selectedSupplierId != RecordStatus.ACTIVE || selectedOrderStatus || selectedStatus || startDate || endDate || receivedDateStart || receivedDateEnd || recordsPerPage != RECORDS_PER_PAGE || currentPage != FIRST_PAGE_NUMBER) {
+      // return shorty on mount
+      return
+    }
+
     // reset pagination
     router.push(`?page=${currentPage}`)
     loadPurchaseOrders()
+
   }, [searchTerm, selectedSupplierId, selectedOrderStatus, selectedStatus, startDate, endDate, receivedDateStart, receivedDateEnd, recordsPerPage, currentPage])
 
   const loadPurchaseOrders = async () => {
     setLoading(canShowLoadingScreen(startDate, endDate, receivedDateStart, receivedDateEnd))
 
-    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
+    const { startIndex, endIndex } = calculateStartAndEndIndex({ currentPage, recordsPerPage });
 
     try {
       const { data, count, error } = await fetchPurchaseOrders({ selectedOrderStatus, selectedStatus, selectedSupplierId, searchTerm, startDate, endDate, receivedDateStart, receivedDateEnd, startIndex, endIndex });
-      
+
       if (error) {
         showServerErrorToast(error.message)
       }
@@ -128,6 +127,39 @@ export default function PurchaseOrderPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadStores = async () => {
+    fetchStoreOptions().then(({ data, error }) => {
+      if (error) return
+
+      setStores(data || [])
+    })
+  }
+
+  const loadSuppliers = async () => {
+    fetchSupplierOptions().then(({ data, error }) => {
+      if (error) return
+
+      const selectableSuppliers: Supplier[] = [{ id: ALL_OPTIONS, name: '' }, ...data!]
+      setSuppliers(selectableSuppliers)
+    })
+  }
+
+  const loadVariants = async () => {
+    fetchVariantOptions().then(({ data, error }) => {
+      if (error) return
+
+      setVariants(data || [])
+    })
+  }
+
+  const loadInventoryItems = async () => {
+    fetchInventoryItemOptions().then(({ data, error }) => {
+      if (error) return
+
+      setInventoryItems(data || [])
+    })
   }
 
   const handleAdd = () => {
@@ -145,7 +177,7 @@ export default function PurchaseOrderPage() {
     resetModalState()
 
     try {
-      const { error } = await updatePurchaseOrderRecordStatus(id, {status: RecordStatus.ARCHIVED})
+      const { error } = await updatePurchaseOrderRecordStatus(id, { status: RecordStatus.ARCHIVED })
 
       if (error) {
         showServerErrorToast(error.message)
@@ -166,7 +198,7 @@ export default function PurchaseOrderPage() {
     resetModalState()
 
     try {
-      const { error } = await updatePurchaseOrderRecordStatus(id, {status: RecordStatus.ACTIVE})
+      const { error } = await updatePurchaseOrderRecordStatus(id, { status: RecordStatus.ACTIVE })
 
       if (error) {
         showServerErrorToast(error.message)
@@ -185,12 +217,12 @@ export default function PurchaseOrderPage() {
 
   const handleCreate = async (purchaseOrder: PurchaseOrder) => {
     // Exclude id field while creating new record 
-    const {id, order_items, ...purchaseOrderWithNoId} = purchaseOrder
+    const { id, order_items, ...purchaseOrderWithNoId } = purchaseOrder
 
     try {
       const payload = {
-          purchase_order_data: purchaseOrderWithNoId,
-          purchase_order_items_data: purchaseOrder.order_items,
+        purchase_order_data: purchaseOrderWithNoId,
+        purchase_order_items_data: purchaseOrder.order_items,
       };
       const { data, error } = await savePurchaseOrder(payload)
 
@@ -211,13 +243,13 @@ export default function PurchaseOrderPage() {
 
   const handleUpdate = async (purchaseOrder: PurchaseOrder) => {
     // Exclude id field while creating new record 
-    const {order_items, ...purchaseOrderWithNoOrderItems} = purchaseOrder
+    const { order_items, ...purchaseOrderWithNoOrderItems } = purchaseOrder
 
     try {
       const payload = {
-          purchase_order_data: purchaseOrderWithNoOrderItems,
-          purchase_order_items_data: purchaseOrder.order_items,
-          is_for_update: true
+        purchase_order_data: purchaseOrderWithNoOrderItems,
+        purchase_order_items_data: purchaseOrder.order_items,
+        is_for_update: true
       };
       const { data, error } = await updatePurchaseOrder(payload)
       if (error) {
@@ -285,7 +317,7 @@ export default function PurchaseOrderPage() {
       return acc + (currentOrderItem.quantity * currentOrderItem.unit_price)
     }, 0)
   }
-  
+
   const onDateRangeChange = (dates: any) => {
     const [start, end] = dates;
 
@@ -319,26 +351,26 @@ export default function PurchaseOrderPage() {
 
   const getReportFields = (purchaseOrder: any, idx: number) => {
     return purchaseOrder.order_items?.map((orderItem, innerIdx) => {
-        // Show row number for SalesOrders not Items
-        const showRowNo = innerIdx === 0;
+      // Show row number for SalesOrders not Items
+      const showRowNo = innerIdx === 0;
 
-        return {
-          row_no: showRowNo ? idx + 1 : '', 
-          // Order details
-          po_number: showRowNo ? purchaseOrder.po_number : '', 
-          supplier: showRowNo ? purchaseOrder.supplier?.name : '', 
-          order_status: showRowNo ? purchaseOrder.order_status : '',
-          expected_date: showRowNo ? purchaseOrder.expected_date : '', 
-          received_date: showRowNo ? getDateWithoutTime(purchaseOrder.received_date) : '', 
-          created_at: showRowNo ? getDateWithoutTime(purchaseOrder.created_at) : '',
-          // Order Item details
-          store: orderItem.store.name,
-          item_name: orderItem.item.name,
-          item_sku: orderItem.item.sku,
-          quantity: orderItem.quantity,
-          unit_price: orderItem.unit_price,
-        }
-      })
+      return {
+        row_no: showRowNo ? idx + 1 : '',
+        // Order details
+        po_number: showRowNo ? purchaseOrder.po_number : '',
+        supplier: showRowNo ? purchaseOrder.supplier?.name : '',
+        order_status: showRowNo ? purchaseOrder.order_status : '',
+        expected_date: showRowNo ? purchaseOrder.expected_date : '',
+        received_date: showRowNo ? getDateWithoutTime(purchaseOrder.received_date) : '',
+        created_at: showRowNo ? getDateWithoutTime(purchaseOrder.created_at) : '',
+        // Order Item details
+        store: orderItem.store.name,
+        item_name: orderItem.item.name,
+        item_sku: orderItem.item.sku,
+        quantity: orderItem.quantity,
+        unit_price: orderItem.unit_price,
+      }
+    })
   }
 
   return (
@@ -361,7 +393,7 @@ export default function PurchaseOrderPage() {
       <div className="card">
         <div className="overflow-x-auto">
           <div className="w-full text-right items-right mb-4">
-            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
+            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
               <b>Show Filters</b>
             </button>
             <span className="px-1"></span>
@@ -397,108 +429,108 @@ export default function PurchaseOrderPage() {
                 </th>
               </tr>
               {showFilters && (
-              <tr className="card">
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search & Press ENTER"
-                      value={searchTermTemp}
+                <tr className="card">
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search & Press ENTER"
+                        value={searchTermTemp}
+                        onChange={(e) => {
+                          setSearchTermTemp(e.target.value)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                            handleTextSearch();
+                          }
+                        }}
+                        onBlur={handleTextSearch}
+                        className="input-field pl-10"
+                      />
+                    </div>
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <select
+                      value={selectedSupplierId}
                       onChange={(e) => {
-                        setSearchTermTemp(e.target.value)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
-                          handleTextSearch();
-                        }
-                      }}
-                      onBlur={handleTextSearch}
-                      className="input-field pl-10"
-                    />
-                  </div>
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedSupplierId}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedSupplier(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {suppliers.map(supplier => (
-                      <option key={supplier.id} value={supplier.id}>
-                        {supplier.id === ALL_OPTIONS ? 'All Suppliers' : shortenText(supplier.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className='w-full'>
-                      <select
-                      value={selectedOrderStatus}
-                      onChange={(e) => { 
                         setCurrentPage(FIRST_PAGE_NUMBER)
-                        setSelectedOrderStatus(e.target.value)
+                        setSelectedSupplier(e.target.value)
                       }}
                       className="input-field"
                     >
-                      {getPurchaseOrderStatusOptions().map(status => (
-                        <option key={status} value={status}>
-                          {status === ALL_OPTIONS ? 'All Statuses' : status}
+                      {suppliers.map(supplier => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.id === ALL_OPTIONS ? 'All Suppliers' : shortenText(supplier.name, MAX_DROPDOWN_TEXT_LENGTH)}
                         </option>
                       ))}
                     </select>
-                  </div>
-                </th>
-                <th style={{maxWidth: 30}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <DatePicker
-                    selected={startDate}
-                    onChange={onDateRangeChange}
-                    startDate={startDate}
-                    endDate={endDate}
-                    selectsRange
-                    monthsShown={2}
-                    placeholderText="Select date range"
-                    isClearable={true}
-                    className="input-field"
-                  />
-                </th>
-                <th style={{maxWidth: 30}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <DatePicker
-                    selected={receivedDateStart}
-                    onChange={onReceivedDateRangeChange}
-                    startDate={receivedDateStart}
-                    endDate={receivedDateEnd}
-                    selectsRange
-                    monthsShown={2}
-                    placeholderText="Select date range"
-                    isClearable={true}
-                    className="input-field"
-                  />
-                </th>
-                <th className="px-1 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedStatus(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {RECORD_STATUSES.map(status => (
-                      <option key={status} value={status}>
-                        {status === ALL_OPTIONS ? ALL_OPTIONS : status}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
-                </th>
-              </tr>
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className='w-full'>
+                      <select
+                        value={selectedOrderStatus}
+                        onChange={(e) => {
+                          setCurrentPage(FIRST_PAGE_NUMBER)
+                          setSelectedOrderStatus(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {getPurchaseOrderStatusOptions().map(status => (
+                          <option key={status} value={status}>
+                            {status === ALL_OPTIONS ? 'All Statuses' : status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </th>
+                  <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <DatePicker
+                      selected={startDate}
+                      onChange={onDateRangeChange}
+                      startDate={startDate}
+                      endDate={endDate}
+                      selectsRange
+                      monthsShown={2}
+                      placeholderText="Select date range"
+                      isClearable={true}
+                      className="input-field"
+                    />
+                  </th>
+                  <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <DatePicker
+                      selected={receivedDateStart}
+                      onChange={onReceivedDateRangeChange}
+                      startDate={receivedDateStart}
+                      endDate={receivedDateEnd}
+                      selectsRange
+                      monthsShown={2}
+                      placeholderText="Select date range"
+                      isClearable={true}
+                      className="input-field"
+                    />
+                  </th>
+                  <th className="px-1 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => {
+                        setCurrentPage(FIRST_PAGE_NUMBER)
+                        setSelectedStatus(e.target.value)
+                      }}
+                      className="input-field"
+                    >
+                      {RECORD_STATUSES.map(status => (
+                        <option key={status} value={status}>
+                          {status === ALL_OPTIONS ? ALL_OPTIONS : status}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
+                  </th>
+                </tr>
               )}
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -534,7 +566,7 @@ export default function PurchaseOrderPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2 items-center">                      
+                    <div className="flex justify-center space-x-2 items-center">
                       <ActionsMenu
                         actions={[
                           {
@@ -618,11 +650,11 @@ export default function PurchaseOrderPage() {
           </table>
         </div>
         <Pagination
-          currentPage = {currentPage}
-          recordsPerPage = {recordsPerPage}
-          totalRecordsCount = {totalRecordsCount}
-          setCurrentPage = {setCurrentPage}
-          setRecordsPerPage = {setRecordsPerPage}
+          currentPage={currentPage}
+          recordsPerPage={recordsPerPage}
+          totalRecordsCount={totalRecordsCount}
+          setCurrentPage={setCurrentPage}
+          setRecordsPerPage={setRecordsPerPage}
         />
       </div>
 
@@ -631,6 +663,10 @@ export default function PurchaseOrderPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         order={editingPurchaseOrder}
+        stores={stores}
+        suppliers={suppliers}
+        inventoryItems={inventoryItems}
+        variants={variants}
         onSave={(order) => {
           setLoading(true)
           if (editingPurchaseOrder) {
@@ -640,7 +676,7 @@ export default function PurchaseOrderPage() {
           }
         }}
       />
-      
+
       <OrderDetailsModal
         isOpen={showDetailsModal && selectedOrder !== null}
         onClose={() => setShowDetailsModal(false)}
@@ -655,7 +691,7 @@ export default function PurchaseOrderPage() {
         onConfirmationSuccess={handleArchive}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal for Restore */}
       <ConfirmationModal
         isOpen={isRestoreConfirmationModalOpen}
@@ -664,7 +700,7 @@ export default function PurchaseOrderPage() {
         onConfirmationSuccess={handleRestore}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal to move order to pending */}
       <ConfirmationModal
         isOpen={isMoveToPendingConfirmationModalOpen}
@@ -674,7 +710,7 @@ export default function PurchaseOrderPage() {
         onConfirmationSuccess={handleOrderStatusChange}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal to move order to received */}
       <ConfirmationModal
         isOpen={isMoveToReceivedConfirmationModalOpen}
@@ -684,7 +720,7 @@ export default function PurchaseOrderPage() {
         onConfirmationSuccess={handleOrderStatusChange}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal to move order to canceled */}
       <ConfirmationModal
         isOpen={isMoveToCanceledConfirmationModalOpen}

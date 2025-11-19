@@ -1,7 +1,9 @@
 -- Enable necessary extensions
 -- uuid-ossp for UUIDs
 DROP EXTENSION IF EXISTS "uuid-ossp";
+DROP EXTENSION IF EXISTS "pg_cron";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS "pg_cron" SCHEMA public;
 
 ------------------------------------------------------------------------------------
 -- UP
@@ -32,6 +34,7 @@ CREATE TYPE FEEDBACK_CATEGORY AS ENUM('bug', 'feature', 'improvement', 'general'
 CREATE TYPE FEEDBACK_STATUS AS ENUM('open', 'in_progress', 'resolved', 'closed');
 CREATE TYPE FEEDBACK_PRIORITY AS ENUM('low', 'medium', 'high', 'urgent');
 CREATE TYPE MANUAL_PAYMENT_STATUS AS ENUM('pending', 'approved', 'declined');
+CREATE TYPE INVITATION_STATUS AS ENUM('open', 'accepted', 'expired');
 
 -- DOMAINS TABLE
 CREATE TABLE IF NOT EXISTS public.domains (
@@ -54,7 +57,7 @@ CREATE TABLE IF NOT EXISTS public.tenants (
     price_id TEXT,
     payment_method PAYMENT_METHOD NOT NULL DEFAULT 'payment_gateway',
     currency_type CURRENCY_TYPE NOT NULL DEFAULT 'USD',
-    current_payment_expiry_date DATE NOT NULL,
+    current_payment_expiry_date TIMESTAMP NOT NULL,
     expected_payment_amount DECIMAL(10,2) NOT NULL CHECK (expected_payment_amount >= 0),
     subscription_status SUBSCRIPTION_STATUS NOT NULL DEFAULT 'free_trial',
     profile_complete BOOLEAN NOT NULL DEFAULT FALSE,
@@ -66,10 +69,24 @@ CREATE TABLE IF NOT EXISTS public.tenants (
 
 -- Create a separate table to store tenant mappings that is exempt from RLS check to avoid recursive checks
 CREATE TABLE IF NOT EXISTS public.user_tenant_mappings (
-    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE NO ACTION,
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     role USER_ROLE NOT NULL DEFAULT 'USER',
     status RECORD_STATUS NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create a separate table to tenant user invites that is exempt from RLS check to avoid recursive checks
+CREATE TABLE IF NOT EXISTS public.tenant_user_invites (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    status INVITATION_STATUS NOT NULL DEFAULT 'open',
+    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -122,6 +139,34 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
     UNIQUE(sku, tenant_id)
 );
 
+-- VARIANTS TABLE
+CREATE TABLE IF NOT EXISTS public.variants (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
+    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(name, tenant_id)
+);
+
+-- VARIANTS TABLE
+CREATE TABLE IF NOT EXISTS public.inventory_item_variants (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
+    inventory_item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE NO ACTION,
+    variant_id UUID NOT NULL REFERENCES public.variants(id) ON DELETE NO ACTION,
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
+    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(inventory_item_id, variant_id, tenant_id)
+);
+
 -- SUPPLIERS TABLE
 CREATE TABLE IF NOT EXISTS public.suppliers (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
@@ -161,6 +206,7 @@ CREATE TABLE IF NOT EXISTS public.purchase_order_items (
     purchase_order_id UUID NOT NULL REFERENCES public.purchase_orders(id) ON DELETE CASCADE,
     store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE RESTRICT,
     inventory_item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE RESTRICT,
+    variant_id UUID NOT NULL REFERENCES public.variants(id) ON DELETE RESTRICT,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
@@ -210,6 +256,7 @@ CREATE TABLE IF NOT EXISTS public.sales_order_items (
     sales_order_id UUID NOT NULL REFERENCES public.sales_orders(id) ON DELETE CASCADE,
     store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE RESTRICT,
     inventory_item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE RESTRICT,
+    variant_id UUID NOT NULL REFERENCES public.variants(id) ON DELETE RESTRICT,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
@@ -277,17 +324,43 @@ RETURNS UUID STABLE AS $$
     LIMIT 1;
 $$ LANGUAGE SQL SECURITY DEFINER;
 
+------------------------------------------------------------------------------------------
+-- Helper function to get user's tenant by user_id
+CREATE OR REPLACE FUNCTION public.tenant_id_by_user_id(user_id UUID)
+RETURNS UUID STABLE AS $$
+    SELECT tenant_id 
+    FROM public.user_tenant_mappings 
+    WHERE user_id = user_id
+    LIMIT 1;
+$$ LANGUAGE SQL SECURITY DEFINER;
+
+-- Helper function to get invitations's tenant without RLS recursion
+CREATE OR REPLACE FUNCTION public.invited_tenant_id_by_email(invited_email VARCHAR)
+RETURNS UUID AS $$
+    SELECT tenant_id FROM public.tenant_user_invites WHERE status = 'open' AND email = invited_email LIMIT 1;
+$$ LANGUAGE SQL SECURITY DEFINER;
+
 -- Trigger to automatically populate user_tenant_mappings when new users are created
 CREATE OR REPLACE FUNCTION public.create_user_tenant_mapping()
 RETURNS TRIGGER AS $$
 DECLARE
-    newTenantId UUID;
+    userRole public.USER_ROLE := 'USER';
+    user_tenant_id UUID;
 BEGIN
-    -- Create tenant record first
-    INSERT INTO public.tenants (email, name, current_payment_expiry_date, expected_payment_amount) VALUES (NEW.email, NEW.email, NOW(), 0)
-    RETURNING id INTO newTenantId;
+     -- First check if user is tenant admin or staff
+     user_tenant_id := public.invited_tenant_id_by_email(NEW.email);
+    IF user_tenant_id IS NULL THEN
+        -- Create a new tenant record
+        INSERT INTO public.tenants (email, name, current_payment_expiry_date, expected_payment_amount) VALUES (NEW.email, NEW.email, NOW(), 0)
+        RETURNING id INTO user_tenant_id;
+        -- Set user role as 'TENANT_ADMIN'
+        userRole := 'TENANT_ADMIN';
+    ELSE
+        UPDATE public.tenant_user_invites SET status = 'accepted' WHERE email = NEW.email;
+    END IF;
+
     -- Create user-ternant mapping
-    INSERT INTO public.user_tenant_mappings (user_id, tenant_id, role) VALUES (NEW.id, newTenantId, 'TENANT_ADMIN');
+    INSERT INTO public.user_tenant_mappings (user_id, tenant_id, role) VALUES (NEW.id, user_tenant_id, userRole);
     RETURN NEW;
 END;
 $$ language plpgsql SECURITY DEFINER;
@@ -332,7 +405,7 @@ RETURNS TABLE(
     payment_method PAYMENT_METHOD,
     currency_type CURRENCY_TYPE,
     subscription_status SUBSCRIPTION_STATUS,
-    current_payment_expiry_date DATE,
+    current_payment_expiry_date TIMESTAMP,
     expected_payment_amount DECIMAL,
     profile_complete BOOLEAN,
     description TEXT,
@@ -469,9 +542,11 @@ CREATE INDEX idx_sales_orders_customer_id ON public.sales_orders(customer_id);
 CREATE INDEX idx_sales_orders_status ON public.sales_orders(status);
 CREATE INDEX idx_purchase_order_items_purchase_order_id ON public.purchase_order_items(purchase_order_id);
 CREATE INDEX idx_purchase_order_items_inventory_item_id ON public.purchase_order_items(inventory_item_id);
+CREATE INDEX idx_purchase_order_items_variant_id ON public.purchase_order_items(variant_id);
 CREATE INDEX idx_purchase_order_items_inventory_quantity ON public.purchase_order_items(quantity);
 CREATE INDEX idx_sales_order_items_sales_order_id ON public.sales_order_items(sales_order_id);
 CREATE INDEX idx_sales_order_items_inventory_item_id ON public.sales_order_items(inventory_item_id);
+CREATE INDEX idx_sales_order_items_variant_id ON public.sales_order_items(variant_id);
 CREATE INDEX idx_sales_order_items_inventory_quantity ON public.sales_order_items(quantity);
 CREATE INDEX idx_transactions_tenant_id ON public.transactions(tenant_id);
 CREATE INDEX idx_transactions_item_id ON public.transactions(item_id);
@@ -497,6 +572,16 @@ CREATE INDEX idx_manual_payments_created_by ON public.manual_payments(created_by
 CREATE INDEX idx_manual_payments_updated_by ON public.manual_payments(updated_by);
 CREATE INDEX idx_domains_name ON public.domains(name);
 CREATE INDEX idx_domains_status ON public.domains(status);
+CREATE INDEX idx_tenant_user_invites_tenant_id ON public.tenant_user_invites(tenant_id);
+CREATE INDEX idx_tenant_user_invites_email ON public.tenant_user_invites(email);
+CREATE INDEX idx_tenant_user_invites_status ON public.tenant_user_invites(status);
+CREATE INDEX idx_variants_tenant_id ON public.variants(tenant_id);
+CREATE INDEX idx_variants_name ON public.variants(name);
+CREATE INDEX idx_variants_status ON public.variants(status);
+CREATE INDEX idx_inventory_item_variants_tenant_id ON public.inventory_item_variants(tenant_id);
+CREATE INDEX idx_inventory_item_variants_inventory_item_id ON public.inventory_item_variants(inventory_item_id);
+CREATE INDEX idx_inventory_item_variants_variant_id ON public.inventory_item_variants(variant_id);
+CREATE INDEX idx_inventory_item_variants_status ON public.inventory_item_variants(status);
 
 -- Function to add tenant_id and created_by before saving
 CREATE OR REPLACE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record()
@@ -539,6 +624,16 @@ CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_store
 
 CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_inventory
     BEFORE INSERT ON public.inventory_items
+    FOR EACH ROW
+    EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
+
+CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_variants
+    BEFORE INSERT ON public.variants
+    FOR EACH ROW
+    EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
+
+CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_inventory_item_variants
+    BEFORE INSERT ON public.inventory_item_variants
     FOR EACH ROW
     EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
@@ -592,6 +687,11 @@ CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_domains
     FOR EACH ROW
     EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
+CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_tenant_user_invites
+    BEFORE INSERT ON public.tenant_user_invites
+    FOR EACH ROW
+    EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
+
 -- UPDATED_AT and UPDATED_BY TRIGGER FUNCTION
 CREATE OR REPLACE FUNCTION public.update_updated_at_and_updated_by_column()
     RETURNS TRIGGER AS $$
@@ -623,6 +723,8 @@ CREATE TRIGGER update_stores_updated_at BEFORE UPDATE ON public.stores FOR EACH 
 CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON public.customers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_inventory_items_updated_at BEFORE UPDATE ON public.inventory_items FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
+CREATE TRIGGER update_variants_updated_at BEFORE UPDATE ON public.variants FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
+CREATE TRIGGER update_inventory_item_variants_updated_at BEFORE UPDATE ON public.inventory_item_variants FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_purchase_orders_updated_at BEFORE UPDATE ON public.purchase_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_purchase_order_items_updated_at BEFORE UPDATE ON public.purchase_order_items FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_sales_orders_updated_at BEFORE UPDATE ON public.sales_orders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
@@ -633,14 +735,24 @@ CREATE TRIGGER update_manual_payments_updated_at BEFORE UPDATE ON public.manual_
 CREATE TRIGGER update_domains_updated_at BEFORE UPDATE ON public.domains FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 
 
--- Function to update received_date/fulfilled_date on order_status = received/fulfilled update
-CREATE OR REPLACE FUNCTION public.update_received_or_fulfilled_date_on_order_status_update_to_received_or_fulfilled()
+-- Function to update received_date when order_status = received
+CREATE OR REPLACE FUNCTION public.update_received_date_on_order_status_update_to_received()
     RETURNS TRIGGER AS $$
     BEGIN
-         -- Only update when order status is 'received' or 'fulfilled'
+         -- Only update when order status is 'received'
         IF NEW.order_status = 'received' THEN
             NEW.received_date = NOW();
-        ELSIF NEW.order_status = 'fulfilled' THEN
+        END IF;
+        RETURN NEW;
+    END;
+    $$ language plpgsql;
+
+-- Function to update fulfilled_date when order_status = fulfilled
+CREATE OR REPLACE FUNCTION public.update_fulfilled_date_on_order_status_update_to_fulfilled()
+    RETURNS TRIGGER AS $$
+    BEGIN
+         -- Only update when order status is 'fulfilled'
+        IF NEW.order_status = 'fulfilled' THEN
             NEW.fulfilled_date = NOW();
         END IF;
         RETURN NEW;
@@ -651,13 +763,13 @@ CREATE OR REPLACE FUNCTION public.update_received_or_fulfilled_date_on_order_sta
 CREATE TRIGGER update_received_date_on_order_status_update_to_received
     BEFORE UPDATE OF order_status ON public.purchase_orders
     FOR EACH ROW 
-    EXECUTE FUNCTION public.update_received_or_fulfilled_date_on_order_status_update_to_received_or_fulfilled();
+    EXECUTE FUNCTION public.update_received_date_on_order_status_update_to_received();
 
 -- Update fulfilled_date when order_status is set to fulfilled
 CREATE TRIGGER update_fulfilled_date_on_order_status_update_to_fulfilled
     BEFORE UPDATE OF order_status ON public.sales_orders
     FOR EACH ROW 
-    EXECUTE FUNCTION public.update_received_or_fulfilled_date_on_order_status_update_to_received_or_fulfilled();
+    EXECUTE FUNCTION public.update_fulfilled_date_on_order_status_update_to_fulfilled();
 
 -- ROW LEVEL SECURITY (RLS) POLICIES
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
@@ -667,6 +779,8 @@ ALTER TABLE public.stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inventory_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.variants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inventory_item_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sales_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchase_order_items ENABLE ROW LEVEL SECURITY;
@@ -675,7 +789,7 @@ ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.manual_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE public.tenant_user_invites ENABLE ROW LEVEL SECURITY;
 
 -- CHECK IF SUPER_ADMIN
 CREATE OR REPLACE FUNCTION public.isSuperAdmin()
@@ -689,6 +803,17 @@ CREATE OR REPLACE FUNCTION public.isSuperAdmin()
     END;
     $$ LANGUAGE plpgsql;
 
+-- CHECK IF TENANT_ADMIN
+CREATE OR REPLACE FUNCTION public.isTenantAdmin()
+    RETURNS BOOLEAN AS $$
+    BEGIN
+        RETURN EXISTS (
+            SELECT 1 FROM public.user_tenant_mappings 
+            WHERE user_id = auth.uid() 
+            AND role IN ('TENANT_ADMIN')
+        );
+    END;
+    $$ LANGUAGE plpgsql;
 
 -- DOMAINS POLICIES
 CREATE POLICY "Domains are viewable by authenticated users" ON public.domains
@@ -864,6 +989,56 @@ CREATE POLICY "Users can delete inventory items in their tenant" ON public.inven
         tenant_id = public.user_tenant_id()
     );
 
+-- VARIANTS POLICIES
+CREATE POLICY "Users can view variants in their tenant" ON public.variants
+    FOR SELECT USING (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "Users can insert variants in their tenant" ON public.variants
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "Users can update variants in their tenant" ON public.variants
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "Users can delete variants in their tenant" ON public.variants
+    FOR DELETE USING (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
+-- INVENTORY_ITEM_VARIANTS POLICIES
+CREATE POLICY "Users can view inventory_item_variants in their tenant" ON public.inventory_item_variants
+    FOR SELECT USING (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "Users can insert inventory_item_variants in their tenant" ON public.inventory_item_variants
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "Users can update inventory_item_variants in their tenant" ON public.inventory_item_variants
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "Users can delete inventory_item_variants in their tenant" ON public.inventory_item_variants
+    FOR DELETE USING (
+        auth.role() = 'authenticated' AND 
+        tenant_id = public.user_tenant_id()
+    );
+
 -- PURCHASE_ORDERS POLICIES
 CREATE POLICY "Users can view purchase orders in their tenant" ON public.purchase_orders
     FOR SELECT USING (
@@ -1029,6 +1204,26 @@ CREATE POLICY "Users can update their own manual_payments" ON public.manual_paym
         AND (tenant_id = public.user_tenant_id() OR public.isSuperAdmin())
     );
 
+-- USER INVITES POLICIES
+CREATE POLICY "User invites are viewable by authenticated users" ON public.tenant_user_invites
+    FOR SELECT USING (auth.role() = 'authenticated' AND tenant_id = public.user_tenant_id());
+
+CREATE POLICY "User invites are insertable by superadmin users" ON public.tenant_user_invites
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND tenant_id = public.user_tenant_id()
+    );
+
+CREATE POLICY "User invites are updatable by superadmin users" ON public.tenant_user_invites
+    FOR UPDATE USING (auth.role() = 'authenticated' AND tenant_id = public.user_tenant_id());
+
+/*
+-- AUTH.USERS POLICIES
+CREATE POLICY "Auth.users are viewable by tenant admin" ON auth.users
+    FOR SELECT USING (auth.role() = 'authenticated' AND public.isTenantAdmin());
+
+CREATE POLICY "Auth.users can be deleted by tenant admin" ON auth.users
+    FOR DELETE USING (auth.role() = 'authenticated' AND public.isTenantAdmin());
+*/
 
 -- FUNCTIONS & TRIGGERS
 
@@ -1075,9 +1270,118 @@ CREATE TRIGGER trigger_validate_inventory_transaction
     FOR EACH ROW
     EXECUTE FUNCTION public.validate_inventory_transaction();
 
+-- GDPR delete account
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+    RETURNS TRIGGER AS $$
+    DECLARE
+        user_tenant_id UUID;
+    BEGIN
+        user_tenant_id := public.tenant_id_by_user_id(NEW.id);
+        DELETE FROM public.transactions WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.purchase_order_items WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.purchase_orders WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.sales_order_items WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.sales_orders WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.manual_payments WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.tenant_user_invites WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.feedback WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.inventory_items WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.variants WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.inventory_item_variants WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.stores WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.categories WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.suppliers WHERE tenant_id = user_tenant_id;
+        DELETE FROM public.customers WHERE tenant_id = user_tenant_id;
+        --DELETE FROM tenants WHERE id = user_tenant_id;
+        DELETE FROM public.user_tenant_mappings WHERE tenant_id = user_tenant_id;
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to validate inventory before transaction
+CREATE TRIGGER trigger_delete_user_account
+    BEFORE DELETE ON auth.users
+    FOR EACH ROW
+    EXECUTE FUNCTION public.delete_user_account();
 
 
 -- TRANSACTIONS
+
+-- Function to create/update inventory_item and inventory_item_variants in single transaction
+CREATE OR REPLACE FUNCTION public.inventory_item_transaction(
+    inventory_item_data JSONB,
+    inventory_item_variants_data JSONB,
+    is_for_update BOOLEAN DEFAULT FALSE
+)
+RETURNS VARCHAR AS $$
+DECLARE
+    newSku VARCHAR := (inventory_item_data ->> 'sku')::VARCHAR;
+    newName VARCHAR := (inventory_item_data ->> 'name')::VARCHAR;
+    newDescription VARCHAR := (inventory_item_data ->> 'description')::VARCHAR;
+    categoryId UUID := (inventory_item_data ->> 'category_id')::UUID;
+    newQuantity INTEGER := (inventory_item_data ->> 'quantity')::INTEGER;
+    minQuantity INTEGER := (inventory_item_data ->> 'min_quantity')::INTEGER;
+    unitPrice DECIMAL := (inventory_item_data ->> 'unit_price')::DECIMAL;
+    inventoryItemId UUID;
+BEGIN
+    -- 2. Handle inventory_items: insert/update
+    IF is_for_update THEN
+        inventoryItemId = (inventory_item_data ->> 'id')::UUID;
+
+        UPDATE public.inventory_items
+        SET
+            sku = newSku,
+            name = newName,
+            description = newDescription,
+            category_id = categoryId,
+            quantity = newQuantity,
+            min_quantity = minQuantity,
+            unit_price = unitPrice
+        WHERE id = inventoryItemId;
+    ELSE
+        INSERT INTO public.inventory_items (sku, name, description, category_id, quantity, min_quantity, unit_price)
+        VALUES (newSku, newName, newDescription, categoryId, newQuantity, minQuantity, unitPrice) 
+        RETURNING id INTO inventoryItemId;
+    END IF;
+
+    -- 2. Handle inventory_item_variants: deletes/updates/inserts.
+    IF is_for_update THEN
+        -- Delete variants that are in the database but not in the new inventory_item_variants_data
+        DELETE FROM public.inventory_item_variants
+        WHERE inventory_item_id = inventoryItemId
+            AND NOT (
+                id IN (
+                    SELECT COALESCE((value ->> 'id')::UUID, '00000000-0000-0000-0000-000000000000') 
+                    FROM jsonb_array_elements(inventory_item_variants_data)
+                )
+            );
+    END IF;
+    -- Loop through the `inventory_item_variants_data` array provided in the request.
+    FOR i IN 0..jsonb_array_length(inventory_item_variants_data) - 1 LOOP
+        DECLARE
+            variantsData JSONB := inventory_item_variants_data -> i;
+            variantId UUID := (variantsData ->> 'variant_id')::UUID;
+            inventoryItemVariantId UUID := (variantsData ->> 'id')::UUID;
+        BEGIN
+            -- 3. Check if the item already exists by its ID.
+            -- If it exists, perform an update.
+            IF is_for_update AND (SELECT EXISTS (SELECT 1 FROM public.inventory_item_variants WHERE id = inventoryItemVariantId)) THEN
+                UPDATE public.inventory_item_variants
+                SET
+                    inventory_item_id = inventoryItemId,
+                    variant_id = variantId
+                WHERE id = inventoryItemVariantId;
+            ELSE
+                -- 4. If the inventory_item_variant does not exist, insert it as a new record.
+                INSERT INTO public.inventory_item_variants (inventory_item_id, variant_id)
+                VALUES (inventoryItemId, variantId);
+            END IF;
+        END;
+    END LOOP;
+
+    RETURN 'Update successful.';
+END;
+$$ LANGUAGE plpgsql;
 
 -- Function to create/update purchase_order and purchase_order_items in single transaction
 CREATE OR REPLACE FUNCTION public.purchase_order_transaction(
@@ -1091,12 +1395,11 @@ DECLARE
     supplierId UUID := (purchase_order_data ->> 'supplier_id')::UUID;
     expectedDate DATE := (purchase_order_data ->> 'expected_date')::DATE;
     orderId UUID;
-    orderStatus PURCHASE_ORDER_STATUS;
+    orderStatus purchase_ORDER_STATUS;
 BEGIN
     -- 2. Handle purchase_orders: insert/update
     IF is_for_update THEN
         orderId = (purchase_order_data ->> 'id')::UUID;
-
         -- Do not update 'received' orders
         SELECT order_status INTO orderStatus 
             FROM public.purchase_orders WHERE id = orderId;
@@ -1118,7 +1421,7 @@ BEGIN
 
     -- 2. Handle purchase_order_items: deletes/updates/inserts.
     IF is_for_update THEN
-        -- Delete items that are in the database but not in the new purchase_order_items_data
+        -- Delete items that are in the database but not in the new purchase_order_items_data.
         DELETE FROM public.purchase_order_items
         WHERE purchase_order_id = orderId
             AND NOT (
@@ -1134,6 +1437,7 @@ BEGIN
             itemObj JSONB := purchase_order_items_data -> i;
             storeId UUID := (itemObj ->> 'store_id')::UUID;
             inventoryItemId UUID := (itemObj ->> 'inventory_item_id')::UUID;
+            variantId UUID := (itemObj ->> 'variant_id')::UUID;
             itemQuantity INTEGER := (itemObj ->> 'quantity')::INTEGER;
             unitPrice DECIMAL := (itemObj ->> 'unit_price')::DECIMAL;
             itemId UUID := (itemObj ->> 'id')::UUID;
@@ -1145,13 +1449,14 @@ BEGIN
                 SET
                     store_id = storeId,
                     inventory_item_id = inventoryItemId,
+                    variant_id = variantId,
                     quantity = itemQuantity,
                     unit_price = unitPrice
                 WHERE id = itemId;
             ELSE
                 -- 4. If the item does not exist, insert it as a new record.
-                INSERT INTO public.purchase_order_items (purchase_order_id, store_id, inventory_item_id, quantity, unit_price)
-                VALUES (orderId, storeId, inventoryItemId, itemQuantity, unitPrice);
+                INSERT INTO public.purchase_order_items (purchase_order_id, store_id, inventory_item_id, variant_id, quantity, unit_price)
+                VALUES (orderId, storeId, inventoryItemId, variantId, itemQuantity, unitPrice);
             END IF;
         END;
     END LOOP;
@@ -1214,6 +1519,7 @@ BEGIN
             itemObj JSONB := sales_order_items_data -> i;
             storeId UUID := (itemObj ->> 'store_id')::UUID;
             inventoryItemId UUID := (itemObj ->> 'inventory_item_id')::UUID;
+            variantId UUID := (itemObj ->> 'variant_id')::UUID;
             itemQuantity INTEGER := (itemObj ->> 'quantity')::INTEGER;
             unitPrice DECIMAL := (itemObj ->> 'unit_price')::DECIMAL;
             itemId UUID := (itemObj ->> 'id')::UUID;
@@ -1225,13 +1531,14 @@ BEGIN
                 SET
                     store_id = storeId,
                     inventory_item_id = inventoryItemId,
+                    variant_id = variantId,
                     quantity = itemQuantity,
                     unit_price = unitPrice
                 WHERE id = itemId;
             ELSE
                 -- 4. If the item does not exist, insert it as a new record.
-                INSERT INTO public.sales_order_items (sales_order_id, store_id, inventory_item_id, quantity, unit_price)
-                VALUES (orderId, storeId, inventoryItemId, itemQuantity, unitPrice);
+                INSERT INTO public.sales_order_items (sales_order_id, store_id, inventory_item_id, variant_id, quantity, unit_price)
+                VALUES (orderId, storeId, inventoryItemId, variantId, itemQuantity, unitPrice);
             END IF;
         END;
     END LOOP;
@@ -1570,7 +1877,6 @@ BEGIN
 END;
 $$;
 
-
 -- Sales Order monthly trends
 CREATE OR REPLACE FUNCTION public.sales_order_monthly_trends()
 RETURNS TABLE(
@@ -1600,3 +1906,13 @@ BEGIN
         month_name;
 END;
 $$;
+
+-- CRON JOBS
+SELECT cron.schedule(
+  'expire-unpaid-accounts',
+  -- Run every day at 2 AM
+  '0 2 * * *',
+  $$
+    UPDATE public.tenants SET subscription_status = 'expired' WHERE current_payment_expiry_date < NOW();
+  $$
+);

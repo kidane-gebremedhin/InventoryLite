@@ -4,7 +4,7 @@ import { createClient } from '@/supabase/server';
 import { ServerActionsResponse, UserFeedback } from '../types/Models';
 import { DATABASE_TABLE, FeedbackStatus, RedisCacheKey } from '../Enums';
 import { ALL_OPTIONS } from '../Constants';
-import { getCacheData, setCacheData } from './redis';
+import { deleteCacheKeyByKeyPrefix, getCacheData, setCacheData } from './redis';
 
 interface SearchParams {
     selectedStatus: string,
@@ -32,7 +32,7 @@ export async function fetchUserFeedbacks({selectedStatus, selectedCategory, sele
         if (selectedPriority !== ALL_OPTIONS) {
             query = query.eq('priority', selectedPriority)
         }
-        if (!selectedRating) {
+        if (selectedRating > 0) {
             query = query.eq('rating', selectedRating)
         }
         if (searchTerm) {
@@ -104,6 +104,8 @@ export async function saveUserFeedback(formData: UserFeedback): Promise<ServerAc
         })
         .select();
 
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.feedback);
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.feedback_stats);
     return { data, error };
 }
 
@@ -116,6 +118,8 @@ export async function updateFeedbackStatus({feedbackId, newStatus}: {feedbackId:
         .eq('id', feedbackId)
         .select();
 
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.feedback);
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.feedback_stats);
     return { data, error };
 }
 
@@ -127,6 +131,8 @@ export async function saveRatingFeedback({category, subject, message, priority, 
         .insert({category, subject, message, priority, rating})
         .select()
 
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.feedback);
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.feedback_stats);
     return { data, error };
 }
 
@@ -177,5 +183,7 @@ export async function saveFeedbackAdminResponse({feedbackId, responseText, statu
         .eq('id', feedbackId)
         .select();
 
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.feedback);
+    deleteCacheKeyByKeyPrefix(RedisCacheKey.feedback_stats);
     return { data, error };
 }

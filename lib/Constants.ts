@@ -1,4 +1,4 @@
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PaymentStatus, PurchaseOrderStatus, RatingStar, RecordStatus, ROUTE_PATH, SalesOrderStatus, TransactionDirection } from "./Enums"
+import { FeedbackCategory, FeedbackPriority, FeedbackStatus, InvitationStatus, PaymentStatus, PurchaseOrderStatus, RatingStar, RecordStatus, ROUTE_PATH, SalesOrderStatus, TransactionDirection } from "./Enums"
 
 export const ALL_OPTIONS = ''
 export const TEXT_SEARCH_TRIGGER_KEY = 'Enter'
@@ -12,6 +12,9 @@ export const PAID_PLAN_DURATION = 'month'
 export const SIGNED_OUT = 'SIGNED_OUT'
 export const DEFAULT_USER_ROLE = 'user'
 
+// Cookies
+export const CONSENT_COOKIE_KEY = 'gdpr_consent';
+
 // Currency
 export const PAYMENT_CURRENTCY = 'ETB'
 
@@ -23,14 +26,22 @@ export const MAX_DROPDOWN_TEXT_LENGTH = 25
 export const RECORDS_PER_PAGE = 10
 export const FIRST_PAGE_NUMBER = 1
 
-// Redis
-// in seconds
-export const REDIS_CACHE_TTL = 60
-export const REDIS_CACHE_TTL_USER_SUBSCRIPTION_INFO = 24 * 3600
+// Redis TTL in seconds
+export const REDIS_CACHE_TTL = 24 * 3600
+export const CACHE_TTL_USER_SUBSCRIPTION_INFO = 24 * 3600
+
+// Invitation
+export const USER_INVITATION_EXPIRY_HOURS = 5 * 24 * 3600
 
 export const RECORD_STATUSES: string[] = [
     RecordStatus.ACTIVE,
     RecordStatus.ARCHIVED
+]
+
+export const INVITATION_STATUSES: string[] = [
+    InvitationStatus.OPEN,
+    InvitationStatus.ACCEPTTED,
+    InvitationStatus.EXPIRED
 ]
 
 export const PURCHASE_ORDER_STATUSES: string[] = [
@@ -97,7 +108,7 @@ export const ADMIN_PATHS = [
     ROUTE_PATH.MANAGE_MANUAL_PAYMENT.toString()
 ]
 
-export const RATING_STARTS = [
+export const RATING_STARS = [
     RatingStar.VERY_POOR,
     RatingStar.POOR,
     RatingStar.GOOD,
@@ -133,6 +144,11 @@ export const VALIDATION_ERRORS_MAPPING = {
                 name: {displayError: 'Customer already exists.'},
             }
         },
+        variant: {
+            fields: {
+                name: {displayError: 'Variant already exists.'},
+            }
+        },
         inventory_item: {
             fields: {
                 name: {displayError: 'Item name already exists.'},
@@ -157,6 +173,11 @@ export const VALIDATION_ERRORS_MAPPING = {
         manualPayment: {
             fields: {
                 name: {displayError: 'invalid payment reference number.'},
+            }
+        },
+        userInvitation: {
+            fields: {
+                email: {displayError: 'User email already exists.'},
             }
         }
     }

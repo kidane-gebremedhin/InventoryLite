@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { 
-  CubeIcon, 
-  TruckIcon, 
+import {
+  CubeIcon,
+  TruckIcon,
   ShoppingCartIcon,
   ExclamationTriangleIcon,
   ArrowTrendingUpIcon,
@@ -11,13 +11,13 @@ import {
 } from '@heroicons/react/24/outline'
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 import { FeedbackSummary } from '@/components/feedback/FeedbackSummary'
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -59,9 +59,9 @@ export default function DashboardPage() {
   })
   const [purchaseOrderMonthlyTrendsData, setPurchaseOrderMonthlyTrendsData] = useState<PurchaseOrderMonthlyTrendsData[]>([])
   const [salesOrderMonthlyTrendsData, setSalesOrderMonthlyTrendsData] = useState<SalesOrderMonthlyTrendsData[]>([])
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
   const { currentUser } = useAuthContext();
-  
+
   useEffect(() => {
     // For live streaming
     const supabase = createClient(
@@ -74,7 +74,7 @@ export default function DashboardPage() {
     channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: DATABASE_TABLE.inventory_items }, () => loadDashboardStats());
     channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: DATABASE_TABLE.inventory_items }, () => loadDashboardStats());
     channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table: DATABASE_TABLE.inventory_items }, () => loadDashboardStats());
-    
+
     channel.subscribe();
 
     return () => {
@@ -89,59 +89,44 @@ export default function DashboardPage() {
 
   const loadDashboardStats = async () => {
     showSuccessToast('fetching...')
-    try {
-      setLoading(true)
-
-      const { data, error } = await makeRpcCall(RPC_FUNCTION.DASHBOARD_STATS)
-
+    makeRpcCall(RPC_FUNCTION.DASHBOARD_STATS).then(({ data, error }) => {
       if (error) {
         showServerErrorToast(error.message)
         setLoading(false)
         return
       }
       setStats(data)
-    } catch (error: any) {
-        showErrorToast()
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
-  const loadOrderMonthlyTrends = async () => {  
-    try {
-      setLoading(true)
-      const { data: poData, error: poError } = await makeRpcCall(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS);
-
+  const loadOrderMonthlyTrends = async () => {
+    makeRpcCall(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS).then(({ data: poData, error: poError }) => {
       if (poError) {
         showServerErrorToast(poError.message)
         setLoading(false)
         return
       }
 
-      const podataProcessed: PurchaseOrderMonthlyTrendsData[] = poData.map((item: PurchaseOrderMonthlyTrendsData) => { 
+      const podataProcessed: PurchaseOrderMonthlyTrendsData[] = poData.map((item: PurchaseOrderMonthlyTrendsData) => {
         item.month_name = MONTH_NAME_MAPPING.get(item.month_name.split('-')[1])!
         return item
       })
       setPurchaseOrderMonthlyTrendsData(podataProcessed)
-      
-      const { data: soData, error: soError } = await makeRpcCall(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS);
+    });
 
+    makeRpcCall(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS).then(({ data: soData, error: soError }) => {
       if (soError) {
         showServerErrorToast(soError.message)
         setLoading(false)
         return
       }
-      
-      const soDataProcessed: SalesOrderMonthlyTrendsData[] = soData.map((item: SalesOrderMonthlyTrendsData) => { 
+
+      const soDataProcessed: SalesOrderMonthlyTrendsData[] = soData.map((item: SalesOrderMonthlyTrendsData) => {
         item.month_name = MONTH_NAME_MAPPING.get(item.month_name.split('-')[1])!
         return item
       })
       setSalesOrderMonthlyTrendsData(soDataProcessed)
-    } catch (error: any) {
-        showErrorToast()
-    } finally {
-      setLoading(false)
-    }
+    });
   }
 
   const orderReceiveRate = () => {
@@ -149,16 +134,16 @@ export default function DashboardPage() {
       return '0%'
     }
 
-    const rate = ((stats.receivedPurchaseOrders/(stats.receivedPurchaseOrders + stats.pendingPurchaseOrders)) * 100).toFixed(2)
+    const rate = ((stats.receivedPurchaseOrders / (stats.receivedPurchaseOrders + stats.pendingPurchaseOrders)) * 100).toFixed(2)
     return `${rate}%`
   }
-  
+
   const orderFulfillmentRate = () => {
     if (!stats.fulfilledSalesOrders || !stats.pendingSalesOrders) {
       return '0%'
     }
 
-    const rate = ((stats.fulfilledSalesOrders/(stats.fulfilledSalesOrders + stats.pendingSalesOrders)) * 100).toFixed(2)
+    const rate = ((stats.fulfilledSalesOrders / (stats.fulfilledSalesOrders + stats.pendingSalesOrders)) * 100).toFixed(2)
     return `${rate}%`
   }
 

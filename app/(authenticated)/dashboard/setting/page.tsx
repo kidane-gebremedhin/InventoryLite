@@ -10,27 +10,54 @@ import { triggerInsertSeedData } from '@/lib/server_actions/setting'
 
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import MiniLoading from '@/components/helpers/MiniLoading'
+import { RPC_FUNCTION, SettingSection } from '@/lib/Enums'
+import { showErrorToast } from '@/lib/helpers/Helper'
+import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
+import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
+import { deleteUserAccount } from '@/lib/server_actions/user'
 
 const tabs = [
-  { name: 'Profile', icon: UserIcon },
-  { name: 'Security', icon: ShieldCheckIcon },
-  { name: 'Preferences', icon: Cog6ToothIcon }
+  { name: SettingSection.PROFILE, icon: UserIcon },
+  { name: SettingSection.SECURITY, icon: ShieldCheckIcon },
+  { name: SettingSection.PERFERENCES, icon: Cog6ToothIcon }
 ]
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('Profile')
+  
+  const [activeTab, setActiveTab] = useState(SettingSection.PROFILE)
+  const [isDeleteUserAccountModalOpen, setIsDeleteUserAccountModalOpen] = useState(false)
 
-  const { currentUser } = useAuthContext()
+  const { currentUser, signOut } = useAuthContext()
+  const {loading, setLoading} = useLoadingContext()
 
   const insertSeedData = async () => {
     triggerInsertSeedData();
   }
-  
+
+  const handleDeleteUserAccount = async () => {
+    try {
+      // RPC call
+      const { data, error } = await deleteUserAccount(currentUser.id);
+    
+      if (error) {
+        showErrorToast()
+        return;
+      }
+
+      await signOut();
+    } catch (error: any) {
+        showErrorToast()
+    } finally {
+      setIsDeleteUserAccountModalOpen(false);
+      setLoading(false)
+    }
+  }
+
   if (!currentUser) return <MiniLoading />
   
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Profile':
+      case SettingSection.PROFILE:
         return (
           <div className="space-y-6">
             <div>
@@ -56,10 +83,13 @@ export default function SettingsPage() {
                 To update your profile information, please visit your Google account settings.
               </p>
             </div>
+            <div className="text-center">
+              <button className="btn text-red-400" onClick={() => setIsDeleteUserAccountModalOpen(true)}>Delete My Account</button>
+            </div>
           </div>
         )
 
-      case 'Security':
+      case SettingSection.SECURITY:
         return (
           <div className="space-y-6">
             <div>
@@ -87,7 +117,7 @@ export default function SettingsPage() {
           </div>
         )
 
-      case 'Preferences':
+      case SettingSection.PERFERENCES:
         return (
           <div className="space-y-6">
             <div>
@@ -175,6 +205,16 @@ export default function SettingsPage() {
           {renderTabContent()}
         </div>
       </div>
+
+      {/* Confirmation Modal for Delete user account */}
+      <ConfirmationModal
+        isOpen={isDeleteUserAccountModalOpen}
+        id="#"
+        message="Are you sure you want to completly delete your account? Once confirmed, this can not be undone! Deleting this project will also remove your database.
+Make sure you have made a backup if you want to keep your data."
+        onConfirmationSuccess={handleDeleteUserAccount}
+        onConfirmationFailure={() => setIsDeleteUserAccountModalOpen(false)}
+      />
     </div>
   )
 }
