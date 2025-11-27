@@ -79,6 +79,27 @@ export async function updateTenantRecordStatus(id: string, requestData: StatusPa
     return { data, error };
 }
 
+export const clearUserCache = async (user: User) => {
+  const {redisClient} = await import('@/lib/redis-client');
+  const cacheKey = `${RedisCacheKey.user_subscription_info}_${user.id}`;
+  redisClient.flushall()
+  console.log(`Cleared cache with key ${cacheKey}`)
+}
+
+export const clearUserCookies = async () => {
+  const cookieStore = cookies();
+
+  // 1. Delete cookies by key. 
+  cookieStore.getAll().forEach((cookie) => {
+    cookieStore.set(cookie.name, "", {
+      expires: new Date(0),
+      path: "/",
+    });
+
+    console.log(`Cleared Cookies with key ${cookie.name}`)
+  });
+}
+
 export const clearUserSubscriptionInfo = async (user: User) => {
   const {redisClient} = await import('@/lib/redis-client');
   const cacheKey = `${RedisCacheKey.user_subscription_info}_${user.id}`;

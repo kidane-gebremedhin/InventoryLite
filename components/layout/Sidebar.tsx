@@ -50,8 +50,7 @@ export default function Sidebar() {
       { name: 'Transactions', href: ROUTE_PATH.TRANSACTION, icon: FireIcon },
       { name: 'Reports', href: ROUTE_PATH.REPORT, icon: ChartBarIcon },
       { name: 'Feedback', href: (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN ? ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT : ROUTE_PATH.FEEDBACK), icon: ChatBubbleLeftRightIcon },
-      { name: 'Manual Payments', href: ROUTE_PATH.MANUAL_PAYMENT, icon: CurrencyDollarIcon },
-      { name: 'Settings', href: ROUTE_PATH.SETTING, icon: Cog6ToothIcon },
+      { name: currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN ? 'Manual Payments' : 'My Subscription', href: ROUTE_PATH.MANUAL_PAYMENT, icon: CurrencyDollarIcon },
     ];
 
     let tenantAdminPaths = []
@@ -63,6 +62,7 @@ export default function Sidebar() {
     }
     if (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN) {
       superAdminPaths = [
+        { name: 'Subscription Plans', href: ROUTE_PATH.SUBSCRIPTION_PLAN, icon: CurrencyDollarIcon },
         { name: 'Business Domains', href: ROUTE_PATH.DOMAIN, icon: BuildingStorefrontIcon }
       ]
     }

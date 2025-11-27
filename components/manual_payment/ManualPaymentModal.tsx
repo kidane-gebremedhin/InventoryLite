@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { ManualPayment } from '@/lib/types/Models';
 import { showErrorToast } from '@/lib/helpers/Helper';
-import { PAYMENT_CURRENTCY } from '@/lib/Constants';
 import { useAuthContext } from '../providers/AuthProvider';
 
 interface ManualPaymentModalProps {
@@ -15,13 +14,12 @@ interface ManualPaymentModalProps {
   onSave: (manualPayment: ManualPayment) => void
 }
 
-
-
 export function ManualPaymentModal({ isOpen, onClose, manualPayment, subscriptionMessage, onSave }: ManualPaymentModalProps) {
   const { currentUser } = useAuthContext()
   const emptyEntry: Partial<ManualPayment> = {
     reference_number: '',
-    amount: 0
+    amount: 0,
+    description: '',
   }
 
   const [formData, setFormData] = useState<Partial<ManualPayment>>(emptyEntry)
@@ -46,7 +44,8 @@ export function ManualPaymentModal({ isOpen, onClose, manualPayment, subscriptio
       id: manualPayment?.id,
       reference_number: formData.reference_number,
       amount: currentUser?.subscriptionInfo?.expected_payment_amount,
-      status: manualPayment?.status
+      status: manualPayment?.status,
+      description: manualPayment?.description
     }
 
     onSave(newManualPayment)
@@ -78,7 +77,7 @@ export function ManualPaymentModal({ isOpen, onClose, manualPayment, subscriptio
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <h3>Enter reference number for {PAYMENT_CURRENTCY}{currentUser?.subscriptionInfo?.expected_payment_amount} payment</h3>
+            <h3>Enter reference number for {currentUser?.subscriptionInfo?.currency_type}{currentUser?.subscriptionInfo?.expected_payment_amount} payment</h3>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

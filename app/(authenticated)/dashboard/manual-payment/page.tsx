@@ -11,8 +11,8 @@ import {
 import { ManualPaymentModal } from '@/components/manual_payment/ManualPaymentModal'
 import { ManualPayment } from '@/lib/types/Models'
 import { PaymentStatus, SubscriptionStatus, UserRole } from '@/lib/Enums'
-import { ALL_OPTIONS, FIRST_PAGE_NUMBER, PAYMENT_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
-import { calculateStartAndEndIndex, formatDateToLocalDate, formatDateToYYMMDD, getDateWithoutTime, getPaymentStatusColor, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { ALL_OPTIONS, FIRST_PAGE_NUMBER, MAX_TABLE_TEXT_LENGTH, PAYMENT_STATUSES, RECORDS_PER_PAGE, TEXT_SEARCH_TRIGGER_KEY, VALIDATION_ERRORS_MAPPING } from '@/lib/Constants'
+import { calculateStartAndEndIndex, formatDateToLocalDate, formatDateToYYMMDD, getDateWithoutTime, getPaymentStatusColor, shortenText, showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import Pagination from '@/components/helpers/Pagination'
 import ActionsMenu from '@/components/helpers/ActionsMenu'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
@@ -35,6 +35,7 @@ export default function ManualPaymentPage() {
   const [editingManualPayment, setEditingManualPayment] = useState<ManualPayment | null>(null)
   const [subscriptionMessage, setSubscriptionMessage] = useState('')
   const [selectedStatus, setSelectedStatus] = useState(ALL_OPTIONS)
+  const [canSeeMore, setCanSeeMore] = useState(true)
   // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(RECORDS_PER_PAGE)
   const [currentPage, setCurrentPage] = useState(FIRST_PAGE_NUMBER)
@@ -47,7 +48,7 @@ export default function ManualPaymentPage() {
   const { loading, setLoading } = useLoadingContext()
   const { currentUser } = useAuthContext();
 
-  const reportHeaders = { amount: 'Paid Amount', reference_number: 'Reference Number', created_at: 'Paymment Date' }
+  const reportHeaders = { amount: 'Paid Amount', reference_number: 'Reference Number', status: 'Payment Status', description: 'Description', created_at: 'Paymment Date' }
 
   useEffect(() => {
     if (currentUser?.subscriptionInfo?.subscription_status == SubscriptionStatus.EXPIRED) {
@@ -234,11 +235,11 @@ export default function ManualPaymentPage() {
             </button>
             <span className="px-1"></span>
             <ExportExcel reportName="Manual Payments" records={[reportHeaders, ...manualPayments].map((manualPayment, idx) => {
-              return { row_no: idx > 0 ? idx : 'Row No.', amount: manualPayment.amount, reference_number: manualPayment.reference_number, created_at: getDateWithoutTime(manualPayment.created_at) }
+              return { row_no: idx > 0 ? idx : 'Row No.', amount: manualPayment.amount, reference_number: manualPayment.reference_number, status: manualPayment.status, description: manualPayment.description, created_at: getDateWithoutTime(manualPayment.created_at) }
             })} />
             <span className="px-1"></span>
             <ExportPDF reportName="Manual Payments" records={[reportHeaders, ...manualPayments].map((manualPayment, idx) => {
-              return { row_no: idx > 0 ? idx : 'Row No.', amount: manualPayment.amount, reference_number: manualPayment.reference_number, created_at: getDateWithoutTime(manualPayment.created_at) }
+              return { row_no: idx > 0 ? idx : 'Row No.', amount: manualPayment.amount, reference_number: manualPayment.reference_number, status: manualPayment.status, description: manualPayment.description, created_at: getDateWithoutTime(manualPayment.created_at) }
             })} />
           </div>
           <table className="min-w-full divide-y divide-gray-200">
@@ -247,11 +248,14 @@ export default function ManualPaymentPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Reference Number
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
                   Payment Status
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Decline Reason
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Payment Date
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 </th>
@@ -298,6 +302,8 @@ export default function ManualPaymentPage() {
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </th>
                 </tr>
               )}
             </thead>
@@ -315,44 +321,52 @@ export default function ManualPaymentPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-center">
+                    {canSeeMore ? shortenText(manualPayment.description, MAX_TABLE_TEXT_LENGTH) : manualPayment.description}
+                    {manualPayment.description?.length > MAX_TABLE_TEXT_LENGTH && (
+                      <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-center">
                     {formatDateToLocalDate(manualPayment.created_at)}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
                     <div className="flex justify-center space-x-2 items-center">
-                      <ActionsMenu
-                        actions={[
-                          {
-                            id: manualPayment.id!,
-                            hideOption: manualPayment.status !== PaymentStatus.PENDING,
-                            icon: <PencilIcon className="h-4 w-4" />,
-                            label: 'Edit Details',
-                            class: "w-full text-primary-600 hover:text-primary-900",
-                            listener: handleEdit
-                          },
-                          {
-                            id: manualPayment.id!,
-                            hideOption: manualPayment.status === PaymentStatus.APPROVED || currentUser?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN,
-                            icon: <CheckmarkIcon className="h-4 w-4" />,
-                            label: 'Approve Payment',
-                            class: "w-full text-green-600 hover:text-yellow-900",
-                            listener: () => {
-                              setCurrentActiveId(manualPayment.id!)
-                              setIsApprovePaymentConfirmationModalOpen(true)
-                            }
-                          },
-                          {
-                            id: manualPayment.id!,
-                            hideOption: manualPayment.status === PaymentStatus.DECLINED || currentUser?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN,
-                            icon: <TrashIcon className="h-4 w-4" />,
-                            label: 'Decline Payment',
-                            class: "w-full text-red-600 hover:text-red-900",
-                            listener: () => {
-                              setCurrentActiveId(manualPayment.id!)
-                              setIsDeclinePaymentConfirmationModalOpen(true)
-                            }
-                          },
-                        ]}
-                      />
+                      {(manualPayment.status === PaymentStatus.PENDING
+                        || currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN)
+                        && (<ActionsMenu
+                          actions={[
+                            {
+                              id: manualPayment.id!,
+                              hideOption: manualPayment.status !== PaymentStatus.PENDING,
+                              icon: <PencilIcon className="h-4 w-4" />,
+                              label: 'Edit Details',
+                              class: "w-full text-primary-600 hover:text-primary-900",
+                              listener: handleEdit
+                            },
+                            {
+                              id: manualPayment.id!,
+                              hideOption: manualPayment.status === PaymentStatus.APPROVED || currentUser?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN,
+                              icon: <CheckmarkIcon className="h-4 w-4" />,
+                              label: 'Approve Payment',
+                              class: "w-full text-green-600 hover:text-yellow-900",
+                              listener: () => {
+                                setCurrentActiveId(manualPayment.id!)
+                                setIsApprovePaymentConfirmationModalOpen(true)
+                              }
+                            },
+                            {
+                              id: manualPayment.id!,
+                              hideOption: manualPayment.status === PaymentStatus.DECLINED || currentUser?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN,
+                              icon: <TrashIcon className="h-4 w-4" />,
+                              label: 'Decline Payment',
+                              class: "w-full text-red-600 hover:text-red-900",
+                              listener: () => {
+                                setCurrentActiveId(manualPayment.id!)
+                                setIsDeclinePaymentConfirmationModalOpen(true)
+                              }
+                            },
+                          ]}
+                        />)}
                     </div>
                   </td>
                 </tr>

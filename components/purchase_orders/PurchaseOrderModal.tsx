@@ -7,7 +7,7 @@ import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier, Varia
 import { PurchaseOrderStatus, RecordStatus } from '@/lib/Enums'
 import { calculateOrderTotalProce, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
-import { DECIMAL_REGEX, PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
+import { DECIMAL_REGEX } from '@/lib/Constants'
 
 interface PurchaseOrderModalProps {
   isOpen: boolean
@@ -35,7 +35,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, stores, sup
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<PurchaseOrder>>(emptyEntry)
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([])
-  const [itemVariants, setItemVariants] = useState<Variant[]>([])
 
   useEffect(() => {
     // reset form
@@ -99,10 +98,10 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, stores, sup
         newItems[index].unit_price = selectedItem.unit_price!
 
         // Filter item variants
-        const currentItemVariants = variants.filter(variant => {
-          return selectedItem.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
-        });
-        setItemVariants(currentItemVariants)
+        // const currentItemVariants = variants.filter(variant => {
+        //   return selectedItem.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
+        // });
+        // setItemVariants(currentItemVariants)
       }
     }
 
@@ -195,7 +194,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, stores, sup
                 className="input-field"
                 required
               >
-                <option value="">Select Supplier</option>
                 {suppliers.map(supplier => (
                   <option key={supplier.id} value={supplier.id}>
                     {supplier.name}
@@ -217,23 +215,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, stores, sup
               />
             </div>
           </div>
-
-          {order && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Order Status
-              </label>
-              <select
-                value={formData.order_status}
-                onChange={(e) => setFormData({ ...formData, order_status: e.target.value as any })}
-                className="input-field"
-              >
-                {PURCHASE_ORDER_STATUSES.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* Items Section */}
           <div>
@@ -316,7 +297,10 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, stores, sup
                         required
                       >
                         <option value="">Select Variant</option>
-                        {itemVariants.map(variant => (
+                        {variants.filter(variant => {
+                          const selectedItem = inventoryItems.find(i => i.id === item.inventory_item_id);
+                          return selectedItem?.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
+                        }).map(variant => (
                           <option key={variant.id} value={variant.id}>
                             {variant.name}
                           </option>

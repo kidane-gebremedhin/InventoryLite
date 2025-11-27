@@ -5,13 +5,13 @@ import { UserSubscriptionInfo } from '@/lib/types/Models';
 import { showErrorToast, showServerErrorToast, showSuccessToast } from '@/lib/helpers/Helper';
 import { VALIDATION_ERRORS_MAPPING } from '@/lib/Constants';
 import { ROUTE_PATH } from '@/lib/Enums';
-import { updateUserSubscriptionInfo } from '@/lib/server_actions/user';
+import { clearSubscriptionInfoCookies, clearUserSubscriptionInfo, updateUserSubscriptionInfo } from '@/lib/server_actions/user';
 import { PostgrestError } from '@supabase/supabase-js';
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider';
 import { useAuthContext } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { fetchDomainOptions } from '@/lib/server_actions/domain';
-import { clearSubscriptionInfoCookies } from '@/lib/server_actions/user';
+import { clearUserCookies } from '@/lib/server_actions/user';
 
 export default function CompleteProfile() {
   const [domains, setDomains] = useState([]);
@@ -85,8 +85,10 @@ export default function CompleteProfile() {
         return
       }
 
-      // Reset the subscription info cookies on profile completion
-      await clearSubscriptionInfoCookies();
+      // Reset the user subscription info cache and cookies on profile completion
+      await clearUserSubscriptionInfo(currentUser);
+      await clearSubscriptionInfoCookies()
+
       showSuccessToast('Profile updated.');
       router.push(ROUTE_PATH.DASHBOARD);
     } catch (error: any) {

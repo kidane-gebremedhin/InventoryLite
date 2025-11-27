@@ -94,6 +94,7 @@ NEXT_PUBLIC_APP_NAME=InventoryLite
 
 ```bash
 npm run dev
+docker compose -f docker-compose.development.yml up --build -d
 ```
 
 Open `http://localhost:{{YOUR_PORT}}` in your browser.

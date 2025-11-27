@@ -1,9 +1,9 @@
 -- Enable necessary extensions
 -- uuid-ossp for UUIDs
-DROP EXTENSION IF EXISTS "uuid-ossp";
-DROP EXTENSION IF EXISTS "pg_cron";
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
-CREATE EXTENSION IF NOT EXISTS "pg_cron" SCHEMA public;
+DROP EXTENSION IF EXISTS "uuid-ossp" CASCADE;
+DROP EXTENSION IF EXISTS "pg_cron" CASCADE;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS "pg_cron" WITH SCHEMA public;
 
 ------------------------------------------------------------------------------------
 -- UP
@@ -85,6 +85,19 @@ CREATE TABLE IF NOT EXISTS public.tenant_user_invites (
     token TEXT NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     status INVITATION_STATUS NOT NULL DEFAULT 'open',
+    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create a separate table to store tenant mappings that is exempt from RLS check to avoid recursive checks
+CREATE TABLE IF NOT EXISTS public.subscription_plans (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
+    currency_type CURRENCY_TYPE NOT NULL DEFAULT 'USD',
+    subscription_status SUBSCRIPTION_STATUS NOT NULL DEFAULT 'free_trial',
+    payment_amount DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (payment_amount >= 0),
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -308,6 +321,7 @@ CREATE TABLE IF NOT EXISTS public.manual_payments (
     amount DECIMAL(10,2) NOT NULL CHECK (amount >= 0),
     reference_number VARCHAR(255) UNIQUE NOT NULL,
     status MANUAL_PAYMENT_STATUS NOT NULL DEFAULT 'pending',
+    description TEXT,
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -346,12 +360,20 @@ RETURNS TRIGGER AS $$
 DECLARE
     userRole public.USER_ROLE := 'USER';
     user_tenant_id UUID;
+    amount DECIMAL := 0;
+    currency public.CURRENCY_TYPE := 'USD';
 BEGIN
      -- First check if user is tenant admin or staff
      user_tenant_id := public.invited_tenant_id_by_email(NEW.email);
     IF user_tenant_id IS NULL THEN
+        IF (SELECT COUNT(*) FROM public.subscription_plans) > 0 THEN
+            -- Fetch subscription plan price
+            SELECT payment_amount, currency_type INTO amount, currency FROM public.subscription_plans 
+            WHERE status = 'active' AND subscription_status = 'subscribed' LIMIT 1;
+        END IF;
+
         -- Create a new tenant record
-        INSERT INTO public.tenants (email, name, current_payment_expiry_date, expected_payment_amount) VALUES (NEW.email, NEW.email, NOW(), 0)
+        INSERT INTO public.tenants (email, name, current_payment_expiry_date, expected_payment_amount, currency_type) VALUES (NEW.email, NEW.email, NOW() + INTERVAL '7 days', amount, currency)
         RETURNING id INTO user_tenant_id;
         -- Set user role as 'TENANT_ADMIN'
         userRole := 'TENANT_ADMIN';
@@ -517,6 +539,8 @@ CREATE INDEX idx_tenants_profile_complete ON public.tenants(profile_complete);
 CREATE INDEX idx_tenants_status ON public.tenants(status);
 CREATE INDEX idx_tenants_created_at ON public.tenants(created_at);
 CREATE INDEX idx_tenants_updated_at ON public.tenants(updated_at);
+CREATE INDEX idx_subscription_plans_subscription_status ON public.subscription_plans(subscription_status);
+CREATE INDEX idx_subscription_plans_status ON public.subscription_plans(status);
 CREATE INDEX idx_categories_tenant_id ON public.categories(tenant_id);
 CREATE INDEX idx_categories_name ON public.categories(name);
 CREATE INDEX idx_categories_status ON public.categories(status);
@@ -583,6 +607,19 @@ CREATE INDEX idx_inventory_item_variants_inventory_item_id ON public.inventory_i
 CREATE INDEX idx_inventory_item_variants_variant_id ON public.inventory_item_variants(variant_id);
 CREATE INDEX idx_inventory_item_variants_status ON public.inventory_item_variants(status);
 
+-- Function to renew tenant subscription after saving manual payments
+CREATE OR REPLACE FUNCTION renew_tenant_subscription_to_manual_payments()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        UPDATE public.tenants SET 
+            subscription_status = 'subscribed',
+            current_payment_expiry_date = NOW() + INTERVAL '30 days'
+        WHERE id = NEW.tenant_id;
+
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
 -- Function to add tenant_id and created_by before saving
 CREATE OR REPLACE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record()
     RETURNS TRIGGER AS $$
@@ -614,6 +651,11 @@ CREATE OR REPLACE FUNCTION public.add_tenant_id_and_created_by_info_to_new_recor
 -- Triggers to add tenant_id and created_by before saving
 CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_category
     BEFORE INSERT ON public.categories
+    FOR EACH ROW
+    EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
+
+CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_subscription_plans
+    BEFORE INSERT ON public.subscription_plans
     FOR EACH ROW
     EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
@@ -682,6 +724,12 @@ CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_manual_payments
     FOR EACH ROW
     EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
+CREATE TRIGGER trigger_renew_tenant_subscription_to_manual_payments
+    AFTER UPDATE OF status ON public.manual_payments
+    FOR EACH ROW
+    WHEN (NEW.status = 'approved')
+    EXECUTE FUNCTION public.renew_tenant_subscription_to_manual_payments();
+
 CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_domains
     BEFORE INSERT ON public.domains
     FOR EACH ROW
@@ -719,6 +767,7 @@ CREATE OR REPLACE FUNCTION public.update_updated_at_and_updated_by_column()
 -- TRIGGERS FOR UPDATED_AT and UPDATED_BY
 CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON public.tenants FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
+CREATE TRIGGER update_subscription_plans_updated_at BEFORE UPDATE ON public.subscription_plans FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_stores_updated_at BEFORE UPDATE ON public.stores FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON public.customers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
@@ -775,6 +824,7 @@ CREATE TRIGGER update_fulfilled_date_on_order_status_update_to_fulfilled
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_tenant_mappings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subscription_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
@@ -848,10 +898,10 @@ CREATE POLICY "Tenants are updatable by tenant users or superadmin users" ON pub
 -- USER_TENANT_MAPPING POLICIES
 CREATE POLICY "user_tenant_mappings are viewable by tenant users" ON public.user_tenant_mappings
     FOR SELECT USING (
-        auth.role() = 'authenticated'/* AND 
-        (tenant_id = public.user_tenant_id() OR public.isSuperAdmin())*/
+        auth.role() = 'authenticated'
     );
 
+/*
 CREATE POLICY "user_tenant_mappings are insertable by tenant users" ON public.user_tenant_mappings
     FOR INSERT WITH CHECK (
         auth.role() = 'authenticated' AND 
@@ -862,6 +912,25 @@ CREATE POLICY "user_tenant_mappings are updatable by tenant users" ON public.use
     FOR UPDATE USING (
         auth.role() = 'authenticated' AND 
         tenant_id = public.user_tenant_id()
+    );
+    */
+
+-- SUBSCRIPTION_PLANS POLICIES
+CREATE POLICY "subscription_plans are viewable by authenticated users" ON public.subscription_plans
+    FOR SELECT USING (
+        auth.role() = 'authenticated'
+    );
+
+CREATE POLICY "subscription_plans are insertable by super admin" ON public.subscription_plans
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND 
+        public.isSuperAdmin()
+    );
+
+CREATE POLICY "subscription_plans are updatable by super admin" ON public.subscription_plans
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND 
+        public.isSuperAdmin()
     );
 
 -- CATEGORIES POLICIES
@@ -1911,8 +1980,10 @@ $$;
 SELECT cron.schedule(
   'expire-unpaid-accounts',
   -- Run every day at 2 AM
-  '0 2 * * *',
+  --'0 2 * * *',
+  '* * * * *',
   $$
-    UPDATE public.tenants SET subscription_status = 'expired' WHERE current_payment_expiry_date < NOW();
+    --UPDATE public.tenants SET subscription_status = 'expired' WHERE current_payment_expiry_date < NOW();
+    UPDATE public.tenants SET current_payment_expiry_date = NOW();
   $$
 );

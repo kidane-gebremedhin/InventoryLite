@@ -23,7 +23,7 @@ import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
 import { fetchUserInvitations, saveUserInvitation, updateUserInvitation, updateUserInvitationStatus } from '@/lib/server_actions/user_invitation'
 import ExportExcel from '@/components/file_import_export/ExportExcel'
 import ExportPDF from '@/components/file_import_export/ExportPDF'
-import { clearSubscriptionInfoCookies } from '@/lib/server_actions/user'
+import { clearUserCookies } from '@/lib/server_actions/user'
 
 export default function UserInvitationPage() {
   const router = useRouter()
@@ -74,7 +74,7 @@ export default function UserInvitationPage() {
   }
 
   const handleAdd = () => {
-    clearSubscriptionInfoCookies();
+    clearUserCookies();
     setEditingUserInvitation(null)
     setIsModalOpen(true)
   }

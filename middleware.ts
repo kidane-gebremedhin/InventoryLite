@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { CACHE_TTL_USER_SUBSCRIPTION_INFO, PUBLIC_PATHS } from './lib/Constants'
+import { ADMIN_PATHS, CACHE_TTL_USER_SUBSCRIPTION_INFO, PUBLIC_PATHS } from './lib/Constants'
 import { CookiesKey, ROUTE_PATH, SubscriptionStatus, UserRole } from './lib/Enums'
 import { fetchUserProfile } from './lib/server_actions/user'
 
@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, request.url))
     }
     // Restrict SUPER_ADMIN pages
-    if (user?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN && request.nextUrl.pathname === ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT) {
+    if (user?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN && ADMIN_PATHS.includes(request.nextUrl.pathname)) {
       return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, request.url))
     }
   
@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(ROUTE_PATH.MANUAL_PAYMENT, request.url))
     }
   } else {
-    // Redirec authenticated users to dashboard from landing page
+    // Redirect authenticated users to dashboard from landing page
     if (user) {
       return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, request.url))
     }

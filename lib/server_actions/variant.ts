@@ -42,7 +42,7 @@ export async function fetchVariantOptions(): Promise<ServerActionsResponse> {
     const supabase = await createClient();
 
     const cachedData = await getCacheData(RedisCacheKey.variants);
-    if (!cachedData) {
+    if (true || !cachedData) {
         const { data, count, error } = await supabase.from(DATABASE_TABLE.variants)
             .select('id, name', {count: 'exact', head: false})
             .eq('status', RecordStatus.ACTIVE)

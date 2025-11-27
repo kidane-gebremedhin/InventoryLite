@@ -1,7 +1,7 @@
 'use client'
 
 import { ROUTE_PATH } from '@/lib/Enums'
-import { clearSubscriptionInfoCookies, clearUserSubscriptionInfo, fetchUserProfile } from '@/lib/server_actions/user'
+import { clearUserCookies, clearUserCache, fetchUserProfile } from '@/lib/server_actions/user'
 import { User } from '@/lib/types/Models'
 import { createClient } from '@/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -44,8 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
   }, [supabase]);
 
   const signOut = async () => {
-    clearUserSubscriptionInfo(currentUser);
-    clearSubscriptionInfoCookies();
+    await clearUserCache(currentUser);
+    await clearUserCookies();
     // This should be below cookie clearance
     await supabase.auth.signOut()
     router.push(ROUTE_PATH.SIGNIN)

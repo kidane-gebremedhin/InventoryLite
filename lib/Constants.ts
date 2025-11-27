@@ -1,4 +1,4 @@
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, InvitationStatus, PaymentStatus, PurchaseOrderStatus, RatingStar, RecordStatus, ROUTE_PATH, SalesOrderStatus, TransactionDirection } from "./Enums"
+import { CurrencyType, FeedbackCategory, FeedbackPriority, FeedbackStatus, InvitationStatus, PaymentStatus, PurchaseOrderStatus, RatingStar, RecordStatus, ROUTE_PATH, SalesOrderStatus, SubscriptionStatus, TransactionDirection } from "./Enums"
 
 export const ALL_OPTIONS = ''
 export const TEXT_SEARCH_TRIGGER_KEY = 'Enter'
@@ -14,9 +14,6 @@ export const DEFAULT_USER_ROLE = 'user'
 
 // Cookies
 export const CONSENT_COOKIE_KEY = 'gdpr_consent';
-
-// Currency
-export const PAYMENT_CURRENTCY = 'ETB'
 
 // Decimal validation
 export const DECIMAL_REGEX = /^\d*\.?\d*$/;
@@ -69,8 +66,16 @@ export const TRANSACTION_DIRECTIONS: string[] = [
     TransactionDirection.OUT
 ]
 
+export const SUBSCRIPTION_STATUSES: string[] = [
+    SubscriptionStatus.SUBSCRIBED
+]
+
+export const CURRENCY_TYPES: string[] = [
+    CurrencyType.ETB,
+    CurrencyType.USD
+]
+
 export const FEEDBACK_STATUSES = [
-    {value: ALL_OPTIONS, label: 'All Feedback', color: 'bg-gray-100 text-gray-800'},
     {value: FeedbackStatus.OPEN, label: 'Open', color: 'bg-blue-100 text-blue-800'},
     {value: FeedbackStatus.IN_PROGRESS, label: 'In Progress', color: 'bg-yellow-100 text-yellow-800'},
     {value: FeedbackStatus.RESOLVED, label: 'Resolved', color: 'bg-green-100 text-green-800'},
@@ -105,7 +110,7 @@ export const PUBLIC_PATHS = [
 export const ADMIN_PATHS = [
     ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT.toString(),
     ROUTE_PATH.DOMAIN.toString(),
-    ROUTE_PATH.MANAGE_MANUAL_PAYMENT.toString()
+    ROUTE_PATH.SUBSCRIPTION_PLAN.toString()
 ]
 
 export const RATING_STARS = [
@@ -122,6 +127,13 @@ export const VALIDATION_ERRORS_MAPPING = {
         userSubscriptionInfo: {
             fields: {
                 name: {displayError: 'Selected name is taken, please select another name.'},
+            }
+        },
+        subscriptionPlan: {
+            fields: {
+                subscription_status: {displayError: 'Subscription type error.'},
+                currency_type: {displayError: 'Currency error.'},
+                payment_amount: {displayError: 'Payment amount error.'}
             }
         },
         domain: {

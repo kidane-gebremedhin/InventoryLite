@@ -1,4 +1,4 @@
-import { FeedbackCategory, FeedbackPriority, FeedbackStatus, PurchaseOrderStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
+import { PurchaseOrderStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
 
 export interface Domain {
   id?: string
@@ -256,11 +256,24 @@ export interface SalesOrderMonthlyTrendsData {
   fulfilled_quantity: number
 }
 
+export interface SubscriptionPlan {
+  id?: string
+  subscription_status: string
+  currency_type: string
+  payment_amount: number
+  status?: string
+  created_at?: string
+  created_by?: string
+  updated_at?: string
+  updated_by?: string
+}
+
 export interface ManualPayment {
   id?: string
   amount: number
   reference_number: string
   status: string
+  description?: string
   created_at?: string
   updated_at?: string
   created_by?: string

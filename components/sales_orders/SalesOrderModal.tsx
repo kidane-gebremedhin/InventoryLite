@@ -35,7 +35,7 @@ export default function SalesOrderModal({ isOpen, onClose, order, stores, custom
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<SalesOrder>>(emptyEntry)
   const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([])
-  const [itemVariants, setItemVariants] = useState<Variant[]>([])
+  //const [itemVariants, setItemVariants] = useState<Variant[]>([])
 
   useEffect(() => {
     // reset form
@@ -94,11 +94,11 @@ export default function SalesOrderModal({ isOpen, onClose, order, stores, custom
       if (selectedItem) {
         newItems[index].unit_price = selectedItem.unit_price!
 
-        // Filter item variants
-        const currentItemVariants = variants.filter(variant => {
-          return selectedItem.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
-        });
-        setItemVariants(currentItemVariants)
+        // // Filter item variants
+        // const currentItemVariants = variants.filter(variant => {
+        //   return selectedItem.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
+        // });
+        // setItemVariants(currentItemVariants)
       }
     }
 
@@ -190,7 +190,6 @@ export default function SalesOrderModal({ isOpen, onClose, order, stores, custom
                 className="input-field"
                 required
               >
-                <option value="">Select Customer</option>
                 {customers.map(customer => (
                   <option key={customer.id} value={customer.id}>
                     {customer.name}
@@ -212,23 +211,6 @@ export default function SalesOrderModal({ isOpen, onClose, order, stores, custom
               />
             </div>
           </div>
-
-          {order && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Order Status
-              </label>
-              <select
-                value={formData.order_status}
-                onChange={(e) => setFormData({ ...formData, order_status: e.target.value as any })}
-                className="input-field"
-              >
-                {SALES_ORDER_STATUSES.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* Items Section */}
           <div>
@@ -311,7 +293,10 @@ export default function SalesOrderModal({ isOpen, onClose, order, stores, custom
                         required
                       >
                         <option value="">Select Variant</option>
-                        {itemVariants.map(variant => (
+                        {variants.filter(variant => {
+                          const selectedItem = inventoryItems.find(i => i.id === item.inventory_item_id)
+                          return selectedItem?.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
+                        }).map(variant => (
                           <option key={variant.id} value={variant.id}>
                             {variant.name}
                           </option>

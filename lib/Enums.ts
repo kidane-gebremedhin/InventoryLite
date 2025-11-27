@@ -109,6 +109,7 @@ export enum DATABASE_TABLE {
     manual_payments = 'manual_payments',
     domains = 'domains',
     tenant_user_invites = 'tenant_user_invites',
+    subscription_plans = 'subscription_plans'
 }
 
 export enum RedisCacheKey {
@@ -130,7 +131,8 @@ export enum RedisCacheKey {
     tenant_user_invites = 'tenant_user_invites',
     feedback_stats = 'feedback_stats',
     feedback_unread_count = 'feedback_unread_count',
-    user_subscription_info = 'user_subscription_info'
+    user_subscription_info = 'user_subscription_info',
+    subscription_plans = 'subscription_plans'
 }
 
 export enum CookiesKey {
@@ -199,7 +201,8 @@ export enum ROUTE_PATH {
     STORE = '/dashboard/store',
     SUPPLIER = '/dashboard/supplier',
     TRANSACTION = '/dashboard/transaction',
-    INVITE_USER = '/dashboard/user-invitation'
+    INVITE_USER = '/dashboard/user-invitation',
+    SUBSCRIPTION_PLAN = '/dashboard/subscription-plan'
 }
 
 export enum SettingSection {
