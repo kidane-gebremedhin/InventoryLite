@@ -61,6 +61,7 @@ export default function SalesOrderPage() {
   const [endDate, setEndDate] = useState<Date | null>(null)
   const [fulfilledDateStart, setFulfilledDateStart] = useState<Date | null>(null)
   const [fulfilledDateEnd, setFulfilledDateEnd] = useState<Date | null>(null)
+  const [isInitialPageLoad, setIsInitialPageLoad] = useState(true);
   // Record Actions
   const [currentActiveId, setCurrentActiveId] = useState<string>('')
   const [isArchiveConfirmationModalOpen, setIsArchiveConfirmationModalOpen] = useState(false)
@@ -86,15 +87,6 @@ export default function SalesOrderPage() {
     unit_price: 'Unit Price',
     order_items: []
   }
-
-  useEffect(() => {
-    loadSalesOrders()
-    loadInventoryItems()
-    loadStores()
-    loadVariants()
-    loadCustomers()
-  }, [])
-
 
   const loadStores = async () => {
     fetchStoreOptions().then(({ data, error }) => {
@@ -130,8 +122,17 @@ export default function SalesOrderPage() {
   }
 
   useEffect(() => {
-    if (searchTerm || selectedCustomerId != RecordStatus.ACTIVE || selectedOrderStatus || selectedStatus || startDate || endDate || fulfilledDateStart || fulfilledDateEnd || recordsPerPage != RECORDS_PER_PAGE || currentPage != FIRST_PAGE_NUMBER) {
-      // return shorty on mount
+    loadSalesOrders()
+    loadInventoryItems()
+    loadStores()
+    loadVariants()
+    loadCustomers()
+  }, [])
+
+  useEffect(() => {
+    if (isInitialPageLoad) {
+      setIsInitialPageLoad(false)
+      // return shorty on initial page load
       return
     }
 
@@ -363,287 +364,291 @@ export default function SalesOrderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Sales Order Management</h1>
-          <p className="text-gray-600">Manage your sales orders from your supplier customers</p>
+      <div className="w-full md:w-5/6">
+        <div className="md:flex md:justify-between md:items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Sales Order Management</h1>
+            <p className="text-gray-600">Manage your sales orders from your supplier customers</p>
+          </div>
+          <button
+            onClick={handleAdd}
+            className="w-full md:w-1/5 btn-primary flex justify-center items-center"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Add Sales Order
+          </button>
         </div>
-        <button
-          onClick={handleAdd}
-          className="btn-primary flex items-center items-center"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Sales Order
-        </button>
       </div>
 
       {/* Sales Order Table */}
       <div className="card">
-        <div className="overflow-x-auto">
-          <div className="w-full text-right items-right mb-4">
-            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
-              <b>Show Filters</b>
-            </button>
-            <span className="px-1"></span>
-            <ExportExcel reportName="Sales Orders" records={[reportHeaders, ...salesOrders.map((salesOrder, idx) => getReportFields(salesOrder, idx)).flat()]} />
-            <span className="px-1"></span>
-            <ExportPDF reportName="Sales Orders" records={[reportHeaders, ...salesOrders.map((salesOrder, idx) => getReportFields(salesOrder, idx)).flat()]} />
-          </div>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sales Order Number
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Value
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Order Status
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Expected Date
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fulfilled Date
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Record Status
-                </th>
-                <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-              </tr>
-              {showFilters && (
-                <tr className="card">
+        <div className="w-full overflow-x-scroll p-4">
+          <div className="w-[1100px]">
+            <div className="w-full md:text-right md:items-right mb-4">
+              <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
+                <b>Show Filters</b>
+              </button>
+              <span className="px-1"></span>
+              <ExportExcel reportName="Sales Orders" records={[reportHeaders, ...salesOrders.map((salesOrder, idx) => getReportFields(salesOrder, idx)).flat()]} />
+              <span className="px-1"></span>
+              <ExportPDF reportName="Sales Orders" records={[reportHeaders, ...salesOrders.map((salesOrder, idx) => getReportFields(salesOrder, idx)).flat()]} />
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
                   <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search & Press ENTER"
-                        value={searchTermTemp}
-                        onChange={(e) => {
-                          setSearchTermTemp(e.target.value)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
-                            handleTextSearch();
-                          }
-                        }}
-                        onBlur={handleTextSearch}
-                        className="input-field pl-10"
-                      />
-                    </div>
+                    Sales Order Number
                   </th>
                   <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <select
-                      value={selectedCustomerId}
-                      onChange={(e) => {
-                        setCurrentPage(FIRST_PAGE_NUMBER)
-                        setSelectedCustomer(e.target.value)
-                      }}
-                      className="input-field"
-                    >
-                      {customers.map(customer => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.id === ALL_OPTIONS ? 'All Customers' : shortenText(customer.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                        </option>
-                      ))}
-                    </select>
+                    Customer
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Value
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Order Status
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Expected Date
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fulfilled Date
+                  </th>
+                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Record Status
                   </th>
                   <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   </th>
-                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <div className='w-full'>
+                </tr>
+                {showFilters && (
+                  <tr className="card">
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search & Press ENTER"
+                          value={searchTermTemp}
+                          onChange={(e) => {
+                            setSearchTermTemp(e.target.value)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                              handleTextSearch();
+                            }
+                          }}
+                          onBlur={handleTextSearch}
+                          className="input-field pl-10"
+                        />
+                      </div>
+                    </th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <select
-                        value={selectedOrderStatus}
+                        value={selectedCustomerId}
                         onChange={(e) => {
                           setCurrentPage(FIRST_PAGE_NUMBER)
-                          setSelectedOrderStatus(e.target.value)
+                          setSelectedCustomer(e.target.value)
                         }}
                         className="input-field"
                       >
-                        {getSalesOrderStatusOptions().map(status => (
-                          <option key={status} value={status}>
-                            {status === ALL_OPTIONS ? 'All Statuses' : status}
+                        {customers.map(customer => (
+                          <option key={customer.id} value={customer.id}>
+                            {customer.id === ALL_OPTIONS ? 'All Customers' : shortenText(customer.name, MAX_DROPDOWN_TEXT_LENGTH)}
                           </option>
                         ))}
                       </select>
-                    </div>
-                  </th>
-                  <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <DatePicker
-                      selected={startDate}
-                      onChange={onDateRangeChange}
-                      startDate={startDate}
-                      endDate={endDate}
-                      selectsRange
-                      monthsShown={2}
-                      placeholderText="Select date range"
-                      isClearable={true}
-                      className="input-field"
-                    />
-                  </th>
-                  <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <DatePicker
-                      selected={fulfilledDateStart}
-                      onChange={onFulfilledDateRangeChange}
-                      startDate={fulfilledDateStart}
-                      endDate={fulfilledDateEnd}
-                      selectsRange
-                      monthsShown={2}
-                      placeholderText="Select date range"
-                      isClearable={true}
-                      className="input-field"
-                    />
-                  </th>
-                  <th className="px-1 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <select
-                      value={selectedStatus}
-                      onChange={(e) => {
-                        setCurrentPage(FIRST_PAGE_NUMBER)
-                        setSelectedStatus(e.target.value)
-                      }}
-                      className="input-field"
-                    >
-                      {RECORD_STATUSES.map(status => (
-                        <option key={status} value={status}>
-                          {status === ALL_OPTIONS ? ALL_OPTIONS : status}
-                        </option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
-                  </th>
-                </tr>
-              )}
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {salesOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{order.so_number}(<i className="text-sm text-gray-500">{order.order_items?.length} items</i>)</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{order.customer?.name}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {getTotalOrderPrice(order)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getOrderStatusColor(order.order_status!)}`}>
-                      {order.order_status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {getDateWithoutTime(formatDateToLocalDate(order.expected_date))}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {formatDateToLocalDate(order.fulfilled_date)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(order.status!)}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2 items-center">
-                      <ActionsMenu
-                        actions={[
-                          {
-                            id: order.id!,
-                            hideOption: false,
-                            icon: <EyeIcon className="h-4 w-4" />,
-                            label: 'View Details',
-                            class: "w-full text-primary-600 hover:text-primary-900",
-                            listener: handleViewDetails
-                          },
-                          {
-                            id: order.id!,
-                            hideOption: ![SalesOrderStatus.CANCELED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
-                            icon: <BackwardIcon className="h-4 w-4" />,
-                            label: 'Return to Pending',
-                            class: "w-full text-yellow-600 hover:text-yellow-900",
-                            listener: () => {
-                              setCurrentActiveId(order.id!)
-                              setIsMoveToPendingConfirmationModalOpen(true)
-                            }
-                          },
-                          {
-                            id: order.id!,
-                            hideOption: ![SalesOrderStatus.PENDING, SalesOrderStatus.CANCELED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
-                            icon: <CheckIcon className="h-4 w-4" />,
-                            label: 'Mark as Fulfilled',
-                            class: "w-full text-green-600 hover:text-green-900",
-                            listener: () => {
-                              setCurrentActiveId(order.id!)
-                              setIsMoveToFulfilledConfirmationModalOpen(true)
-                            }
-                          },
-                          {
-                            id: order.id!,
-                            hideOption: [SalesOrderStatus.FULFILLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
-                            icon: <PencilIcon className="h-4 w-4" />,
-                            label: 'Edit',
-                            class: "w-full text-primary-600 hover:text-primary-900",
-                            listener: handleEdit
-                          },
-                          {
-                            id: order.id!,
-                            hideOption: ![SalesOrderStatus.PENDING].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
-                            icon: <XMarkIcon className="h-4 w-4" />,
-                            label: 'Cancel Order',
-                            class: "w-full text-yellow-600 hover:text-yellow-900",
-                            listener: () => {
-                              setCurrentActiveId(order.id!)
-                              setIsMoveToCanceledConfirmationModalOpen(true)
-                            }
-                          },
-                          {
-                            id: order.id!,
-                            hideOption: [SalesOrderStatus.FULFILLED].includes(order.order_status!) || selectedStatus !== RecordStatus.ACTIVE,
-                            icon: <TrashIcon className="h-4 w-4" />,
-                            label: 'Archive',
-                            class: "w-full text-red-600 hover:text-red-900",
-                            listener: () => {
-                              setCurrentActiveId(order.id!)
-                              setIsArchiveConfirmationModalOpen(true)
-                            }
-                          },
-                          {
-                            id: order.id!,
-                            hideOption: selectedStatus === RecordStatus.ACTIVE,
-                            icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
-                            label: 'Restore',
-                            class: "w-full text-yellow-600 hover:text-yellow-900",
-                            listener: () => {
-                              setCurrentActiveId(order.id!)
-                              setIsRestoreConfirmationModalOpen(true)
-                            }
-                          },
-                        ]}
+                    </th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className='w-full'>
+                        <select
+                          value={selectedOrderStatus}
+                          onChange={(e) => {
+                            setCurrentPage(FIRST_PAGE_NUMBER)
+                            setSelectedOrderStatus(e.target.value)
+                          }}
+                          className="input-field"
+                        >
+                          {getSalesOrderStatusOptions().map(status => (
+                            <option key={status} value={status}>
+                              {status === ALL_OPTIONS ? 'All Statuses' : status}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </th>
+                    <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <DatePicker
+                        selected={startDate}
+                        onChange={onDateRangeChange}
+                        startDate={startDate}
+                        endDate={endDate}
+                        selectsRange
+                        monthsShown={2}
+                        placeholderText="Select date range"
+                        isClearable={true}
+                        className="input-field"
                       />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </th>
+                    <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <DatePicker
+                        selected={fulfilledDateStart}
+                        onChange={onFulfilledDateRangeChange}
+                        startDate={fulfilledDateStart}
+                        endDate={fulfilledDateEnd}
+                        selectsRange
+                        monthsShown={2}
+                        placeholderText="Select date range"
+                        isClearable={true}
+                        className="input-field"
+                      />
+                    </th>
+                    <th className="px-1 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedStatus}
+                        onChange={(e) => {
+                          setCurrentPage(FIRST_PAGE_NUMBER)
+                          setSelectedStatus(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {RECORD_STATUSES.map(status => (
+                          <option key={status} value={status}>
+                            {status === ALL_OPTIONS ? ALL_OPTIONS : status}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
+                    </th>
+                  </tr>
+                )}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {salesOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{order.so_number}(<i className="text-sm text-gray-500">{order.order_items?.length} items</i>)</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{order.customer?.name}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {getTotalOrderPrice(order)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getOrderStatusColor(order.order_status!)}`}>
+                        {order.order_status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {getDateWithoutTime(formatDateToLocalDate(order.expected_date))}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {formatDateToLocalDate(order.fulfilled_date)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(order.status!)}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-medium">
+                      <div className="flex justify-center space-x-2 items-center">
+                        <ActionsMenu
+                          actions={[
+                            {
+                              id: order.id!,
+                              hideOption: false,
+                              icon: <EyeIcon className="h-4 w-4" />,
+                              label: 'View Details',
+                              class: "w-full text-primary-600 hover:text-primary-900",
+                              listener: handleViewDetails
+                            },
+                            {
+                              id: order.id!,
+                              hideOption: ![SalesOrderStatus.CANCELED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                              icon: <BackwardIcon className="h-4 w-4" />,
+                              label: 'Return to Pending',
+                              class: "w-full text-yellow-600 hover:text-yellow-900",
+                              listener: () => {
+                                setCurrentActiveId(order.id!)
+                                setIsMoveToPendingConfirmationModalOpen(true)
+                              }
+                            },
+                            {
+                              id: order.id!,
+                              hideOption: ![SalesOrderStatus.PENDING, SalesOrderStatus.CANCELED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                              icon: <CheckIcon className="h-4 w-4" />,
+                              label: 'Mark as Fulfilled',
+                              class: "w-full text-green-600 hover:text-green-900",
+                              listener: () => {
+                                setCurrentActiveId(order.id!)
+                                setIsMoveToFulfilledConfirmationModalOpen(true)
+                              }
+                            },
+                            {
+                              id: order.id!,
+                              hideOption: [SalesOrderStatus.FULFILLED].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                              icon: <PencilIcon className="h-4 w-4" />,
+                              label: 'Edit',
+                              class: "w-full text-primary-600 hover:text-primary-900",
+                              listener: handleEdit
+                            },
+                            {
+                              id: order.id!,
+                              hideOption: ![SalesOrderStatus.PENDING].includes(order.order_status!) || selectedStatus === RecordStatus.ARCHIVED,
+                              icon: <XMarkIcon className="h-4 w-4" />,
+                              label: 'Cancel Order',
+                              class: "w-full text-yellow-600 hover:text-yellow-900",
+                              listener: () => {
+                                setCurrentActiveId(order.id!)
+                                setIsMoveToCanceledConfirmationModalOpen(true)
+                              }
+                            },
+                            {
+                              id: order.id!,
+                              hideOption: [SalesOrderStatus.FULFILLED].includes(order.order_status!) || selectedStatus !== RecordStatus.ACTIVE,
+                              icon: <TrashIcon className="h-4 w-4" />,
+                              label: 'Archive',
+                              class: "w-full text-red-600 hover:text-red-900",
+                              listener: () => {
+                                setCurrentActiveId(order.id!)
+                                setIsArchiveConfirmationModalOpen(true)
+                              }
+                            },
+                            {
+                              id: order.id!,
+                              hideOption: selectedStatus === RecordStatus.ACTIVE,
+                              icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
+                              label: 'Restore',
+                              class: "w-full text-yellow-600 hover:text-yellow-900",
+                              listener: () => {
+                                setCurrentActiveId(order.id!)
+                                setIsRestoreConfirmationModalOpen(true)
+                              }
+                            },
+                          ]}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination
+              currentPage={currentPage}
+              recordsPerPage={recordsPerPage}
+              totalRecordsCount={totalRecordsCount}
+              setCurrentPage={setCurrentPage}
+              setRecordsPerPage={setRecordsPerPage}
+            />
+          </div>
         </div>
-        <Pagination
-          currentPage={currentPage}
-          recordsPerPage={recordsPerPage}
-          totalRecordsCount={totalRecordsCount}
-          setCurrentPage={setCurrentPage}
-          setRecordsPerPage={setRecordsPerPage}
-        />
       </div>
 
       {/* SalesOrder Modal */}

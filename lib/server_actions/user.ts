@@ -87,7 +87,7 @@ export const clearUserCache = async (user: User) => {
 }
 
 export const clearUserCookies = async () => {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   // 1. Delete cookies by key. 
   cookieStore.getAll().forEach((cookie) => {
@@ -108,7 +108,7 @@ export const clearUserSubscriptionInfo = async (user: User) => {
 }
 
 export const clearSubscriptionInfoCookies = async () => {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   // 1. Delete cookies by key. 
   cookieStore.delete(CookiesKey.ucookiesinfo);

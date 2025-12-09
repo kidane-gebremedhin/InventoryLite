@@ -3,7 +3,7 @@ import { createClient as createClientForServiceRole } from '@supabase/supabase-j
 import { cookies } from 'next/headers'
 
 export const createClient = async () => {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

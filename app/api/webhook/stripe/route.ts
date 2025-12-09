@@ -11,7 +11,8 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 export async function POST(req) {
     const supabase = createServerClientWithServiceKey();
     const body: string = await req.text();
-    const signature: string | null = headers().get('stripe-signature');
+    const requestHeaders = await headers();
+    const signature: string | null = requestHeaders.get('stripe-signature');
 
     let event: Stripe.Event;
 

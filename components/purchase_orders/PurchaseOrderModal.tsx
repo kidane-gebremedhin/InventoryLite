@@ -335,9 +335,17 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, stores, sup
                         <button
                           type="button"
                           onClick={() => removeItem(index)}
-                          className="mt-3 text-red-600 hover:text-red-900"
+                          className="hidden md:block md:mt-3 text-red-600 hover:text-red-900"
                         >
                           <TrashIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="flex block md:hidden md:mt-3 text-red-600 hover:text-red-900"
+                        >
+                          <TrashIcon className="h-4 w-4 mt-1" />
+                          <span className="px-2">Remove</span>
                         </button>
                       </Tooltip>
                     </div>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { getRatingLabel, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
 import { FeedbackPriority, RatingStar } from '@/lib/Enums'
 import { APP_NAME } from '@/lib/app_config/config'
 import { saveRatingFeedback } from '@/lib/server_actions/feedback'
@@ -96,11 +96,7 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
 
         {rating > 0 && (
           <p className="text-sm text-gray-600 mb-4">
-            {rating === RatingStar.VERY_POOR && 'Very Poor'}
-            {rating === RatingStar.POOR && 'Poor'}
-            {rating === RatingStar.GOOD && 'Fair'}
-            {rating === RatingStar.VERY_GOOD && 'Good'}
-            {rating === RatingStar.EXCELLENT && 'Excellent'}
+            {getRatingLabel(rating)}
           </p>
         )}
       </div>

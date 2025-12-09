@@ -10,18 +10,16 @@ export default async function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <>
+    <div className="min-h-screen">
       {/* Navbar */}
       <Navbar />
-      <div className="min-h-screen bg-gray-50 font-sans text-gray-800 antialiased">
-        <div className='pb-8'>
-          {children}
-        </div>
+      <div className="bg-gray-50 font-sans text-gray-800 antialiased">
+        {children}
       </div>
       <PartnersLogoLoop />
       {/* Call to Action Section */}
       <CallToAction />
       <Footer />
-    </>
+    </div>
   )
 }

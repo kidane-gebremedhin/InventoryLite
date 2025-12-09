@@ -1,5 +1,5 @@
 import toast from "react-hot-toast"
-import { ConsentCookieStatus, InvitationStatus, PaymentStatus, PurchaseOrderStatus, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
+import { ConsentCookieStatus, InvitationStatus, PaymentStatus, PurchaseOrderStatus, RatingStar, RecordStatus, SalesOrderStatus, TransactionDirection } from "../Enums"
 import { PurchaseOrderItem, SalesOrderItem } from "../types/Models"
 import { CONSENT_COOKIE_KEY, CUSTOM_SERVER_ERRORS, FEEDBACK_CATEGORIES, FEEDBACK_PRIORITIES, FEEDBACK_STATUSES } from "../Constants"
 
@@ -253,4 +253,21 @@ export function consentGiven() {
  */
 function clearConsentCookie() {
     document.cookie = CONSENT_COOKIE_KEY + "=; path=/;";
+}
+
+export const getRatingLabel = (rating: RatingStar): string => {
+  switch(rating) {
+    case RatingStar.VERY_POOR:
+      return 'Very Poor';
+    case RatingStar.POOR:
+      return 'Poor';
+    case RatingStar.GOOD:
+      return 'Fair';
+    case RatingStar.VERY_GOOD:
+      return 'Good';
+    case RatingStar.EXCELLENT:
+      return 'Excellent';
+    default:
+      return '';
+  }
 }

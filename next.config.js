@@ -2,7 +2,14 @@
 const nextConfig = {
   output: 'standalone',
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+        port: '',
+        pathname: '/images/**',
+      }
+    ],
   }
 }
 

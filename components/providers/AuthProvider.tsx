@@ -27,21 +27,25 @@ export function AuthProvider({ children }: { children: React.ReactNode; }) {
   useEffect(() => {
     // 1. Get initial session on page reload
     supabase.auth.getSession().then(async ({ data }) => {
-      const currentUser = await fetchUserProfile(data?.session?.user, true);
-      setCurrentUser(currentUser);
+      fetchUserProfile(data?.session?.user, true)
+        .then(currentUser => {
+          setCurrentUser(currentUser);
+        });
     });
 
     // 2. LISTEN to changes (login, logout, token refresh, OAuth redirect)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
-        const currentUser = await fetchUserProfile(newSession?.user, true);
-        setCurrentUser(currentUser);
+        fetchUserProfile(newSession?.user, true)
+          .then(currentUser => {
+            setCurrentUser(currentUser);
+          });
       }
     );
 
     // Unsubscribe when the component unmounts
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase.auth]);
 
   const signOut = async () => {
     await clearUserCache(currentUser);

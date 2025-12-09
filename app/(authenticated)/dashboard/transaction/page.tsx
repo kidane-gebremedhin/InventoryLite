@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
+import {
 } from '@heroicons/react/24/outline'
 
 import { RecordStatus, TransactionDirection } from '@/lib/Enums'
@@ -39,7 +39,7 @@ export default function SalesOrderPage() {
   const [selectedDirection, setSelectedDirection] = useState<string>(ALL_OPTIONS)
   const [showFilters, setShowFilters] = useState(false)
   // Global States
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
 
   const reportHeaders = {
     direction: 'Direction',
@@ -56,7 +56,7 @@ export default function SalesOrderPage() {
 
       if (error) throw error
 
-      const selectableInventoryItems: Partial<InventoryItem>[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
+      const selectableInventoryItems: Partial<InventoryItem>[] = [{ id: ALL_OPTIONS, name: '' }, ...data!]
       setInventoryItems(selectableInventoryItems)
     } catch (error: any) {
       showErrorToast()
@@ -69,7 +69,7 @@ export default function SalesOrderPage() {
 
       if (error) throw error
 
-      const selectableStores: Store[] = [{id: ALL_OPTIONS, name: '',description: ''}, ...(data || [])]
+      const selectableStores: Store[] = [{ id: ALL_OPTIONS, name: '', description: '' }, ...(data || [])]
       setStores(selectableStores)
     } catch (error: any) {
       showErrorToast()
@@ -90,7 +90,7 @@ export default function SalesOrderPage() {
   const loadTransactions = async () => {
     setLoading(canShowLoadingScreen(startDate, endDate, null, null))
 
-    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
+    const { startIndex, endIndex } = calculateStartAndEndIndex({ currentPage, recordsPerPage });
 
     try {
       const { data, count, error } = await fetchTransactions({ selectedStatus, selectedDirection, selectedStoreId, selectedInventoryItemId, startDate, endDate, startIndex, endIndex });
@@ -117,7 +117,7 @@ export default function SalesOrderPage() {
 
   const getReportFields = (transaction: any, idx: number) => {
     return {
-      row_no: idx > 0 ? idx : 'Row No.', 
+      row_no: idx > 0 ? idx : 'Row No.',
       direction: transaction.direction,
       store_id: transaction.store?.name,
       item: transaction.item?.name,
@@ -131,145 +131,147 @@ export default function SalesOrderPage() {
     <div className="space-y-6">
       {/* SalesOrder Table */}
       <div className="card">
-        <div className="overflow-x-auto">
-          <div className="w-full text-right items-right mb-4">
-            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
-              <b>Show Filters</b>
-            </button>
-            <span className="px-1"></span>
-            <ExportExcel reportName="Transactions" records={[reportHeaders, ...transactions]
-              .map((transaction, idx) => getReportFields(transaction, idx))} />
-            <span className="px-1"></span>
-            <ExportPDF reportName="Transactions" records={[reportHeaders, ...transactions]
-              .map((transaction, idx) => getReportFields(transaction, idx))} />
-          </div>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Direction
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Item
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Txn Quantity
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  From/To Store
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date Create/Updated
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Available Quantity
-                </th>
-              </tr>
-              {showFilters && (
-              <tr className="card">
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedDirection}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedDirection(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {TRANSACTION_DIRECTIONS.map(direction => (
-                      <option key={direction} value={direction}>
-                        {direction === ALL_OPTIONS ? 'All' : direction}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedInventoryItemId}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedInventoryItemId(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {inventoryItems.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.id === ALL_OPTIONS ? 'All Items' : shortenText(item.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <select
-                    value={selectedStoreId}
-                    onChange={(e) => {
-                      setCurrentPage(FIRST_PAGE_NUMBER)
-                      setSelectedStoreId(e.target.value)
-                    }}
-                    className="input-field"
-                  >
-                    {stores.map(store => (
-                      <option key={store.id} value={store.id}>
-                        {store.id === ALL_OPTIONS ? 'All Stores' : shortenText(store.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                      </option>
-                    ))}
-                  </select>
-                </th>
-                <th style={{maxWidth: 30}} className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <DatePicker
-                    selected={startDate}
-                    onChange={onDateRangeChange}
-                    startDate={startDate}
-                    endDate={endDate}
-                    selectsRange
-                    monthsShown={2}
-                    placeholderText="Select date range"
-                    isClearable={true}
-                    className="input-field"
-                  />
-                </th>
-                <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-              </tr>
-              )}
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {transactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50">
-                  <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTransactionDirectionColor(transaction.direction)}`}>
-                      {transaction.direction} 
-                    </span>
-                  </td>
-                  <td className="text-sm font-medium text-gray-900 text-center px-1 py-4">
-                    {transaction.item?.name}
-                  </td>
-                  <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    {transaction.direction === TransactionDirection.IN ? '+' : '-'}{transaction.quantity}
-                  </td>
-                  <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    {transaction.store?.name} 
-                  </td>
-                  <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    {formatDateToLocalDate(transaction.created_at!)}
-                  </td>
-                  <td className="px-1 py-4 text-sm text-gray-900 text-center">
-                    <b>{transaction.current_item_quantity}</b>
-                  </td>
+        <div className="w-full overflow-x-scroll p-4">
+          <div className="w-[1000px]">
+            <div className="w-full md:text-right md:items-right mb-4">
+              <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
+                <b>Show Filters</b>
+              </button>
+              <span className="px-1"></span>
+              <ExportExcel reportName="Transactions" records={[reportHeaders, ...transactions]
+                .map((transaction, idx) => getReportFields(transaction, idx))} />
+              <span className="px-1"></span>
+              <ExportPDF reportName="Transactions" records={[reportHeaders, ...transactions]
+                .map((transaction, idx) => getReportFields(transaction, idx))} />
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Direction
+                  </th>
+                  <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Item
+                  </th>
+                  <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Txn Quantity
+                  </th>
+                  <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    From/To Store
+                  </th>
+                  <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date Create/Updated
+                  </th>
+                  <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Available Quantity
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+                {showFilters && (
+                  <tr className="card">
+                    <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedDirection}
+                        onChange={(e) => {
+                          setCurrentPage(FIRST_PAGE_NUMBER)
+                          setSelectedDirection(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {TRANSACTION_DIRECTIONS.map(direction => (
+                          <option key={direction} value={direction}>
+                            {direction === ALL_OPTIONS ? 'All' : direction}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedInventoryItemId}
+                        onChange={(e) => {
+                          setCurrentPage(FIRST_PAGE_NUMBER)
+                          setSelectedInventoryItemId(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {inventoryItems.map(item => (
+                          <option key={item.id} value={item.id}>
+                            {item.id === ALL_OPTIONS ? 'All Items' : shortenText(item.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </th>
+                    <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedStoreId}
+                        onChange={(e) => {
+                          setCurrentPage(FIRST_PAGE_NUMBER)
+                          setSelectedStoreId(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        {stores.map(store => (
+                          <option key={store.id} value={store.id}>
+                            {store.id === ALL_OPTIONS ? 'All Stores' : shortenText(store.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th style={{ maxWidth: 30 }} className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <DatePicker
+                        selected={startDate}
+                        onChange={onDateRangeChange}
+                        startDate={startDate}
+                        endDate={endDate}
+                        selectsRange
+                        monthsShown={2}
+                        placeholderText="Select date range"
+                        isClearable={true}
+                        className="input-field"
+                      />
+                    </th>
+                    <th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </th>
+                  </tr>
+                )}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {transactions.map((transaction) => (
+                  <tr key={transaction.id} className="hover:bg-gray-50">
+                    <td className="px-1 py-4 text-sm text-gray-900 text-center">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTransactionDirectionColor(transaction.direction)}`}>
+                        {transaction.direction}
+                      </span>
+                    </td>
+                    <td className="text-sm font-medium text-gray-900 text-center px-1 py-4">
+                      {transaction.item?.name}
+                    </td>
+                    <td className="px-1 py-4 text-sm text-gray-900 text-center">
+                      {transaction.direction === TransactionDirection.IN ? '+' : '-'}{transaction.quantity}
+                    </td>
+                    <td className="px-1 py-4 text-sm text-gray-900 text-center">
+                      {transaction.store?.name}
+                    </td>
+                    <td className="px-1 py-4 text-sm text-gray-900 text-center">
+                      {formatDateToLocalDate(transaction.created_at!)}
+                    </td>
+                    <td className="px-1 py-4 text-sm text-gray-900 text-center">
+                      <b>{transaction.current_item_quantity}</b>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination
+              currentPage={currentPage}
+              recordsPerPage={recordsPerPage}
+              totalRecordsCount={totalRecordsCount}
+              setCurrentPage={setCurrentPage}
+              setRecordsPerPage={setRecordsPerPage}
+            />
+          </div>
         </div>
-        <Pagination
-          currentPage = {currentPage}
-          recordsPerPage = {recordsPerPage}
-          totalRecordsCount = {totalRecordsCount}
-          setCurrentPage = {setCurrentPage}
-          setRecordsPerPage = {setRecordsPerPage}
-        />
       </div>
     </div>
   )

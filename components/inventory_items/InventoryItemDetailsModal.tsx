@@ -72,7 +72,7 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                   Variants
                 </h3>
                 {item.item_variants?.map(iv => (
-                  <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                  <span key={iv.id} className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
                     {iv.variant?.name}
                   </span>
                 ))}

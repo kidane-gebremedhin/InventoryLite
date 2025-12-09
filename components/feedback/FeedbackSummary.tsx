@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import { 
+import {
   ChatBubbleLeftRightIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
@@ -52,10 +52,10 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
       const total = feedbacks.length
       const open = feedbacks.filter(f => f.status === FeedbackStatus.OPEN).length
       const resolved = feedbacks.filter(f => f.status === FeedbackStatus.RESOLVED).length
-      
+
       const ratings = feedbacks.filter(f => f.rating !== null).map(f => f.rating!)
-      const averageRating = ratings.length > 0 
-        ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length * 10) / 10 
+      const averageRating = ratings.length > 0
+        ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length * 10) / 10
         : 0
 
       // Recent feedback (last 7 days)
@@ -77,7 +77,7 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
   }
 
   if (loading) {
-    return <MiniLoading className={className} />
+    return <></>
   }
 
   return (

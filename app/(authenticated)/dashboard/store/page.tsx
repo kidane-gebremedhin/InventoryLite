@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  PlusIcon, 
+import {
+  PlusIcon,
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
@@ -43,9 +43,9 @@ export default function StorePage() {
   const [isArchiveConfirmationModalOpen, setIsArchiveConfirmationModalOpen] = useState(false)
   const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] = useState(false)
   // Global States
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
 
-  const reportHeaders = {name: 'Store Name', description: 'Description', created_at: 'Date Created'}
+  const reportHeaders = { name: 'Store Name', description: 'Description', created_at: 'Date Created' }
 
   useEffect(() => {
     // reset pagination
@@ -54,11 +54,11 @@ export default function StorePage() {
   }, [searchTerm, selectedStatus, recordsPerPage, currentPage])
 
   const loadStores = async () => {
-    const {startIndex, endIndex} = calculateStartAndEndIndex({currentPage, recordsPerPage});
+    const { startIndex, endIndex } = calculateStartAndEndIndex({ currentPage, recordsPerPage });
 
     try {
       setLoading(true)
-      
+
       const { data, count, error } = await fetchStores({ selectedStatus, searchTerm, startIndex, endIndex });
 
       if (error) {
@@ -88,7 +88,7 @@ export default function StorePage() {
     resetModalState()
 
     try {
-      const { error } = await updateStoreRecordStatus(id, {status: RecordStatus.ARCHIVED})
+      const { error } = await updateStoreRecordStatus(id, { status: RecordStatus.ARCHIVED })
 
       if (error) {
         showServerErrorToast(error.message)
@@ -109,7 +109,7 @@ export default function StorePage() {
     resetModalState()
 
     try {
-      const { error } = await updateStoreRecordStatus(id, {status: RecordStatus.ACTIVE})
+      const { error } = await updateStoreRecordStatus(id, { status: RecordStatus.ACTIVE })
 
       if (error) {
         showServerErrorToast(error.message)
@@ -127,8 +127,8 @@ export default function StorePage() {
   }
 
   const handleCreate = async (store: Store) => {
-      // Exclude id field while creating new record 
-      const {id, ...storeWithNoId} = store
+    // Exclude id field while creating new record 
+    const { id, ...storeWithNoId } = store
     try {
       const { data, error } = await saveStore(storeWithNoId)
 
@@ -158,7 +158,7 @@ export default function StorePage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      setStores(prev => prev.map(elem => elem.id === store.id ? data[0] : store))
+      setStores(prev => prev.map(elem => elem.id === store.id ? data[0] : elem))
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -187,165 +187,169 @@ export default function StorePage() {
 
   return (
     <div className="space-y-6">
-      <div className="md:flex md:justify-between md:items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Store Management</h1>
-          <p className="text-gray-600">Manage your stores of items</p>
+      <div className="w-full md:w-5/6">
+        <div className="md:flex md:justify-between md:items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Store Management</h1>
+            <p className="text-gray-600">Manage your stores of items</p>
+          </div>
+          <button
+            onClick={handleAdd}
+            className="w-full md:w-1/5 btn-primary flex justify-center items-center"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Add Store
+          </button>
         </div>
-        <button
-          onClick={handleAdd}
-          className="btn-primary flex items-center items-center"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Store
-        </button>
       </div>
 
       {/* Store Table */}
       <div className="card">
-        <div className="overflow-x-auto">
-          <div className="w-full text-right items-right mb-4">
-            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
-              <b>Show Filters</b>
-            </button>
-            <span className="px-1"></span>
-            <ExportExcel reportName="Stores" records={[reportHeaders, ...stores].map((store, idx) => {
-              return {row_no: idx > 0 ? idx : 'Row No.', name: store.name, description: store.description, created_at: getDateWithoutTime(store.created_at)}
-            })} />
-            <span className="px-1"></span>
-            <ExportPDF reportName="Stores" records={[reportHeaders, ...stores].map((store, idx) => {
-              return {row_no: idx > 0 ? idx : 'Row No.', name: store.name, description: store.description, created_at: getDateWithoutTime(store.created_at)}
-            })} />
-          </div>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Store
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
-                  Record Status
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-              </tr>
-              {showFilters && (
-              <tr>
-                <th colSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search by name or description... and press ENTER key"
-                      value={searchTermTemp}
-                      onChange={(e) => {
-                        setSearchTermTemp(e.target.value)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
-                          handleTextSearch();
-                        }
-                      }}
-                      onBlur={handleTextSearch}
-                      className="input-field pl-10"
-                    />
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{minWidth: 150}}>
-                    <div className='w-full'>
-                        <select
-                        value={selectedStatus}
-                        onChange={(e) => { 
-                          setCurrentPage(FIRST_PAGE_NUMBER)
-                          setSelectedStatus(e.target.value)
-                        }}
-                        className="input-field"
-                      >
-                        {RECORD_STATUSES.map(status => (
-                          <option key={status} value={status}>
-                            {status === ALL_OPTIONS ? 'All Statuses' : status}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-              </tr>
-              )}
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {stores.map((store) => (
-                <tr key={store.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{store.name}</div>
-                    </div>
-                  </td>
-                  <td style={{maxWidth: 200}} className="px-6 py-4 text-sm text-gray-900 o">
-                    {canSeeMore ? shortenText(store.description, MAX_TABLE_TEXT_LENGTH) : store.description}
-                    {store.description?.length > MAX_TABLE_TEXT_LENGTH && (
-                      <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(store.status!)}`}>
-                      {store.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2 items-center">                        
-                      <ActionsMenu
-                        actions={[
-                          {
-                            id: store.id!,
-                            hideOption: selectedStatus === RecordStatus.ARCHIVED,
-                            icon: <PencilIcon className="h-4 w-4" />,
-                            label: 'Edit',
-                            class: "w-full text-primary-600 hover:text-primary-900",
-                            listener: handleEdit
-                          },
-                          {
-                            id: store.id!,
-                            hideOption: selectedStatus !== RecordStatus.ACTIVE,
-                            icon: <TrashIcon className="h-4 w-4" />,
-                            label: 'Archive',
-                            class: "w-full text-red-600 hover:text-red-900",
-                            listener: () => {
-                              setCurrentActiveId(store.id!)
-                              setIsArchiveConfirmationModalOpen(true)
-                            }
-                          },
-                          {
-                            id: store.id!,
-                            hideOption: selectedStatus === RecordStatus.ACTIVE,
-                            icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
-                            label: 'Restore',
-                            class: "w-full text-yellow-600 hover:text-yellow-900",
-                            listener: () => {
-                              setCurrentActiveId(store.id!)
-                              setIsRestoreConfirmationModalOpen(true)
-                            }
-                          },
-                        ]}
-                      />
-                    </div>
-                  </td>
+        <div className="w-full overflow-x-scroll p-4">
+          <div className="w-[1000px]">
+            <div className="w-full md:text-right md:items-right mb-4">
+              <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
+                <b>Show Filters</b>
+              </button>
+              <span className="px-1"></span>
+              <ExportExcel reportName="Stores" records={[reportHeaders, ...stores].map((store, idx) => {
+                return { row_no: idx > 0 ? idx : 'Row No.', name: store.name, description: store.description, created_at: getDateWithoutTime(store.created_at) }
+              })} />
+              <span className="px-1"></span>
+              <ExportPDF reportName="Stores" records={[reportHeaders, ...stores].map((store, idx) => {
+                return { row_no: idx > 0 ? idx : 'Row No.', name: store.name, description: store.description, created_at: getDateWithoutTime(store.created_at) }
+              })} />
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Store
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
+                    Record Status
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+                {showFilters && (
+                  <tr>
+                    <th colSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search by name or description... and press ENTER key"
+                          value={searchTermTemp}
+                          onChange={(e) => {
+                            setSearchTermTemp(e.target.value)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                              handleTextSearch();
+                            }
+                          }}
+                          onBlur={handleTextSearch}
+                          className="input-field pl-10"
+                        />
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
+                      <div className='w-full'>
+                        <select
+                          value={selectedStatus}
+                          onChange={(e) => {
+                            setCurrentPage(FIRST_PAGE_NUMBER)
+                            setSelectedStatus(e.target.value)
+                          }}
+                          className="input-field"
+                        >
+                          {RECORD_STATUSES.map(status => (
+                            <option key={status} value={status}>
+                              {status === ALL_OPTIONS ? 'All Statuses' : status}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </th>
+                  </tr>
+                )}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {stores.map((store) => (
+                  <tr key={store.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{store.name}</div>
+                      </div>
+                    </td>
+                    <td style={{ maxWidth: 200 }} className="px-6 py-4 text-sm text-gray-900 o">
+                      {canSeeMore ? shortenText(store.description, MAX_TABLE_TEXT_LENGTH) : store.description}
+                      {store.description?.length > MAX_TABLE_TEXT_LENGTH && (
+                        <span onClick={() => setCanSeeMore(!canSeeMore)} className='text-blue-300'>{canSeeMore ? 'more' : '  less...'}</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(store.status!)}`}>
+                        {store.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-medium">
+                      <div className="flex justify-center space-x-2 items-center">
+                        <ActionsMenu
+                          actions={[
+                            {
+                              id: store.id!,
+                              hideOption: selectedStatus === RecordStatus.ARCHIVED,
+                              icon: <PencilIcon className="h-4 w-4" />,
+                              label: 'Edit',
+                              class: "w-full text-primary-600 hover:text-primary-900",
+                              listener: handleEdit
+                            },
+                            {
+                              id: store.id!,
+                              hideOption: selectedStatus !== RecordStatus.ACTIVE,
+                              icon: <TrashIcon className="h-4 w-4" />,
+                              label: 'Archive',
+                              class: "w-full text-red-600 hover:text-red-900",
+                              listener: () => {
+                                setCurrentActiveId(store.id!)
+                                setIsArchiveConfirmationModalOpen(true)
+                              }
+                            },
+                            {
+                              id: store.id!,
+                              hideOption: selectedStatus === RecordStatus.ACTIVE,
+                              icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
+                              label: 'Restore',
+                              class: "w-full text-yellow-600 hover:text-yellow-900",
+                              listener: () => {
+                                setCurrentActiveId(store.id!)
+                                setIsRestoreConfirmationModalOpen(true)
+                              }
+                            },
+                          ]}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination
+              currentPage={currentPage}
+              recordsPerPage={recordsPerPage}
+              totalRecordsCount={totalRecordsCount}
+              setCurrentPage={setCurrentPage}
+              setRecordsPerPage={setRecordsPerPage}
+            />
+          </div>
         </div>
-        <Pagination
-          currentPage = {currentPage}
-          recordsPerPage = {recordsPerPage}
-          totalRecordsCount = {totalRecordsCount}
-          setCurrentPage = {setCurrentPage}
-          setRecordsPerPage = {setRecordsPerPage}
-        />
       </div>
 
       {/* Store Modal */}
@@ -371,7 +375,7 @@ export default function StorePage() {
         onConfirmationSuccess={handleArchive}
         onConfirmationFailure={resetModalState}
       />
-      
+
       {/* Confirmation Modal for Restore */}
       <ConfirmationModal
         isOpen={isRestoreConfirmationModalOpen}

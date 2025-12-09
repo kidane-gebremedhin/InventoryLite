@@ -158,7 +158,7 @@ export default function SubscriptionPlanPage() {
 
       setIsModalOpen(false)
       showSuccessToast('Record Updated.')
-      setSubscriptionPlans(prev => prev.map(elem => elem.id === subscriptionPlan.id ? data[0] : subscriptionPlan))
+      setSubscriptionPlans(prev => prev.map(elem => elem.id === subscriptionPlan.id ? data[0] : elem))
     } catch (error: any) {
       showErrorToast()
     } finally {
@@ -182,186 +182,190 @@ export default function SubscriptionPlanPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Subscription Plan Management</h1>
-          <p className="text-gray-600">Manage subscription Subscription plans</p>
+      <div className="w-full md:w-5/6">
+        <div className="md:flex md:justify-between md:items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Subscription Plan Management</h1>
+            <p className="text-gray-600">Manage subscription Subscription plans</p>
+          </div>
+          <button
+            onClick={handleAdd}
+            className="w-full md:w-1/4 btn-primary flex justify-center items-center"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Add Subscription Plan
+          </button>
         </div>
-        <button
-          onClick={handleAdd}
-          className="btn-primary flex items-center items-center"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Subscription Plan
-        </button>
       </div>
 
       {/* SubscriptionPlan Table */}
       <div className="card">
-        <div className="overflow-x-auto">
-          <div className="w-full text-right items-right mb-4">
-            <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
-              <b>Show Filters</b>
-            </button>
-            <span className="px-1"></span>
-            <ExportExcel reportName="subscription_plans" records={[reportHeaders, ...subscriptionPlans].map((subscriptionPlan, idx) => {
-              return { row_no: idx > 0 ? idx : 'Row No.', subscription_status: subscriptionPlan.subscription_status, currency_type: subscriptionPlan.currency_type, payment_amount: subscriptionPlan.payment_amount, created_at: getDateWithoutTime(subscriptionPlan.created_at) }
-            })} />
-            <span className="px-1"></span>
-            <ExportPDF reportName="subscription_plans" records={[reportHeaders, ...subscriptionPlans].map((subscriptionPlan, idx) => {
-              return { row_no: idx > 0 ? idx : 'Row No.', subscription_status: subscriptionPlan.subscription_status, currency_type: subscriptionPlan.currency_type, payment_amount: subscriptionPlan.payment_amount, created_at: getDateWithoutTime(subscriptionPlan.created_at) }
-            })} />
-          </div>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Subscription Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Currency
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Payment Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
-                  Record Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                </th>
-              </tr>
-              {showFilters && (
+        <div className="w-full overflow-x-scroll p-4">
+          <div className="w-[1000px]">
+            <div className="w-full md:text-right md:items-right mb-4">
+              <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
+                <b>Show Filters</b>
+              </button>
+              <span className="px-1"></span>
+              <ExportExcel reportName="subscription_plans" records={[reportHeaders, ...subscriptionPlans].map((subscriptionPlan, idx) => {
+                return { row_no: idx > 0 ? idx : 'Row No.', subscription_status: subscriptionPlan.subscription_status, currency_type: subscriptionPlan.currency_type, payment_amount: subscriptionPlan.payment_amount, created_at: getDateWithoutTime(subscriptionPlan.created_at) }
+              })} />
+              <span className="px-1"></span>
+              <ExportPDF reportName="subscription_plans" records={[reportHeaders, ...subscriptionPlans].map((subscriptionPlan, idx) => {
+                return { row_no: idx > 0 ? idx : 'Row No.', subscription_status: subscriptionPlan.subscription_status, currency_type: subscriptionPlan.currency_type, payment_amount: subscriptionPlan.payment_amount, created_at: getDateWithoutTime(subscriptionPlan.created_at) }
+              })} />
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <select
-                      value={selectedSubscriptionStatus}
-                      onChange={(e) => {
-                        setCurrentPage(FIRST_PAGE_NUMBER)
-                        setSelectedSubscriptionStatus(e.target.value)
-                      }}
-                      className="input-field"
-                    >
-                      <option value="">All Subscription Types</option>
-                      {SUBSCRIPTION_STATUSES.map(status => (
-                        <option key={status} value={status}>
-                          {shortenText(status, MAX_DROPDOWN_TEXT_LENGTH)}
-                        </option>
-                      ))}
-                    </select>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Subscription Type
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <select
-                      value={selectedCurrencyType}
-                      onChange={(e) => {
-                        setCurrentPage(FIRST_PAGE_NUMBER)
-                        setSelectedCurrencyType(e.target.value)
-                      }}
-                      className="input-field"
-                    >
-                      <option value="">All Currencies</option>
-                      {CURRENCY_TYPES.map(currency => (
-                        <option key={currency} value={currency}>
-                          {shortenText(currency, MAX_DROPDOWN_TEXT_LENGTH)}
-                        </option>
-                      ))}
-                    </select>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Currency
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Payment Amount
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
-                    <div className='w-full'>
-                      <select
-                        value={selectedStatus}
-                        onChange={(e) => {
-                          setCurrentPage(FIRST_PAGE_NUMBER)
-                          setSelectedStatus(e.target.value)
-                        }}
-                        className="input-field"
-                      >
-                        {RECORD_STATUSES.map(status => (
-                          <option key={status} value={status}>
-                            {status === ALL_OPTIONS ? 'All Statuses' : status}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    Record Status
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   </th>
                 </tr>
-              )}
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {subscriptionPlans.map((subscriptionPlan) => (
-                <tr key={subscriptionPlan.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{subscriptionPlan.subscription_status}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{subscriptionPlan.currency_type}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{subscriptionPlan.payment_amount}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(subscriptionPlan.status!)}`}>
-                      {subscriptionPlan.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-center space-x-2 items-center">
-                      <ActionsMenu
-                        actions={[
-                          {
-                            id: subscriptionPlan.id!,
-                            hideOption: selectedStatus === RecordStatus.ARCHIVED,
-                            icon: <PencilIcon className="h-4 w-4" />,
-                            label: 'Edit',
-                            class: "w-full text-primary-600 hover:text-primary-900",
-                            listener: handleEdit
-                          },
-                          {
-                            id: subscriptionPlan.id!,
-                            hideOption: selectedStatus !== RecordStatus.ACTIVE,
-                            icon: <TrashIcon className="h-4 w-4" />,
-                            label: 'Archive',
-                            class: "w-full text-red-600 hover:text-red-900",
-                            listener: () => {
-                              setCurrentActiveId(subscriptionPlan.id!)
-                              setIsArchiveConfirmationModalOpen(true)
-                            }
-                          },
-                          {
-                            id: subscriptionPlan.id!,
-                            hideOption: selectedStatus === RecordStatus.ACTIVE,
-                            icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
-                            label: 'Restore',
-                            class: "w-full text-yellow-600 hover:text-yellow-900",
-                            listener: () => {
-                              setCurrentActiveId(subscriptionPlan.id!)
-                              setIsRestoreConfirmationModalOpen(true)
-                            }
-                          },
-                        ]}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                {showFilters && (
+                  <tr>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedSubscriptionStatus}
+                        onChange={(e) => {
+                          setCurrentPage(FIRST_PAGE_NUMBER)
+                          setSelectedSubscriptionStatus(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        <option value="">All Subscription Types</option>
+                        {SUBSCRIPTION_STATUSES.map(status => (
+                          <option key={status} value={status}>
+                            {shortenText(status, MAX_DROPDOWN_TEXT_LENGTH)}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <select
+                        value={selectedCurrencyType}
+                        onChange={(e) => {
+                          setCurrentPage(FIRST_PAGE_NUMBER)
+                          setSelectedCurrencyType(e.target.value)
+                        }}
+                        className="input-field"
+                      >
+                        <option value="">All Currencies</option>
+                        {CURRENCY_TYPES.map(currency => (
+                          <option key={currency} value={currency}>
+                            {shortenText(currency, MAX_DROPDOWN_TEXT_LENGTH)}
+                          </option>
+                        ))}
+                      </select>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: 150 }}>
+                      <div className='w-full'>
+                        <select
+                          value={selectedStatus}
+                          onChange={(e) => {
+                            setCurrentPage(FIRST_PAGE_NUMBER)
+                            setSelectedStatus(e.target.value)
+                          }}
+                          className="input-field"
+                        >
+                          {RECORD_STATUSES.map(status => (
+                            <option key={status} value={status}>
+                              {status === ALL_OPTIONS ? 'All Statuses' : status}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </th>
+                  </tr>
+                )}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {subscriptionPlans.map((subscriptionPlan) => (
+                  <tr key={subscriptionPlan.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{subscriptionPlan.subscription_status}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{subscriptionPlan.currency_type}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{subscriptionPlan.payment_amount}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(subscriptionPlan.status!)}`}>
+                        {subscriptionPlan.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-medium">
+                      <div className="flex justify-center space-x-2 items-center">
+                        <ActionsMenu
+                          actions={[
+                            {
+                              id: subscriptionPlan.id!,
+                              hideOption: selectedStatus === RecordStatus.ARCHIVED,
+                              icon: <PencilIcon className="h-4 w-4" />,
+                              label: 'Edit',
+                              class: "w-full text-primary-600 hover:text-primary-900",
+                              listener: handleEdit
+                            },
+                            {
+                              id: subscriptionPlan.id!,
+                              hideOption: selectedStatus !== RecordStatus.ACTIVE,
+                              icon: <TrashIcon className="h-4 w-4" />,
+                              label: 'Archive',
+                              class: "w-full text-red-600 hover:text-red-900",
+                              listener: () => {
+                                setCurrentActiveId(subscriptionPlan.id!)
+                                setIsArchiveConfirmationModalOpen(true)
+                              }
+                            },
+                            {
+                              id: subscriptionPlan.id!,
+                              hideOption: selectedStatus === RecordStatus.ACTIVE,
+                              icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
+                              label: 'Restore',
+                              class: "w-full text-yellow-600 hover:text-yellow-900",
+                              listener: () => {
+                                setCurrentActiveId(subscriptionPlan.id!)
+                                setIsRestoreConfirmationModalOpen(true)
+                              }
+                            },
+                          ]}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination
+              currentPage={currentPage}
+              recordsPerPage={recordsPerPage}
+              totalRecordsCount={totalRecordsCount}
+              setCurrentPage={setCurrentPage}
+              setRecordsPerPage={setRecordsPerPage}
+            />
+          </div>
         </div>
-        <Pagination
-          currentPage={currentPage}
-          recordsPerPage={recordsPerPage}
-          totalRecordsCount={totalRecordsCount}
-          setCurrentPage={setCurrentPage}
-          setRecordsPerPage={setRecordsPerPage}
-        />
       </div>
 
       {/* SubscriptionPlan Modal */}

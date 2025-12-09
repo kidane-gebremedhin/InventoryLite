@@ -1,16 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { 
-  UserIcon, 
-  ShieldCheckIcon, 
+import {
+  UserIcon,
+  ShieldCheckIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline'
-import { triggerInsertSeedData } from '@/lib/server_actions/setting'
 
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import MiniLoading from '@/components/helpers/MiniLoading'
-import { RPC_FUNCTION, SettingSection } from '@/lib/Enums'
+import { SettingSection } from '@/lib/Enums'
 import { showErrorToast } from '@/lib/helpers/Helper'
 import { ConfirmationModal } from '@/components/helpers/ConfirmationModal'
 import { useLoadingContext } from '@/components/context_apis/LoadingProvider'
@@ -23,22 +22,18 @@ const tabs = [
 ]
 
 export default function SettingsPage() {
-  
+
   const [activeTab, setActiveTab] = useState(SettingSection.PROFILE)
   const [isDeleteUserAccountModalOpen, setIsDeleteUserAccountModalOpen] = useState(false)
 
   const { currentUser, signOut } = useAuthContext()
-  const {loading, setLoading} = useLoadingContext()
-
-  const insertSeedData = async () => {
-    triggerInsertSeedData();
-  }
+  const { loading, setLoading } = useLoadingContext()
 
   const handleDeleteUserAccount = async () => {
     try {
       // RPC call
       const { data, error } = await deleteUserAccount(currentUser.id);
-    
+
       if (error) {
         showErrorToast()
         return;
@@ -46,15 +41,15 @@ export default function SettingsPage() {
 
       await signOut();
     } catch (error: any) {
-        showErrorToast()
+      showErrorToast()
     } finally {
       setIsDeleteUserAccountModalOpen(false);
       setLoading(false)
     }
   }
 
-  if (!currentUser) return <MiniLoading />
-  
+  if (!currentUser) return <></>
+
   const renderTabContent = () => {
     switch (activeTab) {
       case SettingSection.PROFILE:
@@ -64,7 +59,7 @@ export default function SettingsPage() {
               <h3 className="text-lg font-medium text-gray-900">Profile Information</h3>
               <p className="text-sm text-gray-500">Your Google account information.</p>
             </div>
-            
+
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Full Name</label>
@@ -77,7 +72,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-500 mt-1">Managed by Google account</p>
               </div>
             </div>
-            
+
             <div className="text-center">
               <p className="text-sm text-gray-500">
                 To update your profile information, please visit your Google account settings.
@@ -96,17 +91,17 @@ export default function SettingsPage() {
               <h3 className="text-lg font-medium text-gray-900">Security Settings</h3>
               <p className="text-sm text-gray-500">Your account security is managed by Google.</p>
             </div>
-            
+
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-blue-900">Google Account Security</h4>
                 <p className="text-sm text-sky-400 mt-1">
-                  Your account security, including two-factor authentication and password management, 
+                  Your account security, including two-factor authentication and password management,
                   is handled by your Google account settings.
                 </p>
-                <a 
-                  href="https://myaccount.google.com/security" 
-                  target="_blank" 
+                <a
+                  href="https://myaccount.google.com/security"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-blue-600 hover:text-blue-500 mt-2 inline-block"
                 >
@@ -124,7 +119,7 @@ export default function SettingsPage() {
               <h3 className="text-lg font-medium text-gray-900">Application Preferences</h3>
               <p className="text-sm text-gray-500">Customize your application experience.</p>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Language</label>
@@ -149,15 +144,9 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:justify-between">
+      <div className="grid grid-cols-1">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600">Manage your account settings and preferences.</p>
-        <div></div>
-        <button className="btn-primary"
-          onClick={insertSeedData}
-        >
-          Insert Seed Data
-        </button>
       </div>
 
       {/* Mobile Sidebar */}
@@ -167,11 +156,10 @@ export default function SettingsPage() {
             <button
               key={tab.name}
               onClick={() => setActiveTab(tab.name)}
-              className={`items-center px-3 py-2 text-sm font-medium rounded-md ${
-                activeTab === tab.name
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
+              className={`items-center px-3 py-2 text-sm font-medium rounded-md ${activeTab === tab.name
+                ? 'bg-primary-100 text-primary-700'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
             >
               <tab.icon className="mr-3 h-5 w-5" />
               {tab.name}
@@ -187,11 +175,10 @@ export default function SettingsPage() {
               <button
                 key={tab.name}
                 onClick={() => setActiveTab(tab.name)}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  activeTab === tab.name
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${activeTab === tab.name
+                  ? 'bg-primary-100 text-primary-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
               >
                 <tab.icon className="mr-3 h-5 w-5" />
                 {tab.name}

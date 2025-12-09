@@ -147,7 +147,7 @@ export default function CompleteProfile() {
             </label>
             <input
               type="text"
-              value={formData.name}
+              value={formData.name ?? ''}
               onChange={(e) => handleInputChange('name', e.target.value)}
               className="input-field"
               required
@@ -159,7 +159,7 @@ export default function CompleteProfile() {
               Description
             </label>
             <textarea
-              value={formData.description}
+              value={formData.description ?? ''}
               onChange={(e) => handleInputChange('description', e.target.value)}
               className="input-field"
               rows={3}

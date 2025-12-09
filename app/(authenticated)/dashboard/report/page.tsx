@@ -39,11 +39,11 @@ export default function App() {
   // Pagination
   const [recordsPerPage, setRecordsPerPage] = useState(REPORTS_PER_PAGE_OPTIONS[0])
   // Global States
-  const {loading, setLoading} = useLoadingContext()
+  const { loading, setLoading } = useLoadingContext()
 
-  const inventoryTurnoverReportHeaders = {item_name: 'Inventory Item', sold_quantity: 'Sale Quantity'};
-  const pendingOrdersReportHeaders = {item_name: 'Inventory Item', total_ordered_quantity: 'Total Order Quantity', order_status: 'Order Status'};
-  const inventoryAgingReportHeaders = {item_name: 'Inventory Item', order_number: 'Order Number', item_quantity: 'Quantity', days_in_stock: 'Days in Stock', order_received_date: 'Order Received Date'};
+  const inventoryTurnoverReportHeaders = { item_name: 'Inventory Item', sold_quantity: 'Sale Quantity' };
+  const pendingOrdersReportHeaders = { item_name: 'Inventory Item', total_ordered_quantity: 'Total Order Quantity', order_status: 'Order Status' };
+  const inventoryAgingReportHeaders = { item_name: 'Inventory Item', order_number: 'Order Number', item_quantity: 'Quantity', days_in_stock: 'Days in Stock', order_received_date: 'Order Received Date' };
 
   const reportTypes = [
     { name: 'Inventory Turnover', type: ReportType.INVENTORY_TURNOVER },
@@ -53,7 +53,7 @@ export default function App() {
     { name: 'Canceled Purchase Orders', type: ReportType.CANCELED_PURCHASE_ORDERS },
     { name: 'Inventory Aging Report', type: ReportType.INVENTORY_AGING }
   ]
-  
+
   useEffect(() => {
     if (selectedReport !== ReportType.INVENTORY_TURNOVER) {
       return
@@ -65,9 +65,9 @@ export default function App() {
       try {
         const searchParams = {
           records_per_page: recordsPerPage,
-          ...selectedInventoryItemId && {selected_item_id: selectedInventoryItemId},
-          ...fulfilledDateStart && {fulfilled_date_start: convertToUTC(setEarliestTimeOfDay(fulfilledDateStart))},
-          ...fulfilledDateEnd && {fulfilled_date_end: convertToUTC(setLatestTimeOfDay(fulfilledDateEnd))}
+          ...selectedInventoryItemId && { selected_item_id: selectedInventoryItemId },
+          ...fulfilledDateStart && { fulfilled_date_start: convertToUTC(setEarliestTimeOfDay(fulfilledDateStart)) },
+          ...fulfilledDateEnd && { fulfilled_date_end: convertToUTC(setLatestTimeOfDay(fulfilledDateEnd)) }
         }
         const { data, error } = await makeRpcCall(RPC_FUNCTION.INVENTORY_TURNOVER, searchParams)
         if (error) {
@@ -76,7 +76,7 @@ export default function App() {
         }
         setInventoryTurnoverReport(data)
       } catch (error: any) {
-          showErrorToast()
+        showErrorToast()
       } finally {
         setLoading(false)
       }
@@ -87,9 +87,9 @@ export default function App() {
 
   useEffect(() => {
     const outstandingOrderPeports = [
-      ReportType.PENDING_SALES_ORDERS, 
+      ReportType.PENDING_SALES_ORDERS,
       ReportType.CANCELED_SALES_ORDERS,
-      ReportType.PENDING_PURCHASE_ORDERS, 
+      ReportType.PENDING_PURCHASE_ORDERS,
       ReportType.CANCELED_PURCHASE_ORDERS
     ]
     if (!outstandingOrderPeports.includes(selectedReport)) {
@@ -107,9 +107,9 @@ export default function App() {
         const searchParams = {
           target_order_status: orderStatus,
           records_per_page: recordsPerPage,
-          ...selectedInventoryItemId && {selected_item_id: selectedInventoryItemId},
-          ...expectedDateStart && {expected_date_start: convertToUTC(setEarliestTimeOfDay(expectedDateStart))},
-          ...expectedDateEnd && {expected_date_end: convertToUTC(setLatestTimeOfDay(expectedDateEnd))}
+          ...selectedInventoryItemId && { selected_item_id: selectedInventoryItemId },
+          ...expectedDateStart && { expected_date_start: convertToUTC(setEarliestTimeOfDay(expectedDateStart)) },
+          ...expectedDateEnd && { expected_date_end: convertToUTC(setLatestTimeOfDay(expectedDateEnd)) }
         }
         const { data, error } = await makeRpcCall(rpcFunctionName, searchParams)
         if (error) {
@@ -118,7 +118,7 @@ export default function App() {
         }
         setPendingOrdersReport(data)
       } catch (error: any) {
-          showErrorToast()
+        showErrorToast()
       } finally {
         setLoading(false)
       }
@@ -138,10 +138,10 @@ export default function App() {
       try {
         const searchParams = {
           records_per_page: recordsPerPage,
-          ...selectedInventoryItemId && {selected_item_id: selectedInventoryItemId},
-          ...orderNumber && {selected_order_number: orderNumber},
-          ...receivedDateStart && {received_date_start: convertToUTC(setEarliestTimeOfDay(receivedDateStart))},
-          ...receivedDateEnd && {received_date_end: convertToUTC(setLatestTimeOfDay(receivedDateEnd))}
+          ...selectedInventoryItemId && { selected_item_id: selectedInventoryItemId },
+          ...orderNumber && { selected_order_number: orderNumber },
+          ...receivedDateStart && { received_date_start: convertToUTC(setEarliestTimeOfDay(receivedDateStart)) },
+          ...receivedDateEnd && { received_date_end: convertToUTC(setLatestTimeOfDay(receivedDateEnd)) }
         }
         const { data, error } = await makeRpcCall(RPC_FUNCTION.INVENTORY_AGING, searchParams)
         if (error) {
@@ -150,7 +150,7 @@ export default function App() {
         }
         setInventoryAgingReport(data)
       } catch (error: any) {
-          showErrorToast()
+        showErrorToast()
       } finally {
         setLoading(false)
       }
@@ -168,10 +168,10 @@ export default function App() {
           showServerErrorToast(error.message)
         }
 
-        const selectableInventoryItems: InventoryItem[] = [{id: ALL_OPTIONS, name: ''}, ...data!]
+        const selectableInventoryItems: InventoryItem[] = [{ id: ALL_OPTIONS, name: '' }, ...data!]
         setInventoryItems(selectableInventoryItems)
       } catch (error: any) {
-          showErrorToast()
+        showErrorToast()
       } finally {
         setLoading(false)
       }
@@ -209,24 +209,24 @@ export default function App() {
     switch (selectedReport) {
       case ReportType.INVENTORY_TURNOVER:
         return (
-          <div>
-            <div className="overflow-x-auto">
+          <div className="w-full overflow-x-scroll p-4">
+            <div className="w-[1000px]">
               <h2 className="text-2xl font-bold mb-4 text-gray-800">Inventory Turnover Report</h2>
               <p className="mb-6 text-gray-600">Items sorted by sale frequency (highest first). {fulfilledDateStart && (<span><b>Date:</b> <u>{formatDateToYYMMDD(fulfilledDateStart)}</u></span>)} {fulfilledDateEnd && (<span><b>to</b> <u>{formatDateToYYMMDD(fulfilledDateEnd)}</u></span>)}</p>
-              <div className="w-full text-right items-right mb-4">
-                <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
+              <div className="w-full md:text-right md:items-right mb-4">
+                <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
                   <b>Show Filters</b>
                 </button>
                 <span className="px-1"></span>
                 <ExportExcel reportName="Inventory Turnover" records={[inventoryTurnoverReportHeaders, ...inventoryTurnoverReport]
-                .map((entry, idx) => {
-                  return {row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, sold_quantity: entry.sold_quantity}
-                })} />
+                  .map((entry, idx) => {
+                    return { row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, sold_quantity: entry.sold_quantity }
+                  })} />
                 <span className="px-1"></span>
                 <ExportPDF reportName="Inventory Turnover" records={[inventoryTurnoverReportHeaders, ...inventoryTurnoverReport]
-                .map((entry, idx) => {
-                  return {row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, sold_quantity: entry.sold_quantity}
-                })} />
+                  .map((entry, idx) => {
+                    return { row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, sold_quantity: entry.sold_quantity }
+                  })} />
               </div>
               <table className="min-w-full bg-white rounded-lg shadow-md">
                 <thead className="bg-gray-200">
@@ -235,36 +235,36 @@ export default function App() {
                     <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Frequency/Fulfilled Date</th>
                   </tr>
                   {showFilters && (
-                  <tr className="card">
-                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <select
-                        value={selectedInventoryItemId}
-                        onChange={(e) => {
-                          setSelectedInventoryItem(e.target.value)
-                        }}
-                        className="input-field"
-                      >
-                        {inventoryItems.map(inventoryItem => (
-                          <option key={inventoryItem.id} value={inventoryItem.id}>
-                            {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                          </option>
-                        ))}
-                      </select>
-                    </th>
-                    <th style={{maxWidth: 30}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <DatePicker
-                        selected={fulfilledDateStart}
-                        onChange={onFulfilledDateRangeChange}
-                        startDate={fulfilledDateStart}
-                        endDate={fulfilledDateEnd}
-                        selectsRange
-                        monthsShown={2}
-                        placeholderText="Select date range"
-                        isClearable={true}
-                        className="input-field"
-                      />
-                    </th>
-                  </tr>
+                    <tr className="card">
+                      <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <select
+                          value={selectedInventoryItemId}
+                          onChange={(e) => {
+                            setSelectedInventoryItem(e.target.value)
+                          }}
+                          className="input-field"
+                        >
+                          {inventoryItems.map(inventoryItem => (
+                            <option key={inventoryItem.id} value={inventoryItem.id}>
+                              {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th style={{ maxWidth: 30 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <DatePicker
+                          selected={fulfilledDateStart}
+                          onChange={onFulfilledDateRangeChange}
+                          startDate={fulfilledDateStart}
+                          endDate={fulfilledDateEnd}
+                          selectsRange
+                          monthsShown={2}
+                          placeholderText="Select date range"
+                          isClearable={true}
+                          className="input-field"
+                        />
+                      </th>
+                    </tr>
                   )}
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -278,8 +278,8 @@ export default function App() {
                   })}
                 </tbody>
               </table>
+              <RecordsPerPage actualRecords={inventoryTurnoverReport.length} recordsPerPage={recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
             </div>
-            <RecordsPerPage  actualRecords={inventoryTurnoverReport.length} recordsPerPage = {recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
           </div>
         )
       case ReportType.PENDING_SALES_ORDERS:
@@ -287,25 +287,25 @@ export default function App() {
       case ReportType.PENDING_PURCHASE_ORDERS:
       case ReportType.CANCELED_PURCHASE_ORDERS:
         return (
-          <div>
-            <div className="overflow-x-auto">
+          <div className="w-full overflow-x-scroll p-4">
+            <div className="w-[1000px]">
               <h2 className="text-2xl font-bold mb-4 text-gray-800">
                 {reportTypes.find(reportType => reportType.type.toString() === selectedReport)?.name}
               </h2>
               <p className="mb-6 text-gray-600">Items sorted by {selectedReport === ReportType.PENDING_SALES_ORDERS ? 'demand' : ''} quantity (highest first). {expectedDateStart && (<span><b>Date:</b> <u>{formatDateToYYMMDD(expectedDateStart)}</u></span>)} {expectedDateEnd && (<span><b>to</b> <u>{formatDateToYYMMDD(expectedDateEnd)}</u></span>)}</p>
-              <div className="w-full text-right items-right mb-4">
-                <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
+              <div className="w-full md:text-right md:items-right mb-4">
+                <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
                   <b>Show Filters</b>
                 </button>
                 <span className="px-1"></span>
                 <ExportExcel reportName="Pending Orders" records={[pendingOrdersReportHeaders, ...pendingOrdersReport]
                   .map((entry, idx) => {
-                    return {row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, total_ordered_quantity: entry.total_ordered_quantity, order_status: entry.order_status}
+                    return { row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, total_ordered_quantity: entry.total_ordered_quantity, order_status: entry.order_status }
                   })} />
                 <span className="px-1"></span>
                 <ExportPDF reportName="Pending Orders" records={[pendingOrdersReportHeaders, ...pendingOrdersReport]
                   .map((entry, idx) => {
-                    return {row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, total_ordered_quantity: entry.total_ordered_quantity, order_status: entry.order_status}
+                    return { row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, total_ordered_quantity: entry.total_ordered_quantity, order_status: entry.order_status }
                   })} />
               </div>
               <table className="min-w-full bg-white rounded-lg shadow-md">
@@ -316,36 +316,36 @@ export default function App() {
                     <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Date</th>
                   </tr>
                   {showFilters && (
-                  <tr className="card">
-                    <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <select
-                        value={selectedInventoryItemId}
-                        onChange={(e) => {
-                          setSelectedInventoryItem(e.target.value)
-                        }}
-                        className="input-field"
-                      >
-                        {inventoryItems.map(inventoryItem => (
-                          <option key={inventoryItem.id} value={inventoryItem.id}>
-                            {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                          </option>
-                        ))}
-                      </select>
-                    </th>
-                    <th colSpan={2} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <DatePicker
-                        selected={expectedDateStart}
-                        onChange={onExpectedDateRangeChange}
-                        startDate={expectedDateStart}
-                        endDate={expectedDateEnd}
-                        selectsRange
-                        monthsShown={2}
-                        placeholderText="Select date range"
-                        isClearable={true}
-                        className="input-field"
-                      />
-                    </th>
-                  </tr>
+                    <tr className="card">
+                      <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <select
+                          value={selectedInventoryItemId}
+                          onChange={(e) => {
+                            setSelectedInventoryItem(e.target.value)
+                          }}
+                          className="input-field"
+                        >
+                          {inventoryItems.map(inventoryItem => (
+                            <option key={inventoryItem.id} value={inventoryItem.id}>
+                              {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th colSpan={2} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <DatePicker
+                          selected={expectedDateStart}
+                          onChange={onExpectedDateRangeChange}
+                          startDate={expectedDateStart}
+                          endDate={expectedDateEnd}
+                          selectsRange
+                          monthsShown={2}
+                          placeholderText="Select date range"
+                          isClearable={true}
+                          className="input-field"
+                        />
+                      </th>
+                    </tr>
                   )}
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -360,29 +360,29 @@ export default function App() {
                   })}
                 </tbody>
               </table>
+              <RecordsPerPage actualRecords={pendingOrdersReport.length} recordsPerPage={recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
             </div>
-            <RecordsPerPage actualRecords={pendingOrdersReport.length} recordsPerPage = {recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
           </div>
         )
       case ReportType.INVENTORY_AGING:
         return (
-          <div>
-            <div className="overflow-x-auto">
+          <div className="w-full overflow-x-scroll p-4">
+            <div className="w-[1000px]">
               <h2 className="text-2xl font-bold mb-4 text-gray-800">Inventory Aging Report</h2>
               <p className="mb-6 text-gray-600">Items sorted by days in stock (oldest first). {receivedDateStart && (<span><b>Date:</b> <u>{formatDateToYYMMDD(receivedDateStart)}</u></span>)} {receivedDateEnd && (<span><b>to</b> <u>{formatDateToYYMMDD(receivedDateEnd)}</u></span>)}</p>
-              <div className="w-full text-right items-right mb-4">
-                <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters);} }>
+              <div className="w-full md:text-right md:items-right mb-4">
+                <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
                   <b>Show Filters</b>
                 </button>
                 <span className="px-1"></span>
                 <ExportExcel reportName="Inventory Aging" records={[inventoryAgingReportHeaders, ...inventoryAgingReport]
                   .map((entry, idx) => {
-                    return {row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, order_number: entry.order_number, item_quantity: entry.item_quantity, days_in_stock: entry.days_in_stock, received_date: entry.order_received_date}
+                    return { row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, order_number: entry.order_number, item_quantity: entry.item_quantity, days_in_stock: entry.days_in_stock, received_date: entry.order_received_date }
                   })} />
                 <span className="px-1"></span>
                 <ExportPDF reportName="Inventory Aging" records={[inventoryAgingReportHeaders, ...inventoryAgingReport]
                   .map((entry, idx) => {
-                    return {row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, order_number: entry.order_number, item_quantity: entry.item_quantity, days_in_stock: entry.days_in_stock, received_date: entry.order_received_date}
+                    return { row_no: idx > 0 ? idx : 'Row No.', item_name: entry.item_name, order_number: entry.order_number, item_quantity: entry.item_quantity, days_in_stock: entry.days_in_stock, received_date: entry.order_received_date }
                   })} />
               </div>
               <table className="min-w-full bg-white rounded-lg shadow-md">
@@ -395,60 +395,60 @@ export default function App() {
                     <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received Date</th>
                   </tr>
                   {showFilters && (
-                  <tr className="card">
-                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <select
-                      value={selectedInventoryItemId}
-                      onChange={(e) => {
-                        setSelectedInventoryItem(e.target.value)
-                      }}
-                      className="input-field"
-                    >
-                      {inventoryItems.map(inventoryItem => (
-                        <option key={inventoryItem.id} value={inventoryItem.id}>
-                          {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
-                        </option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search & Press ENTER"
-                        value={orderNumberTmp}
-                        onChange={(e) => {
-                          setOrderNumberTmp(e.target.value)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
-                            handleTextSearch();
-                          }
-                        }}
-                        onBlur={handleTextSearch}
-                        className="input-field pl-10"
-                      />
-                    </div>
-                  </th>
-                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  </th>
-                  <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  </th>
-                  <th style={{maxWidth: 300}} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <DatePicker
-                      selected={receivedDateStart}
-                      onChange={onReceivedDateRangeChange}
-                      startDate={receivedDateStart}
-                      endDate={receivedDateEnd}
-                      selectsRange
-                      monthsShown={2}
-                      placeholderText="Select date range"
-                      isClearable={true}
-                      className="input-field"
-                    />
-                  </th>
-                  </tr>
+                    <tr className="card">
+                      <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <select
+                          value={selectedInventoryItemId}
+                          onChange={(e) => {
+                            setSelectedInventoryItem(e.target.value)
+                          }}
+                          className="input-field"
+                        >
+                          {inventoryItems.map(inventoryItem => (
+                            <option key={inventoryItem.id} value={inventoryItem.id}>
+                              {inventoryItem.id === ALL_OPTIONS ? 'All Items' : shortenText(inventoryItem.name, MAX_DROPDOWN_TEXT_LENGTH)}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <div className="relative">
+                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Search & Press ENTER"
+                            value={orderNumberTmp}
+                            onChange={(e) => {
+                              setOrderNumberTmp(e.target.value)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                                handleTextSearch();
+                              }
+                            }}
+                            onBlur={handleTextSearch}
+                            className="input-field pl-10"
+                          />
+                        </div>
+                      </th>
+                      <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      </th>
+                      <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      </th>
+                      <th style={{ maxWidth: 300 }} className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <DatePicker
+                          selected={receivedDateStart}
+                          onChange={onReceivedDateRangeChange}
+                          startDate={receivedDateStart}
+                          endDate={receivedDateEnd}
+                          selectsRange
+                          monthsShown={2}
+                          placeholderText="Select date range"
+                          isClearable={true}
+                          className="input-field"
+                        />
+                      </th>
+                    </tr>
                   )}
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -461,7 +461,7 @@ export default function App() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full  bg-yellow-100 text-gray-600">
                             {report.days_in_stock}
-                        </span>
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDateToLocalDate(report.order_received_date)}</td>
                       </tr>
@@ -469,8 +469,8 @@ export default function App() {
                   })}
                 </tbody>
               </table>
+              <RecordsPerPage actualRecords={inventoryAgingReport.length} recordsPerPage={recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
             </div>
-            <RecordsPerPage actualRecords={inventoryAgingReport.length} recordsPerPage = {recordsPerPage} setRecordsPerPage={setRecordsPerPage} />
           </div>
         )
       default:
@@ -486,21 +486,21 @@ export default function App() {
           KPI's
         </div>
         <nav className="flex-1 space-y-1 px-0 pt-6">
-            {reportTypes.map((report) => {
-              const isActive = selectedReport === report.type
-              return (
-                <Link
-                  key={report.name}
-                  className={clsx(
-                    'sidebar-link',
-                    isActive && 'bg-primary-100 text-primary-700 border-primary-500'
-                  )}
-                  onClick={() => setSelectedReport(report.type)} href={''}                >
-                  {report.name}
-                </Link>
-              )
-            })}
-          </nav>
+          {reportTypes.map((report) => {
+            const isActive = selectedReport === report.type
+            return (
+              <Link
+                key={report.name}
+                className={clsx(
+                  'sidebar-link',
+                  isActive && 'bg-primary-100 text-primary-700 border-primary-500'
+                )}
+                onClick={() => setSelectedReport(report.type)} href={''}                >
+                {report.name}
+              </Link>
+            )
+          })}
+        </nav>
       </div>
       {/* Main Content */}
       <main className="flex-1 p-2">

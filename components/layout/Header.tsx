@@ -27,21 +27,21 @@ export default function Header() {
   }
 
   if (loading || !currentUser) {
-    return <MiniLoading />
+    return <></>
   }
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-gray-900 pl-9 md:pl-0">
             Welcome back, {capitalizeFirstLetter(currentUser.fullName.split(" ")[0])}.
           </h2>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center md:space-x-4">
           <FeedbackNotification />
-          <button className="text-gray-400 hover:text-gray-600">
+          <button className="text-gray-400 hover:text-gray-600 mx-2">
             <BellIcon className="h-6 w-6" />
           </button>
 

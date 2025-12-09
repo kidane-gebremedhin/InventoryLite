@@ -14,7 +14,7 @@ interface FeedbackNotificationProps {
 
 export function FeedbackNotification({ className = '' }: FeedbackNotificationProps) {
   const [unreadCount, setUnreadCount] = useState(0)
-  const {currentUser} = useAuthContext()
+  const { currentUser } = useAuthContext()
 
   useEffect(() => {
     if (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN) {
@@ -35,8 +35,8 @@ export function FeedbackNotification({ className = '' }: FeedbackNotificationPro
   if (currentUser?.subscriptionInfo?.role !== UserRole.SUPER_ADMIN) return <></>
 
   return (
-    <Link 
-      href={ROUTE_PATH.FEEDBACK} 
+    <Link
+      href={ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT}
       className={`relative p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 ${className}`}
     >
       <ChatBubbleLeftRightIcon className="h-6 w-6" />

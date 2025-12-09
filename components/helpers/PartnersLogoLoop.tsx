@@ -17,7 +17,7 @@ const imageLogos = [
 
 export default function PartnersLogoLoop() {
   return (
-    <div style={{ height: '100px', position: 'relative', overflow: 'hidden'}}>
+    <div className="pt-5" style={{ height: '100px', position: 'relative', overflow: 'hidden' }}>
       <LogoLoop
         logos={techLogos}
         speed={120}

@@ -116,15 +116,18 @@ export default function FeedbackPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Feedback & Support</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn-primary flex items-center"
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Submit Feedback
-        </button>
+      <div className="w-full md:w-5/6">
+        <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Feedback & Support</h1>
+
+          <button
+            onClick={() => setShowForm(true)}
+            className="btn-primary flex items-center"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Submit Feedback
+          </button>
+        </div>
       </div>
 
       {/* Quick Rating Component */}
@@ -248,182 +251,187 @@ export default function FeedbackPage() {
         </div>
       )}
 
-      {/* Filter */}
-      <div>
-        <div className="w-full text-right items-right mb-4">
-          <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
-            <b>Show Filters</b>
-          </button>
-          <span className="px-1"></span>
-          <ExportExcel reportName="Feedbacks" records={[reportHeaders, ...feedbacks].map((feedback, idx) => {
-            return { row_no: idx > 0 ? idx : 'Row No.', subject: feedback.subject, rating: feedback.rating, category: feedback.category, priority: feedback.priority, status: feedback.status, created_at: getDateWithoutTime(feedback.created_at), admin_response: feedback.admin_response }
-          })} />
-          <span className="px-1"></span>
-          <ExportPDF reportName="Feedbacks" records={[reportHeaders, ...feedbacks].map((feedback, idx) => {
-            return { row_no: idx > 0 ? idx : 'Row No.', subject: feedback.subject, rating: feedback.rating, category: feedback.category, priority: feedback.priority, status: feedback.status, created_at: getDateWithoutTime(feedback.created_at), admin_response: feedback.admin_response }
-          })} />
-        </div>
-      </div>
-      {showFilters && (
-        <div className='w-full flex'>
-          <div className='w-1/4 flex'>
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by subject or message... and press ENTER key"
-                value={searchTermTemp}
-                onChange={(e) => {
-                  setSearchTermTemp(e.target.value)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
-                    handleTextSearch();
-                  }
-                }}
-                onBlur={handleTextSearch}
-                className="input-field pl-10 mr-4"
-              />
+
+      <div className="w-full overflow-x-scroll p-4">
+        <div className="w-[1000px]">
+          {/* Filter */}
+          <div>
+            <div className="w-full md:text-right md:items-right mb-4">
+              <button className="bg-gray-600 px-4 py-1 text-sm h-7 text-white rounded items-center" onClick={() => { setShowFilters(!showFilters); }}>
+                <b>Show Filters</b>
+              </button>
+              <span className="px-1"></span>
+              <ExportExcel reportName="Feedbacks" records={[reportHeaders, ...feedbacks].map((feedback, idx) => {
+                return { row_no: idx > 0 ? idx : 'Row No.', subject: feedback.subject, rating: feedback.rating, category: feedback.category, priority: feedback.priority, status: feedback.status, created_at: getDateWithoutTime(feedback.created_at), admin_response: feedback.admin_response }
+              })} />
+              <span className="px-1"></span>
+              <ExportPDF reportName="Feedbacks" records={[reportHeaders, ...feedbacks].map((feedback, idx) => {
+                return { row_no: idx > 0 ? idx : 'Row No.', subject: feedback.subject, rating: feedback.rating, category: feedback.category, priority: feedback.priority, status: feedback.status, created_at: getDateWithoutTime(feedback.created_at), admin_response: feedback.admin_response }
+              })} />
             </div>
           </div>
-          <div className='w-1/6 flex'>
-            <select
-              value={selectedFeedbackRating}
-              onChange={(e) => {
-                setCurrentPage(FIRST_PAGE_NUMBER)
-                setSelectedFeedbackRating(parseInt(e.target.value))
-              }}
-              className="input-field mx-2"
-            >
-              <option value="">All Ratings</option>
-              {RATING_STARS.map(feedbackStar => (
-                <option key={feedbackStar} value={feedbackStar}>
-                  {feedbackStar}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className='w-1/6 flex'>
-            <select
-              value={selectedFeedbackCategory}
-              onChange={(e) => {
-                setCurrentPage(FIRST_PAGE_NUMBER)
-                setSelectedFeedbackCategory(e.target.value)
-              }}
-              className="input-field mx-2"
-            >
-              <option value="">All Categories</option>
-              {FEEDBACK_CATEGORIES.map(feedbackCategory => (
-                <option key={feedbackCategory.value} value={feedbackCategory.value}>
-                  {feedbackCategory.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className='w-1/6 flex'>
-            <select
-              value={selectedFeedbackPriority}
-              onChange={(e) => {
-                setCurrentPage(FIRST_PAGE_NUMBER)
-                setSelectedFeedbackPriority(e.target.value)
-              }}
-              className="input-field mx-2"
-            >
-              <option value="">All Priorities</option>
-              {FEEDBACK_PRIORITIES.map(feedbackPriority => (
-                <option key={feedbackPriority.value} value={feedbackPriority.value}>
-                  {feedbackPriority.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className='w-1/6 flex'>
-            <select
-              value={selectedFeedbackStatus}
-              onChange={(e) => {
-                setCurrentPage(FIRST_PAGE_NUMBER)
-                setSelectedFeedbackStatus(e.target.value)
-              }}
-              className="input-field mx-2"
-            >
-              <option value="">All Statuses</option>
-              {FEEDBACK_STATUSES.map(feedbackStatus => (
-                <option key={feedbackStatus.value} value={feedbackStatus.value}>
-                  {feedbackStatus.label}
-                </option>
-              ))}
-            </select>
+          {showFilters && (
+            <div className='w-full flex'>
+              <div className='w-1/4 flex'>
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by subject or message... and press ENTER key"
+                    value={searchTermTemp}
+                    onChange={(e) => {
+                      setSearchTermTemp(e.target.value)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === TEXT_SEARCH_TRIGGER_KEY) {
+                        handleTextSearch();
+                      }
+                    }}
+                    onBlur={handleTextSearch}
+                    className="input-field pl-10 mr-4"
+                  />
+                </div>
+              </div>
+              <div className='w-1/6 flex'>
+                <select
+                  value={selectedFeedbackRating}
+                  onChange={(e) => {
+                    setCurrentPage(FIRST_PAGE_NUMBER)
+                    setSelectedFeedbackRating(parseInt(e.target.value))
+                  }}
+                  className="input-field mx-2"
+                >
+                  <option value="">All Ratings</option>
+                  {RATING_STARS.map(feedbackStar => (
+                    <option key={feedbackStar} value={feedbackStar}>
+                      {feedbackStar}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className='w-1/6 flex'>
+                <select
+                  value={selectedFeedbackCategory}
+                  onChange={(e) => {
+                    setCurrentPage(FIRST_PAGE_NUMBER)
+                    setSelectedFeedbackCategory(e.target.value)
+                  }}
+                  className="input-field mx-2"
+                >
+                  <option value="">All Categories</option>
+                  {FEEDBACK_CATEGORIES.map(feedbackCategory => (
+                    <option key={feedbackCategory.value} value={feedbackCategory.value}>
+                      {feedbackCategory.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className='w-1/6 flex'>
+                <select
+                  value={selectedFeedbackPriority}
+                  onChange={(e) => {
+                    setCurrentPage(FIRST_PAGE_NUMBER)
+                    setSelectedFeedbackPriority(e.target.value)
+                  }}
+                  className="input-field mx-2"
+                >
+                  <option value="">All Priorities</option>
+                  {FEEDBACK_PRIORITIES.map(feedbackPriority => (
+                    <option key={feedbackPriority.value} value={feedbackPriority.value}>
+                      {feedbackPriority.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className='w-1/6 flex'>
+                <select
+                  value={selectedFeedbackStatus}
+                  onChange={(e) => {
+                    setCurrentPage(FIRST_PAGE_NUMBER)
+                    setSelectedFeedbackStatus(e.target.value)
+                  }}
+                  className="input-field mx-2"
+                >
+                  <option value="">All Statuses</option>
+                  {FEEDBACK_STATUSES.map(feedbackStatus => (
+                    <option key={feedbackStatus.value} value={feedbackStatus.value}>
+                      {feedbackStatus.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          {/* Feedback List */}
+          <div className="space-y-4">
+            {feedbacks.length === 0 ? (
+              <div className="text-center py-12">
+                <ChatBubbleLeftRightIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No feedback yet</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Be the first to submit feedback and help us improve!
+                </p>
+              </div>
+            ) : (
+              <>
+                {
+                  feedbacks.map((feedback) => (
+                    <div key={feedback.id} className="card">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackCategoryColor(feedback.category)}`}>
+                            {getFeedbackCategoryLabel(feedback.category)}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackPriorityColor(feedback.priority)}`}>
+                            {feedback.priority}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackStatusColor(feedback.status)}`}>
+                            {feedback.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {formatDateToLocalDate(feedback.created_at)}
+                        </div>
+                      </div>
+
+                      <h3 className="font-medium text-gray-900 mb-2">{feedback.subject}</h3>
+                      <p className="text-gray-600 mb-3">{feedback.message}</p>
+
+                      {feedback.rating && (
+                        <div className="flex items-center mb-3">
+                          <span className="text-sm text-gray-500 mr-2">Rating:</span>
+                          <div className="flex">
+                            {RATING_STARS.map((star) => (
+                              <StarIconSolid
+                                key={star}
+                                className={`h-4 w-4 ${star <= feedback.rating! ? 'text-yellow-400' : 'text-gray-300'}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {feedback.admin_response && (
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <h4 className="font-medium text-gray-900 mb-1">Admin Response:</h4>
+                          <p className="text-gray-600 text-sm">{feedback.admin_response}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                }
+
+                <Pagination
+                  currentPage={currentPage}
+                  recordsPerPage={recordsPerPage}
+                  totalRecordsCount={totalRecordsCount}
+                  setCurrentPage={setCurrentPage}
+                  setRecordsPerPage={setRecordsPerPage}
+                />
+              </>
+            )}
           </div>
         </div>
-      )}
-      {/* Feedback List */}
-      <div className="space-y-4">
-        {feedbacks.length === 0 ? (
-          <div className="text-center py-12">
-            <ChatBubbleLeftRightIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No feedback yet</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Be the first to submit feedback and help us improve!
-            </p>
-          </div>
-        ) : (
-          <>
-            {
-              feedbacks.map((feedback) => (
-                <div key={feedback.id} className="card">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackCategoryColor(feedback.category)}`}>
-                        {getFeedbackCategoryLabel(feedback.category)}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackPriorityColor(feedback.priority)}`}>
-                        {feedback.priority}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFeedbackStatusColor(feedback.status)}`}>
-                        {feedback.status.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {formatDateToLocalDate(feedback.created_at)}
-                    </div>
-                  </div>
-
-                  <h3 className="font-medium text-gray-900 mb-2">{feedback.subject}</h3>
-                  <p className="text-gray-600 mb-3">{feedback.message}</p>
-
-                  {feedback.rating && (
-                    <div className="flex items-center mb-3">
-                      <span className="text-sm text-gray-500 mr-2">Rating:</span>
-                      <div className="flex">
-                        {RATING_STARS.map((star) => (
-                          <StarIconSolid
-                            key={star}
-                            className={`h-4 w-4 ${star <= feedback.rating! ? 'text-yellow-400' : 'text-gray-300'}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {feedback.admin_response && (
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <h4 className="font-medium text-gray-900 mb-1">Admin Response:</h4>
-                      <p className="text-gray-600 text-sm">{feedback.admin_response}</p>
-                    </div>
-                  )}
-                </div>
-              ))
-            }
-
-            <Pagination
-              currentPage={currentPage}
-              recordsPerPage={recordsPerPage}
-              totalRecordsCount={totalRecordsCount}
-              setCurrentPage={setCurrentPage}
-              setRecordsPerPage={setRecordsPerPage}
-            />
-          </>
-        )}
       </div>
     </div>
   )
