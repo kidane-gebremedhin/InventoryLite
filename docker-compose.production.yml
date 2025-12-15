@@ -1,0 +1,32 @@
+services:
+  inventorylite:
+    # Build the image using the Dockerfile in the current directory
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    # Map the container's port 3000 to the host's port 3000
+    ports:
+      - "5000:3000"
+    # Restart the container if it stops
+    restart: always
+    # Set environment variables (for example, a database URL)
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+    # Set volumes for hot reload while preventing dependency override
+    volumes:
+      - .:/app
+      - /app/node_modules
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  redis_data:

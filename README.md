@@ -11,7 +11,7 @@ A comprehensive, modern inventory management system built with Next.js 14, Supab
 - **Advanced Reporting** - Charts, analytics, and export capabilities
 - **Feedback System** - User feedback with ratings and admin responses
 - **Responsive Design** - Works on desktop, tablet, and mobile
-- **Role-Based Access** - Admin, Manager, and User roles
+- **Role-Based Access** - SUPER_ADMIN, TENANT_ADMIN, and USER roles
 
 ## 🛠 Tech Stack
 
@@ -94,6 +94,7 @@ NEXT_PUBLIC_APP_NAME=InventoryLite
 
 ```bash
 npm run dev
+docker compose -f docker-compose.development.yml up --build -d
 ```
 
 Open `http://localhost:{{YOUR_PORT}}` in your browser.

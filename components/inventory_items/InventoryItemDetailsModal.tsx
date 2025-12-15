@@ -1,6 +1,6 @@
 'use client'
 
-import { getRecordStatusColor } from '@/lib/helpers/Helper'
+import { formatDateToLocalDate, getRecordStatusColor } from '@/lib/helpers/Helper'
 import { InventoryItem } from '@/lib/types/Models'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import CloseModal from '../helpers/CloseModal'
@@ -51,14 +51,14 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                 </div>
                 <div>
                   <span className="text-gray-600">Unit Price:</span>
-                  <span className="ml-2 font-medium">${item.unit_price.toFixed(2)}</span>
+                  <span className="ml-2 font-medium">{item.unit_price.toFixed(2)}</span>
                 </div>
                 <div className='flex'>
                   <span className="text-gray-600">Available Quantity:</span>
                   <span className="mx-2 font-medium">{item.quantity}</span>
                   {item.quantity <= item.min_quantity && (
-                      <LowStock />
-                    )}
+                    <LowStock />
+                  )}
                 </div>
                 <div>
                   <span className="text-gray-600">Min Quantity:</span>
@@ -68,6 +68,14 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                   <span className="text-gray-600">Description:</span>
                   <span className="ml-2 font-medium">{item.description}</span>
                 </div>
+                <h3 className="font-medium text-gray-900 mb-2">
+                  Variants
+                </h3>
+                {item.item_variants?.map(iv => (
+                  <span key={iv.id} className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                    {iv.variant?.name}
+                  </span>
+                ))}
                 <div>
                   <span className="text-gray-600">Record Status:</span>
                   <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(item.status!)}`}>
@@ -76,11 +84,11 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
                 </div>
                 <div>
                   <span className="text-gray-600">Created:</span>
-                  <span className="ml-2">{new Date(item.created_at!).toUTCString()}</span>
+                  <span className="ml-2">{formatDateToLocalDate(item.created_at!)}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Updated:</span>
-                  <span className="ml-2">{new Date(item.updated_at!).toUTCString()}</span>
+                  <span className="ml-2">{formatDateToLocalDate(item.updated_at!)}</span>
                 </div>
               </div>
             </div>
@@ -102,8 +110,8 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
             </div>
           </div>
         </div>
-      
-        <CloseModal onClose={onClose}/>
+
+        <CloseModal onClose={onClose} />
       </div>
     </div>
   )

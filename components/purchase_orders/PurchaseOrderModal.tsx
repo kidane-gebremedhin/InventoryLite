@@ -1,18 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier } from '@/lib/types/Models'
+import { InventoryItem, PurchaseOrder, PurchaseOrderItem, Store, Supplier, Variant } from '@/lib/types/Models'
 import { PurchaseOrderStatus, RecordStatus } from '@/lib/Enums'
 import { calculateOrderTotalProce, showErrorToast } from '@/lib/helpers/Helper'
 import Tooltip from '../helpers/ToolTip'
-import { PURCHASE_ORDER_STATUSES } from '@/lib/Constants'
+import { DECIMAL_REGEX } from '@/lib/Constants'
 
 interface PurchaseOrderModalProps {
   isOpen: boolean
   onClose: () => void
   order: PurchaseOrder | null
+  stores: Store[]
+  suppliers: Supplier[]
+  inventoryItems: InventoryItem[]
+  variants: Variant[]
   onSave: (order: PurchaseOrder) => void
 }
 
@@ -21,31 +25,27 @@ const emptyEntry: PurchaseOrder = {
   supplier_id: '',
   order_status: PurchaseOrderStatus.PENDING,
   expected_date: '',
-  tenant_id: '',
   status: RecordStatus.ACTIVE,
   created_at: '',
   updated_at: '',
   order_items: [],
 }
 
-export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: PurchaseOrderModalProps) {
-  const [stores, setStores] = useState<Store[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [inventoryItems, setInventoryItems] = useState<Partial<InventoryItem>[]>([])
+export default function PurchaseOrderModal({ isOpen, onClose, order, stores, suppliers, inventoryItems, variants, onSave }: PurchaseOrderModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<PurchaseOrder>>(emptyEntry)
   const [purchaseOrderItems, setPurchaseOrderItems] = useState<PurchaseOrderItem[]>([])
 
   useEffect(() => {
+    // reset form
+    setFormData(emptyEntry)
+
     if (isOpen) {
-      loadStores()
-      loadSuppliers()
-      loadInventoryItems()
       if (order) {
         setFormData({
           po_number: order.po_number || '',
           supplier_id: order.supplier_id || '',
-          expected_date: order.expected_date ? new Date(order.expected_date).toISOString().split('T')[0] : '',
+          expected_date: order.expected_date ? order.expected_date : '',
           order_status: order.order_status || PurchaseOrderStatus.PENDING
         })
         setPurchaseOrderItems(order.order_items || [])
@@ -54,56 +54,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
       }
     }
   }, [isOpen, order])
-
-  const loadStores = async () => {
-    if (!supabase) return
-
-    try {
-      const { data, error } = await supabase
-        .from('stores')
-        .select('id, name, description')
-        .order('name')
-
-      if (error) throw error
-      
-      setStores(data || [])
-    } catch (error: any) {
-      showErrorToast()
-    }
-  }
-
-  const loadSuppliers = async () => {
-    if (!supabase) return
-
-    try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, name, email')
-        .order('name')
-
-      if (error) throw error
-      setSuppliers(data || [])
-    } catch (error: any) {
-      showErrorToast()
-    }
-  }
-
-  const loadInventoryItems = async () => {
-    if (!supabase) return
-
-    try {
-      const { data, error } = await supabase
-        .from('inventory_items')
-        .select('id, sku, name, unit_price, quantity')
-        .eq('status', 'active')
-        .order('name')
-
-      if (error) throw error
-      setInventoryItems(data || [])
-    } catch (error: any) {
-      showErrorToast()
-    }
-  }
 
   const resetForm = () => {
     setFormData({
@@ -116,7 +66,8 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   }
 
   const addItem = () => {
-    setPurchaseOrderItems([...purchaseOrderItems, { store_id: (stores.length >0 ? stores[0].id! : ''), inventory_item_id: '', quantity: 1, unit_price: 0 }])
+    const unitPrice = inventoryItems.length === 1 ? inventoryItems[0].unit_price! : 0
+    setPurchaseOrderItems([...purchaseOrderItems, { inventory_item_id: '', quantity: 1, unit_price: unitPrice, variant_id: '', store_id: (stores.length === 1 ? stores[0].id! : '') }])
   }
 
   const removeItem = (index: number) => {
@@ -124,22 +75,36 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
   }
 
   const updateItem = (index: number, field: keyof PurchaseOrderItem, value: any) => {
+    if (value && field === 'unit_price' && !DECIMAL_REGEX.test(value)) {
+      return
+    }
+
     const preSelectedItem = purchaseOrderItems.find(item => item.inventory_item_id === value)
     if (preSelectedItem) {
-        showErrorToast('Item already selected.')
-        return
+      showErrorToast('Item already selected.')
+      return
+    }
+    if (preSelectedItem) {
+      showErrorToast('Item already selected.')
+      return
     }
     const newItems = [...purchaseOrderItems]
     newItems[index] = { ...newItems[index], [field]: value }
-    
+
     // Auto-fill unit price when item is selected
     if (field === 'inventory_item_id') {
       const selectedItem = inventoryItems.find(item => item.id === value)
       if (selectedItem) {
         newItems[index].unit_price = selectedItem.unit_price!
+
+        // Filter item variants
+        // const currentItemVariants = variants.filter(variant => {
+        //   return selectedItem.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
+        // });
+        // setItemVariants(currentItemVariants)
       }
     }
-    
+
     setPurchaseOrderItems(newItems)
   }
 
@@ -158,7 +123,9 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
 
     try {
       const itemsToInsert: PurchaseOrderItem[] = purchaseOrderItems.map(item => ({
+        ...item.id && { id: item.id },
         store_id: item?.store_id,
+        variant_id: item?.variant_id,
         purchase_order_id: order?.id || '',
         inventory_item_id: item.inventory_item_id || '',
         quantity: item.quantity || 0,
@@ -174,7 +141,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
         expected_date: formData.expected_date,
         order_items: itemsToInsert
       }
-  
+
       onSave(newPurchaseOrder)
     } catch (error: any) {
       showErrorToast('Failed to save purchase order')
@@ -193,6 +160,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
             {order ? 'Edit Purchase Order' : 'New Purchase Order'}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
@@ -200,7 +168,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -226,7 +194,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                 className="input-field"
                 required
               >
-                <option value="">Select Supplier</option>
                 {suppliers.map(supplier => (
                   <option key={supplier.id} value={supplier.id}>
                     {supplier.name}
@@ -249,23 +216,6 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
             </div>
           </div>
 
-          {order && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Order Status
-              </label>
-              <select
-                value={formData.order_status}
-                onChange={(e) => setFormData({ ...formData, order_status: e.target.value as any })}
-                className="input-field"
-              >
-                {PURCHASE_ORDER_STATUSES.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {/* Items Section */}
           <div>
             <div className="flex justify-between items-center mb-4">
@@ -287,7 +237,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
             ) : (
               <div className="space-y-4">
                 {purchaseOrderItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Item *
@@ -302,7 +252,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                         <option value="">Select Item</option>
                         {inventoryItems.map(invItem => (
                           <option key={invItem.id} value={invItem.id}>
-                            {invItem.sku} - {invItem.name} (${invItem.unit_price})
+                            {invItem.sku} - {invItem.name} ({invItem.unit_price})
                           </option>
                         ))}
                       </select>
@@ -314,7 +264,8 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                       </label>
                       <input
                         type="number"
-                        min={order?.id ? 0 : 1}
+                        min={1}
+                        step={1}
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
                         className="input-field"
@@ -327,14 +278,34 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                         Unit Price *
                       </label>
                       <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={item.unit_price}
-                        onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
+                        type="text"
+                        value={item.unit_price > 0 ? item.unit_price : ''}
+                        onChange={(e) => updateItem(index, 'unit_price', e.target.value)}
                         className="input-field"
                         required
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Variant
+                      </label>
+                      <select
+                        value={item.variant_id}
+                        onChange={(e) => updateItem(index, 'variant_id', e.target.value)}
+                        className="input-field"
+                        required
+                      >
+                        <option value="">Select Variant</option>
+                        {variants.filter(variant => {
+                          const selectedItem = inventoryItems.find(i => i.id === item.inventory_item_id);
+                          return selectedItem?.item_variants?.find(iv => iv.variant_id == variant.id) != undefined
+                        }).map(variant => (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
@@ -347,6 +318,7 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                         className="input-field"
                         required
                       >
+                        <option value="">Select Store</option>
                         {stores.map(store => (
                           <option key={store.id} value={store.id}>
                             {store.name}
@@ -360,20 +332,29 @@ export default function PurchaseOrderModal({ isOpen, onClose, order, onSave }: P
                         &nbsp;
                       </label>
                       <Tooltip text="Remove">
-                          <button
-                            onClick={() => removeItem(index)}
-                            className="mt-3 text-red-600 hover:text-red-900"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="hidden md:block md:mt-3 text-red-600 hover:text-red-900"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="flex block md:hidden md:mt-3 text-red-600 hover:text-red-900"
+                        >
+                          <TrashIcon className="h-4 w-4 mt-1" />
+                          <span className="px-2">Remove</span>
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                 ))}
 
                 <div className="text-right">
                   <p className="text-lg font-medium">
-                    Total: ${calculateOrderTotalProce(purchaseOrderItems).toFixed(2)}
+                    Total Value: {calculateOrderTotalProce(purchaseOrderItems).toFixed(2)}
                   </p>
                 </div>
               </div>

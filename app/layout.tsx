@@ -1,35 +1,26 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import './globals.css'
-import { Toaster } from 'react-hot-toast'
-import { APP_NAME } from '@/lib/Constants'
-import { LoadingProvider } from '@/components/context_apis/LoadingProvider'
-import { UserProvider } from '@/components/context_apis/UserProvider'
+import { APP_DESCRIPTION, APP_NAME, APP_TITLE } from '@/lib/app_config/config'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} - Inventory Management Simplified!`,
-  description: 'A comprehensive inventory management system for businesses of all sizes',
+  title: `${APP_NAME} - ${APP_TITLE}`,
+  description: APP_DESCRIPTION,
+  icons: {
+    icon: '/images/logos/logo 1.JPG',
+  },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
     <html lang="en">
-      <head>
-        <script src="https://accounts.google.com/gsi/client" async defer></script>
-      </head>
-      <body className={inter.className}>
-        <LoadingProvider>
-          <UserProvider>
-            {children}
-          </UserProvider>
-        </LoadingProvider>
-        <Toaster position="top-right" />
+      <body className={inter.className} suppressHydrationWarning={true}>
+        {children}
       </body>
     </html>
   )

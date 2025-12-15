@@ -1,15 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import { 
+import {
   ChatBubbleLeftRightIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon
 } from '@heroicons/react/24/outline'
 import MiniLoading from '../helpers/MiniLoading'
+import { getCurrentDateTime } from '@/lib/helpers/Helper'
+import { FeedbackStatus } from '@/lib/Enums'
+
+import { useAuthContext } from '../providers/AuthProvider'
+import { fetchFeedbackStats } from '@/lib/server_actions/feedback'
 
 interface FeedbackSummaryProps {
   className?: string
@@ -38,29 +43,25 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
   }, [])
 
   const loadFeedbackStats = async () => {
-    if (!supabase) return
-
     try {
-      const { data, error } = await supabase
-        .from('feedback')
-        .select('*')
+      const { data, error } = await fetchFeedbackStats()
 
       if (error) throw error
 
       const feedbacks = data || []
       const total = feedbacks.length
-      const open = feedbacks.filter(f => f.status === 'open').length
-      const resolved = feedbacks.filter(f => f.status === 'resolved').length
-      
+      const open = feedbacks.filter(f => f.status === FeedbackStatus.OPEN).length
+      const resolved = feedbacks.filter(f => f.status === FeedbackStatus.RESOLVED).length
+
       const ratings = feedbacks.filter(f => f.rating !== null).map(f => f.rating!)
-      const averageRating = ratings.length > 0 
-        ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length * 10) / 10 
+      const averageRating = ratings.length > 0
+        ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length * 10) / 10
         : 0
 
       // Recent feedback (last 7 days)
-      const weekAgo = new Date()
+      const weekAgo = getCurrentDateTime()
       weekAgo.setDate(weekAgo.getDate() - 7)
-      const recentCount = feedbacks.filter(f => new Date(f.created_at) > weekAgo).length
+      const recentCount = feedbacks.filter(f => getCurrentDateTime(f.created_at) > weekAgo).length
 
       setStats({
         total,
@@ -70,14 +71,13 @@ export function FeedbackSummary({ className = '' }: FeedbackSummaryProps) {
         recentCount
       })
     } catch (error) {
-      console.error('Error loading feedback stats:', error)
     } finally {
       setLoading(false)
     }
   }
 
   if (loading) {
-    return <MiniLoading className={className} />
+    return <></>
   }
 
   return (

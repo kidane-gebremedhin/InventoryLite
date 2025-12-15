@@ -3,12 +3,11 @@
 import { useState } from 'react'
 import { StarIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import { authorseDBAction } from '@/lib/db_queries/DBQuery'
-import { supabase } from '@/lib/supabase'
-import { APP_NAME } from '@/lib/Constants'
-import { showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
-import { useUserContext } from '../context_apis/UserProvider'
-import { FeedbackPriority } from '@/lib/Enums'
+import { getRatingLabel, showErrorToast, showSuccessToast } from '@/lib/helpers/Helper'
+import { FeedbackPriority, RatingStar } from '@/lib/Enums'
+import { APP_NAME } from '@/lib/app_config/config'
+import { saveRatingFeedback } from '@/lib/server_actions/feedback'
+import { RATING_STARS } from '@/lib/Constants'
 
 interface FeedbackRatingProps {
   onFeedbackSubmitted?: () => void
@@ -25,7 +24,6 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
     category: 'general' as const
   })
   const [submitting, setSubmitting] = useState(false)
-  const {currentUser, setCurrentUser} = useUserContext()
 
   const handleStarClick = (star: number) => {
     setRating(star)
@@ -40,21 +38,17 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    if (!supabase || !await authorseDBAction(currentUser)) return
-
     e.preventDefault()
 
     setSubmitting(true)
     try {
-      const { error } = await supabase
-        .from('feedback')
-        .insert({
-          category: formData.category,
-          subject: formData.subject,
-          message: formData.message,
-          priority: rating <= 2 ? FeedbackPriority.HIGH : FeedbackPriority.MEDIUM,
-          rating: rating
-        })
+      const { error } = await saveRatingFeedback({
+        category: formData.category,
+        subject: formData.subject,
+        message: formData.message,
+        priority: rating <= 2 ? FeedbackPriority.HIGH : FeedbackPriority.MEDIUM,
+        rating: rating
+      })
 
       if (error) throw error
 
@@ -82,7 +76,7 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
 
         {/* Star Rating */}
         <div className="flex justify-center space-x-1 mb-4">
-          {[1, 2, 3, 4, 5].map((star) => (
+          {RATING_STARS.map((star) => (
             <button
               key={star}
               type="button"
@@ -102,11 +96,7 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
 
         {rating > 0 && (
           <p className="text-sm text-gray-600 mb-4">
-            {rating === 1 && 'Very Poor'}
-            {rating === 2 && 'Poor'}
-            {rating === 3 && 'Fair'}
-            {rating === 4 && 'Good'}
-            {rating === 5 && 'Excellent'}
+            {getRatingLabel(rating)}
           </p>
         )}
       </div>
@@ -161,8 +151,8 @@ export function FeedbackRating({ onFeedbackSubmitted, className = '' }: Feedback
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="btn-primary"
                   disabled={submitting}
                 >

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
-import { 
-  HomeIcon, 
-  CubeIcon, 
-  TruckIcon, 
+import {
+  HomeIcon,
+  CubeIcon,
+  TruckIcon,
   ShoppingCartIcon,
   ChartBarIcon,
   Cog6ToothIcon,
@@ -16,35 +16,61 @@ import {
   ChatBubbleLeftRightIcon,
   WindowIcon,
   UserGroupIcon,
-  BuildingStorefrontIcon
+  BuildingStorefrontIcon,
+  CurrencyDollarIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline'
-import { APP_NAME } from '@/lib/Constants'
 import { FireIcon } from '@heroicons/react/24/solid'
-import { useUserContext } from '@/components/context_apis/UserProvider'
-import { getCurrentUserRole } from '@/lib/db_queries/DBQuery'
-import { UserRole } from '@/lib/Enums'
+import { ROUTE_PATH, UserRole } from '@/lib/Enums'
+import { APP_NAME } from '@/lib/app_config/config'
+import { useAuthContext } from '../providers/AuthProvider'
+import MiniLoading from '../helpers/MiniLoading'
 
-export function Sidebar() {
+export default function Sidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const {currentUser, setCurrentUser} = useUserContext()
+  const [options, setOptions] = useState([])
+  const { currentUser } = useAuthContext()
   const pathname = usePathname()
 
+  useEffect(() => {
+    setOptions(navigationOptions())
+  }, [currentUser])
+
   const navigationOptions = () => {
-    return [
-      { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-      { name: 'Stores', href: '/dashboard/store', icon: BuildingStorefrontIcon },
-      { name: 'Categories', href: '/dashboard/category', icon: WindowIcon },
-      { name: 'Inventory Items', href: '/dashboard/inventory_items', icon: CubeIcon },
-      { name: 'Suppliers', href: '/dashboard/suppliers', icon: BuildingStorefrontIcon },
-      { name: 'Purchase Orders', href: '/dashboard/purchase_orders', icon: TruckIcon },
-      { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
-      { name: 'Sales Orders', href: '/dashboard/sales_orders', icon: ShoppingCartIcon },
-      { name: 'Transactions', href: '/dashboard/transactions', icon: FireIcon },
-      { name: 'Reports', href: '/dashboard/reports', icon: ChartBarIcon },
-      { name: 'Feedback', href: (getCurrentUserRole(currentUser) === UserRole.ADMIN ? '/dashboard/feedback_management' : '/dashboard/feedback'), icon: ChatBubbleLeftRightIcon },
-      { name: 'Settings', href: '/dashboard/settings', icon: Cog6ToothIcon },
-    ]
+    const paths = [
+      { name: 'Dashboard', href: ROUTE_PATH.DASHBOARD, icon: HomeIcon },
+      { name: 'Stores', href: ROUTE_PATH.STORE, icon: BuildingStorefrontIcon },
+      { name: 'Categories', href: ROUTE_PATH.CATEGORY, icon: WindowIcon },
+      { name: 'Variants', href: ROUTE_PATH.VARIANT, icon: CubeIcon },
+      { name: 'Inventory Items', href: ROUTE_PATH.INVENTORY_ITEM, icon: CubeIcon },
+      { name: 'Suppliers', href: ROUTE_PATH.SUPPLIER, icon: BuildingStorefrontIcon },
+      { name: 'Purchase Orders', href: ROUTE_PATH.PURCHASE_ORDER, icon: TruckIcon },
+      { name: 'Customers', href: ROUTE_PATH.CUSTOMER, icon: UserGroupIcon },
+      { name: 'Sales Orders', href: ROUTE_PATH.SALES_ORDER, icon: ShoppingCartIcon },
+      { name: 'Transactions', href: ROUTE_PATH.TRANSACTION, icon: FireIcon },
+      { name: 'Reports', href: ROUTE_PATH.REPORT, icon: ChartBarIcon },
+      { name: 'Feedback', href: (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN ? ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT : ROUTE_PATH.FEEDBACK), icon: ChatBubbleLeftRightIcon },
+      { name: currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN ? 'Manual Payments' : 'My Subscription', href: ROUTE_PATH.MANUAL_PAYMENT, icon: CurrencyDollarIcon },
+    ];
+
+    let tenantAdminPaths = []
+    let superAdminPaths = []
+    if ([UserRole.SUPER_ADMIN.toString(), UserRole.TENANT_ADMIN.toString()].includes(currentUser?.subscriptionInfo?.role)) {
+      tenantAdminPaths = [
+        { name: 'Staff Members', href: ROUTE_PATH.INVITE_USER, icon: UsersIcon }
+      ]
+    }
+    if (currentUser?.subscriptionInfo?.role === UserRole.SUPER_ADMIN) {
+      superAdminPaths = [
+        { name: 'Subscription Plans', href: ROUTE_PATH.SUBSCRIPTION_PLAN, icon: CurrencyDollarIcon },
+        { name: 'Business Domains', href: ROUTE_PATH.DOMAIN, icon: BuildingStorefrontIcon }
+      ]
+    }
+
+    return [...paths, ...tenantAdminPaths, ...superAdminPaths]
   }
+
+  if (!currentUser) return <MiniLoading />
 
   return (
     <>
@@ -54,7 +80,7 @@ export function Sidebar() {
         sidebarOpen ? 'block' : 'hidden'
       )}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        
+
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
             <h1 className="text-xl font-bold text-gray-900">{APP_NAME}</h1>
@@ -65,9 +91,9 @@ export function Sidebar() {
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
-          
+
           <nav className="flex-1 space-y-1 px-2 py-4">
-            {navigationOptions().map((item) => {
+            {options.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
@@ -94,9 +120,9 @@ export function Sidebar() {
           <div className="flex h-16 items-center px-4">
             <h1 className="text-xl font-bold text-gray-900">{APP_NAME}</h1>
           </div>
-          
+
           <nav className="flex-1 space-y-1 px-2 py-4">
-            {navigationOptions().map((item) => {
+            {options.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link

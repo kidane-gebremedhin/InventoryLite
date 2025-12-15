@@ -49,12 +49,12 @@ const ActionsMenu = ({ actions }: ActionsMenuProps) => {
   );
 
   return (
-    <div className="absolute inline-block text-left" ref={menuRef}>
+    <div className="md:absolute inline-block text-left" ref={menuRef}>
       <div>
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center justify-center p-2 rounded-full hover:bg-gray-100 focus:outline-none"
+          className="md:flex md:items-center md:justify-center md:p-2 rounded-full hover:bg-gray-100 focus:outline-none"
         >
           {menuIcon}
         </button>

@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
-import { Category, InventoryItem } from '@/lib/types/Models';
+import { Category, InventoryItem, InventoryItemVariant, Variant } from '@/lib/types/Models';
 import { showErrorToast } from '@/lib/helpers/Helper';
+import { DECIMAL_REGEX } from '@/lib/Constants';
+import MultiSelect from '../helpers/MultiSelect';
 
 interface InventoryItemModalProps {
   isOpen: boolean
   onClose: () => void
   item: InventoryItem | null
   categories: Category[]
+  variants: Variant[]
   onSave: (item: InventoryItem) => void
 }
 
@@ -23,12 +26,24 @@ const emptyEntry: InventoryItem = {
   unit_price: 0
 }
 
-export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }: InventoryItemModalProps) {
+export function InventoryItemModal({ isOpen, onClose, item, categories, variants, onSave }: InventoryItemModalProps) {
+  // When single option, select it by default
+  if (categories.length == 1) {
+    emptyEntry.category_id = categories[0].id!
+  }
   const [formData, setFormData] = useState<Partial<InventoryItem>>(emptyEntry)
+  const [selectedVariants, setSelectedVariants] = useState<Variant[]>([])
+  const [itemVariants, setItemVariants] = useState<InventoryItemVariant[]>([])
+
+  useEffect(() => {
+    const itemVariants = item?.item_variants?.map(iv => iv.variant)
+    setSelectedVariants(itemVariants)
+  }, [item])
 
   useEffect(() => {
     if (item) {
       setFormData(item)
+      setItemVariants(item.item_variants || [])
     } else {
       setFormData(emptyEntry)
     }
@@ -36,11 +51,21 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.sku || !formData.name || !formData.category_id) {
       showErrorToast('Please fill in all required fields.')
       return
     }
+
+    // keep existing variants if reselected
+    const itemVariantsToinsert: InventoryItemVariant[] = selectedVariants.map((v) => {
+      const itemVariant = itemVariants.find(iv => iv.variant_id == v.id);
+      return {
+        ...itemVariant && { id: itemVariant.id },
+        inventory_item_id: item?.id,
+        variant_id: v.id
+      }
+    });
 
     const newItem: InventoryItem = {
       id: item?.id,
@@ -51,22 +76,30 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
       quantity: item?.quantity || 0,
       min_quantity: formData.min_quantity || 0,
       unit_price: formData.unit_price || 0,
-      status: item?.status,
-      created_at: item?.created_at
-
+      ...item?.status && { status: item?.status },
+      ...item?.created_at && { created_at: item?.created_at },
+      item_variants: itemVariantsToinsert
     }
 
     onSave(newItem)
   }
 
   const handleInputChange = (field: keyof InventoryItem, value: any) => {
+    if (value && field === 'unit_price' && !DECIMAL_REGEX.test(value)) {
+      return
+    }
+
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
   }
 
-  if (!isOpen) return null
+  const onMultiSeletChange = (selectedValues: any) => {
+    setSelectedVariants(selectedValues)
+  }
+
+  if (!isOpen) return <></>
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -136,16 +169,12 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
                   Unit Price
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                    $
-                  </span>
                   <input
-                    type="number"
-                    value={formData.unit_price}
-                    onChange={(e) => handleInputChange('unit_price', parseFloat(e.target.value))}
-                    className="input-field pl-8"
-                    min="1"
-                    step="1"
+                    type="text"
+                    value={formData.unit_price! > 0 ? formData.unit_price : ''}
+                    onChange={(e) => handleInputChange('unit_price', e.target.value)}
+                    className="input-field"
+                    required
                   />
                 </div>
               </div>
@@ -163,6 +192,8 @@ export function InventoryItemModal({ isOpen, onClose, item, categories, onSave }
               </div>
             </div>
           </div>
+
+          <MultiSelect options={variants} preSelectedValues={selectedVariants} changeHandler={onMultiSeletChange} />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
