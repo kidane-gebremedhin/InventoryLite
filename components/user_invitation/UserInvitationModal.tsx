@@ -1,133 +1,142 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { XMarkIcon } from '@heroicons/react/24/outline'
-import toast from 'react-hot-toast'
-import { UserInvitation } from '@/lib/types/Models'
-import { showErrorToast } from '@/lib/helpers/Helper'
-import { InvitationStatus } from '@/lib/Enums'
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useCallback, useEffect, useState } from "react";
+import { InvitationStatus } from "@/lib/Enums";
+import { showErrorToast } from "@/lib/helpers/Helper";
+import type { UserInvitation } from "@/lib/types/Models";
 
 const emptyEntry: Partial<UserInvitation> = {
-  email: ''
-}
+	email: "",
+};
 
 interface UserInvitationModalProps {
-  isOpen: boolean
-  onClose: () => void
-  userInvitation: Partial<UserInvitation> | null
-  onSave: (userInvitation: Partial<UserInvitation>) => void
+	isOpen: boolean;
+	onClose: () => void;
+	userInvitation: Partial<UserInvitation> | null;
+	onSave: (userInvitation: Partial<UserInvitation>) => void;
 }
 
 interface FormErrors {
-  name?: string
-  email?: string
-  phone?: string
+	name?: string;
+	email?: string;
+	phone?: string;
 }
 
-export default function UserInvitationModal({ isOpen, onClose, userInvitation, onSave }: UserInvitationModalProps) {
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<Partial<UserInvitation>>(emptyEntry)
-  const [errors, setErrors] = useState<FormErrors>({})
+export default function UserInvitationModal({
+	isOpen,
+	onClose,
+	userInvitation,
+	onSave,
+}: UserInvitationModalProps) {
+	const [loading] = useState(false);
+	const [formData, setFormData] = useState<Partial<UserInvitation>>(emptyEntry);
+	const [errors, setErrors] = useState<FormErrors>({});
 
-  useEffect(() => {
-    if (isOpen) {
-      if (userInvitation) {
-        setFormData({
-          email: userInvitation.email,
-        })
-      } else {
-        resetForm()
-      }
-      setErrors({})
-    }
-  }, [isOpen, userInvitation])
+	const resetForm = useCallback(() => {
+		setFormData({
+			email: "",
+		});
+		setErrors({});
+	}, []);
 
-  const resetForm = () => {
-    setFormData({
-      email: ''
-    })
-    setErrors({})
-  }
+	useEffect(() => {
+		if (isOpen) {
+			if (userInvitation) {
+				setFormData({
+					email: userInvitation.email,
+				});
+			} else {
+				resetForm();
+			}
+			setErrors({});
+		}
+	}, [isOpen, userInvitation, resetForm]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.email) {
-      showErrorToast('Please fill in all required fields.')
-      return
-    }
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
 
-    const newUserInvitation: Partial<UserInvitation> = {
-      id: userInvitation?.id,
-      email: formData.email.trim(),
-      status: userInvitation?.status || InvitationStatus.OPEN
-    }
+		if (!formData.email) {
+			showErrorToast("Please fill in all required fields.");
+			return;
+		}
 
-    onSave(newUserInvitation)
-  }
+		const newUserInvitation: Partial<UserInvitation> = {
+			id: userInvitation?.id,
+			email: formData.email.trim(),
+			status: userInvitation?.status || InvitationStatus.OPEN,
+		};
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
-    if (errors[field as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }))
-    }
-  }
+		onSave(newUserInvitation);
+	};
 
-  if (!isOpen) return null
+	const handleInputChange = (field: string, value: string) => {
+		setFormData((prev) => ({ ...prev, [field]: value }));
+		// Clear error when user starts typing
+		if (errors[field as keyof FormErrors]) {
+			setErrors((prev) => ({ ...prev, [field]: undefined }));
+		}
+	};
 
-  return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">
-            {userInvitation ? 'Edit UserInvitation' : 'New UserInvitation'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
+	if (!isOpen) return null;
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              User Email *
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              className={`input-field ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="Enter user email"
-              required
-            />
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-            )}
-          </div>
+	return (
+		<div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+			<div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+				<div className="flex justify-between items-center mb-6">
+					<h2 className="text-xl font-bold">
+						{userInvitation ? "Edit User Invitation" : "Invita new user"}
+					</h2>
+					<button
+						type="button"
+						onClick={onClose}
+						className="text-gray-400 hover:text-gray-600"
+					>
+						<XMarkIcon className="h-6 w-6" />
+					</button>
+				</div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : (userInvitation ? 'Update User Invitation' : 'Invite User')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
+				<form onSubmit={handleSubmit} className="space-y-4">
+					<div>
+						<span className="block text-sm font-medium text-gray-700 mb-1">
+							User Email *
+						</span>
+						<input
+							type="email"
+							value={formData.email}
+							onChange={(e) => handleInputChange("email", e.target.value)}
+							className={`input-field ${errors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
+							placeholder="Enter user email"
+							required
+						/>
+						{errors.email && (
+							<p className="mt-1 text-sm text-red-600">{errors.email}</p>
+						)}
+					</div>
+
+					<div className="flex justify-end space-x-3 pt-4">
+						<button
+							type="button"
+							onClick={onClose}
+							className="btn-outline-default"
+							disabled={loading}
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							className="btn-outline-primary"
+							disabled={loading}
+						>
+							{loading
+								? "Saving..."
+								: userInvitation
+									? "Update User Invitation"
+									: "Invite User"}
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	);
 }

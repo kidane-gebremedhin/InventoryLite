@@ -1,57 +1,63 @@
-import { ROUTE_PATH } from "@/lib/Enums";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { ROUTE_PATH } from "@/lib/Enums";
 
 export async function GET(request: Request) {
-    const requestUrl = new URL(request.url);
-    const code = requestUrl.searchParams.get('code');
+	const requestUrl = new URL(request.url);
+	const code = requestUrl.searchParams.get("code");
 
-    // PKCE, Prove Key for Code Exchange pattern
-    if (code) {
-    const cookieStore = await cookies()
-    
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch (error) {
-              // Handle cookie setting error
-              console.error('Error setting cookies:', error)
-            }
-          },
-        },
-      }
-    )
+	// PKCE, Prove Key for Code Exchange pattern
+	if (code) {
+		const cookieStore = await cookies();
 
-    try {
-      // Exchange the code for a session
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-      
-      if (error) {
-        console.error('Error exchanging code for session:')
-        return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL))
-      }
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+			{
+				cookies: {
+					getAll() {
+						return cookieStore.getAll();
+					},
+					setAll(cookiesToSet) {
+						try {
+							cookiesToSet.forEach(({ name, value, options }) => {
+								cookieStore.set(name, value, options);
+							});
+						} catch (error) {
+							// Handle cookie setting error
+							console.error("Error setting cookies:", error);
+						}
+					},
+				},
+			},
+		);
 
-      console.log('Auth callback - Session exchanged successfully:')
-      
-      // Redirect to the intended page or dashboard
-      return NextResponse.redirect(new URL(ROUTE_PATH.DASHBOARD, process.env.APP_URL))
-    } catch (error) {
-      console.error('Error in auth callback:')
-      return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL))
-    }
-  }
+		try {
+			// Exchange the code for a session
+			const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-  // Return to signin if no code is present
-  return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL))
+			if (error) {
+				console.error("Error exchanging code for session:");
+				return NextResponse.redirect(
+					new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL),
+				);
+			}
+
+			console.log("Auth callback - Session exchanged successfully:");
+
+			// Redirect to the intended page or dashboard
+			return NextResponse.redirect(
+				new URL(ROUTE_PATH.DASHBOARD, process.env.APP_URL),
+			);
+		} catch (_error) {
+			console.error("Error in auth callback:");
+			return NextResponse.redirect(
+				new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL),
+			);
+		}
+	}
+
+	// Return to signin if no code is present
+	return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, process.env.APP_URL));
 }

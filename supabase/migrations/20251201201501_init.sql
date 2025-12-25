@@ -420,6 +420,8 @@ CREATE OR REPLACE FUNCTION public.fetch_user_subscription_info(
     current_user_id UUID
 )
 RETURNS TABLE(
+    tenant_id UUID,
+    tenant_name VARCHAR,
     email VARCHAR,
     name VARCHAR,
     domain_id UUID,
@@ -441,6 +443,8 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT 
+        t.id as tenant_id, 
+        t.name as tenant_name, 
         t.email, 
         t.name, 
         t.domain_id, 
@@ -841,6 +845,28 @@ ALTER TABLE public.manual_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenant_user_invites ENABLE ROW LEVEL SECURITY;
 
+
+-- REALTIME UPDATE
+ALTER publication supabase_realtime add table public.tenants;
+ALTER publication supabase_realtime add table public.user_tenant_mappings;
+ALTER publication supabase_realtime add table public.categories;
+ALTER publication supabase_realtime add table public.subscription_plans;
+ALTER publication supabase_realtime add table public.stores;
+ALTER publication supabase_realtime add table public.suppliers;
+ALTER publication supabase_realtime add table public.customers;
+ALTER publication supabase_realtime add table public.inventory_items;
+ALTER publication supabase_realtime add table public.variants;
+ALTER publication supabase_realtime add table public.inventory_item_variants;
+ALTER publication supabase_realtime add table public.purchase_orders;
+ALTER publication supabase_realtime add table public.sales_orders;
+ALTER publication supabase_realtime add table public.purchase_order_items;
+ALTER publication supabase_realtime add table public.sales_order_items;
+ALTER publication supabase_realtime add table public.transactions;
+ALTER publication supabase_realtime add table public.feedback;
+ALTER publication supabase_realtime add table public.manual_payments;
+ALTER publication supabase_realtime add table public.domains;
+ALTER publication supabase_realtime add table public.tenant_user_invites;
+
 -- CHECK IF SUPER_ADMIN
 CREATE OR REPLACE FUNCTION public.isSuperAdmin()
     RETURNS BOOLEAN AS $$
@@ -1034,25 +1060,25 @@ CREATE POLICY "Users can delete customers in their tenant" ON public.customers
     );
 
 -- INVENTORY_ITEMS POLICIES
-CREATE POLICY "Users can view inventory items in their tenant" ON public.inventory_items
+CREATE POLICY "Users can view inventory items in their tenant" ON inventory_items
     FOR SELECT USING (
         auth.role() = 'authenticated' AND 
         tenant_id = public.user_tenant_id()
     );
 
-CREATE POLICY "Users can insert inventory items in their tenant" ON public.inventory_items
+CREATE POLICY "Users can insert inventory items in their tenant" ON inventory_items
     FOR INSERT WITH CHECK (
         auth.role() = 'authenticated' AND 
         tenant_id = public.user_tenant_id()
     );
 
-CREATE POLICY "Users can update inventory items in their tenant" ON public.inventory_items
+CREATE POLICY "Users can update inventory items in their tenant" ON inventory_items
     FOR UPDATE USING (
         auth.role() = 'authenticated' AND 
         tenant_id = public.user_tenant_id()
     );
 
-CREATE POLICY "Users can delete inventory items in their tenant" ON public.inventory_items
+CREATE POLICY "Users can delete inventory items in their tenant" ON inventory_items
     FOR DELETE USING (
         auth.role() = 'authenticated' AND 
         tenant_id = public.user_tenant_id()
@@ -1382,7 +1408,7 @@ CREATE OR REPLACE FUNCTION public.inventory_item_transaction(
     inventory_item_variants_data JSONB,
     is_for_update BOOLEAN DEFAULT FALSE
 )
-RETURNS VARCHAR AS $$
+RETURNS SETOF public.inventory_items AS $$
 DECLARE
     newSku VARCHAR := (inventory_item_data ->> 'sku')::VARCHAR;
     newName VARCHAR := (inventory_item_data ->> 'name')::VARCHAR;
@@ -1448,7 +1474,7 @@ BEGIN
         END;
     END LOOP;
 
-    RETURN 'Update successful.';
+    RETURN QUERY SELECT * FROM public.inventory_items WHERE id = inventoryItemId;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1458,7 +1484,7 @@ CREATE OR REPLACE FUNCTION public.purchase_order_transaction(
     purchase_order_items_data JSONB,
     is_for_update BOOLEAN DEFAULT FALSE
 )
-RETURNS VARCHAR AS $$
+RETURNS SETOF public.purchase_orders AS $$
 DECLARE
     poNumber VARCHAR := (purchase_order_data ->> 'po_number')::VARCHAR;
     supplierId UUID := (purchase_order_data ->> 'supplier_id')::UUID;
@@ -1473,7 +1499,8 @@ BEGIN
         SELECT order_status INTO orderStatus 
             FROM public.purchase_orders WHERE id = orderId;
         IF orderStatus = 'received' THEN
-            RETURN 'Can not update received orders';
+            RAISE NOTICE 'Can not update received orders, orderId=%', orderId;
+            RETURN;
         END IF;
 
         UPDATE public.purchase_orders
@@ -1530,7 +1557,7 @@ BEGIN
         END;
     END LOOP;
 
-    RETURN 'Update successful.';
+    RETURN QUERY SELECT * FROM public.purchase_orders WHERE id = orderId;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1540,7 +1567,7 @@ CREATE OR REPLACE FUNCTION public.sales_order_transaction(
     sales_order_items_data JSONB,
     is_for_update BOOLEAN DEFAULT FALSE
 )
-RETURNS VARCHAR AS $$
+RETURNS SETOF public.sales_orders AS $$
 DECLARE
     soNumber VARCHAR := (sales_order_data ->> 'so_number')::VARCHAR;
     customerId UUID := (sales_order_data ->> 'customer_id')::UUID;
@@ -1555,7 +1582,8 @@ BEGIN
         SELECT order_status INTO orderStatus 
             FROM public.sales_orders WHERE id = orderId;
         IF orderStatus = 'fulfilled' THEN
-            RETURN 'Can not update fulfilled orders';
+            RAISE NOTICE 'Can not update fulfilled orders, orderId=%', orderId;
+            RETURN;
         END IF;
 
         UPDATE public.sales_orders
@@ -1612,7 +1640,7 @@ BEGIN
         END;
     END LOOP;
 
-    RETURN 'Update successful.';
+    RETURN QUERY SELECT * FROM public.sales_orders WHERE id = orderId;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1983,7 +2011,8 @@ SELECT cron.schedule(
   --'0 2 * * *',
   '* * * * *',
   $$
-    --UPDATE public.tenants SET subscription_status = 'expired' WHERE current_payment_expiry_date < NOW();
-    UPDATE public.tenants SET current_payment_expiry_date = NOW();
+    UPDATE public.tenants SET subscription_status = 'expired' 
+    WHERE current_payment_expiry_date < NOW()
+    AND subscription_status IN ('free_trial', 'subscribed');
   $$
 );

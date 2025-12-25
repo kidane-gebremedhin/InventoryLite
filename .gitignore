@@ -5,3 +5,5 @@ package-lock.json
 node_modules
 build
 .vercel
+
+mobile-app/node_modules
