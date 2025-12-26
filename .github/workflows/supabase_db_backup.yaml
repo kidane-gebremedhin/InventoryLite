@@ -1,0 +1,74 @@
+name: Supabase DB Backup
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  # Optional: allows manual runs from GitHub UI
+  workflow_dispatch:
+
+jobs:
+  supabase_db_backup:
+    runs-on: ubuntu-latest
+    environment: DEV
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL 17 Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget ca-certificates
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/postgresql.asc
+          echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Verify pg_dump version
+        run: pg_dump --version
+
+      - name: Set date variables
+        run: |
+          echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+          echo "MONTH=$(date +'%Y-%m')" >> $GITHUB_ENV
+
+      - name: Create daily backup
+        env:
+          PGHOST: ${{ secrets.DB_HOST }}
+          PGPORT: ${{ secrets.DB_PORT }}
+          PGDATABASE: ${{ secrets.DB_NAME }}
+          PGUSER: ${{ secrets.DB_USER }}
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          mkdir -p backups/daily/$DATE
+          pg_dump \
+            -h "$PGHOST" \
+            -p "$PGPORT" \
+            -U "$PGUSER" \
+            -d "$PGDATABASE" \
+            --no-owner \
+            --no-privileges \
+            -f backups/daily/$DATE/backup.sql
+
+      - name: Upload daily backup(30 days retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-daily-${{ env.DATE }}
+          path: backups/daily/${{ env.DATE }}
+          retention-days: 30
+
+      - name: Create monthly backup
+        if: ${{ startsWith(env.DATE, env.MONTH) && endsWith(env.DATE, '-01') }}
+        run: |
+          mkdir -p backups/monthly/$MONTH
+          cp backups/daily/$DATE/backup.sql backups/monthly/$MONTH/backup.sql
+
+      - name: Upload monthly backup(12 months retention)
+        if: ${{ endsWith(env.DATE, '-01') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-monthly-${{ env.MONTH }}
+          path: backups/monthly/${{ env.MONTH }}
+          retention-days: 90
+
+

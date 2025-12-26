@@ -1,7 +1,6 @@
 .vscode
 .next
 .env.local
-package-lock.json
 node_modules
 build
 .vercel

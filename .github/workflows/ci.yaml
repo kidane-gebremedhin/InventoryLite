@@ -1,4 +1,4 @@
-name: CI
+name: CI Build
 
 on:
   pull_request:
@@ -33,4 +33,21 @@ jobs:
 
       # Run Next.js build
       - name: Next.js build
+        env:
+            STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY || 'dummy_key' }}
+            #NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dummy' }}
+            STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET || 'dummy_key' }} 
+            STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID || 'dummy_key' }} 
+            STRIPE_PAYMENT_LINK: ${{ secrets.STRIPE_PAYMENT_LINK || 'dummy_key' }} 
+            NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://test.com' }} 
+            APP_URL: ${{ secrets.APP_URL || 'https://test.com' }} 
+            SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'dummy_key' }} 
+            NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy_key' }} 
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'dummy_key' }} 
+            NEXT_PUBLIC_GOOGLE_CLIENT_SECRET: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET || 'dummy_key' }} 
+            KV_REST_API_READ_ONLY_TOKEN: ${{ secrets.KV_REST_API_READ_ONLY_TOKEN || 'dummy_key' }} 
+            KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN || 'dummy_key' }} 
+            KV_REST_API_URL: ${{ secrets.KV_REST_API_URL || 'https://test.com' }} 
+            KV_URL: ${{ secrets.KV_URL || 'https://test.com' }} 
+            REDIS_URL: ${{ secrets.REDIS_URL || 'https://test.com' }} 
         run: npm run build
