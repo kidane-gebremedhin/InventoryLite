@@ -73,7 +73,7 @@ DECLARE
 BEGIN
   SELECT jobid INTO jid
   FROM cron.job
-  WHERE jobname = 'expire-unpaid-accounts'   -- or match exact command text
+  WHERE jobname = 'expire-unpaid-accounts'
   LIMIT 1;
 
   IF jid IS NOT NULL THEN

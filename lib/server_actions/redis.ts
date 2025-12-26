@@ -1,36 +1,41 @@
-'use server';
+"use server";
 
-import { redisClient } from "../../lib/redis-client";
+import { Redis } from "@upstash/redis";
 import { REDIS_CACHE_TTL } from "../Constants";
-import { ServerActionsResponse } from "../types/Models";
+import type { ServerActionsResponse } from "../types/Models";
 
-export const getCacheData = async (cacheKey): Promise<ServerActionsResponse> => {
-    const cachedData = await redisClient.get(cacheKey);
-    if (!cachedData) return null;
-    
-    return JSON.parse(cachedData);
-}
+const redisClient = Redis.fromEnv();
 
-export const setCacheData = async (cacheKey, data) => {
-  redisClient.set(cacheKey, JSON.stringify(data), 'EX', REDIS_CACHE_TTL)
-}
+export const getCacheData = async (
+	cacheKey: string,
+): Promise<ServerActionsResponse> => {
+	const cachedData = await redisClient.get<ServerActionsResponse>(cacheKey);
+	if (!cachedData) return null;
+
+	return cachedData;
+};
+
+export const setCacheData = async (cacheKey: string, data: object) => {
+	redisClient.set(cacheKey, JSON.stringify(data), { ex: REDIS_CACHE_TTL });
+};
 
 /**
  * Deletes all Redis keys starting with a specific prefix.
  */
-export async function deleteCacheKeyByKeyPrefix(prefix: string) {
-  const stream = redis.scanStream({
-    match: `${prefix}*`,
-    count: 1000,
-  });
+export async function deleteCacheByKeyPrefix(prefix: string) {
+	let cursor = "0";
+	do {
+		const reply = await redisClient.scan(cursor, {
+			match: `${prefix}*`,
+			count: 100,
+		});
 
-  const pipeline = redis.pipeline();
+		cursor = reply[0];
+		const keys = reply[1];
+		if (keys.length > 0) {
+			await redisClient.unlink(...keys);
+		}
+	} while (cursor !== "0");
 
-  for await (const keys of stream) {
-    if (keys.length) {
-      keys.forEach((key) => pipeline.del(key));
-    }
-  }
-
-  await pipeline.exec();
+	console.log(`Deleted all keys with prefix: ${prefix}*`);
 }
