@@ -16,6 +16,11 @@ export enum CurrencyType {
 	USD = "USD",
 }
 
+export enum CommissionType {
+	PERCENTAGE = "percentage",
+	FIXED = "fixed",
+}
+
 export enum RecordStatus {
 	ACTIVE = "active",
 	ARCHIVED = "archived",
@@ -111,6 +116,7 @@ export enum DATABASE_TABLE {
 	domains = "domains",
 	tenant_user_invites = "tenant_user_invites",
 	subscription_plans = "subscription_plans",
+	affiliate_partners = "affiliate_partners",
 }
 
 export enum RedisCacheKey {
@@ -134,6 +140,7 @@ export enum RedisCacheKey {
 	feedback_unread_count = "feedback_unread_count",
 	user_subscription_info = "user_subscription_info",
 	subscription_plans = "subscription_plans",
+	affiliate_partners = "affiliate_partners",
 }
 
 export enum CookiesKey {

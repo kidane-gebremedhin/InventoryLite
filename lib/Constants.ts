@@ -1,4 +1,5 @@
 import {
+	CommissionType,
 	CurrencyType,
 	FeedbackCategory,
 	FeedbackPriority,
@@ -80,9 +81,18 @@ export const TRANSACTION_DIRECTIONS: string[] = [
 	TransactionDirection.OUT,
 ];
 
-export const SUBSCRIPTION_STATUSES: string[] = [SubscriptionStatus.SUBSCRIBED];
+export const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = [
+	SubscriptionStatus.SUBSCRIBED,
+];
 
-export const CURRENCY_TYPES: string[] = [CurrencyType.ETB, CurrencyType.USD];
+export const CURRENCY_TYPES: CurrencyType[] = [
+	CurrencyType.ETB,
+	CurrencyType.USD,
+];
+export const COMMISSION_TYPES: CommissionType[] = [
+	CommissionType.PERCENTAGE,
+	CommissionType.FIXED,
+];
 
 export const FEEDBACK_STATUSES = [
 	{
@@ -248,6 +258,11 @@ export const VALIDATION_ERRORS_MAPPING = {
 		userInvitation: {
 			fields: {
 				email: { displayError: "User email already exists." },
+			},
+		},
+		affiliatePartner: {
+			fields: {
+				name: { displayError: "Affiliate partner already exists." },
 			},
 		},
 	},

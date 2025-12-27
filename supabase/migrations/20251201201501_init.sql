@@ -21,6 +21,7 @@ DROP TYPE IF EXISTS FEEDBACK_PRIORITY CASCADE;
 DROP TYPE IF EXISTS MANUAL_PAYMENT_STATUS CASCADE;
 DROP TYPE IF EXISTS PURCHASE_ORDER_STATUS CASCADE;
 DROP TYPE IF EXISTS SALES_ORDER_STATUS CASCADE;
+DROP TYPE IF EXISTS COMMISSION_TYPE CASCADE;
 --
 CREATE TYPE USER_ROLE AS ENUM('USER', 'TENANT_ADMIN', 'SUPER_ADMIN');
 CREATE TYPE RECORD_STATUS AS ENUM('active', 'archived');
@@ -35,6 +36,7 @@ CREATE TYPE FEEDBACK_STATUS AS ENUM('open', 'in_progress', 'resolved', 'closed')
 CREATE TYPE FEEDBACK_PRIORITY AS ENUM('low', 'medium', 'high', 'urgent');
 CREATE TYPE MANUAL_PAYMENT_STATUS AS ENUM('pending', 'approved', 'declined');
 CREATE TYPE INVITATION_STATUS AS ENUM('open', 'accepted', 'expired');
+CREATE TYPE COMMISSION_TYPE AS ENUM('percentage', 'fixed');
 
 -- DOMAINS TABLE
 CREATE TABLE IF NOT EXISTS public.domains (
@@ -62,6 +64,7 @@ CREATE TABLE IF NOT EXISTS public.tenants (
     subscription_status SUBSCRIPTION_STATUS NOT NULL DEFAULT 'free_trial',
     profile_complete BOOLEAN NOT NULL DEFAULT FALSE,
     description TEXT,
+    affiliate_partner_id UUID REFERENCES public.affiliate_partners(id) ON DELETE NO ACTION,
     status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -322,6 +325,20 @@ CREATE TABLE IF NOT EXISTS public.manual_payments (
     reference_number VARCHAR(255) UNIQUE NOT NULL,
     status MANUAL_PAYMENT_STATUS NOT NULL DEFAULT 'pending',
     description TEXT,
+    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- AFFILIATE_PARTNERS TABLE
+CREATE TABLE IF NOT EXISTS public.affiliate_partners (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    commission_type COMMISSION_TYPE NOT NULL,
+    commission_value DECIMAL(10,2) NOT NULL,
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -610,6 +627,9 @@ CREATE INDEX idx_inventory_item_variants_tenant_id ON public.inventory_item_vari
 CREATE INDEX idx_inventory_item_variants_inventory_item_id ON public.inventory_item_variants(inventory_item_id);
 CREATE INDEX idx_inventory_item_variants_variant_id ON public.inventory_item_variants(variant_id);
 CREATE INDEX idx_inventory_item_variants_status ON public.inventory_item_variants(status);
+CREATE INDEX idx_affiliate_partners_name ON public.affiliate_partners(name);
+CREATE INDEX idx_affiliate_partners_status ON public.affiliate_partners(status);
+CREATE INDEX idx_affiliate_partners_commission_type ON public.affiliate_partners(commission_type);
 
 -- Function to renew tenant subscription after saving manual payments
 CREATE OR REPLACE FUNCTION renew_tenant_subscription_to_manual_payments()
@@ -744,6 +764,11 @@ CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_tenant_user_invites
     FOR EACH ROW
     EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
+CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_affiliate_partners
+    BEFORE INSERT ON public.affiliate_partners
+    FOR EACH ROW
+    EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
+
 -- UPDATED_AT and UPDATED_BY TRIGGER FUNCTION
 CREATE OR REPLACE FUNCTION public.update_updated_at_and_updated_by_column()
     RETURNS TRIGGER AS $$
@@ -786,6 +811,7 @@ CREATE TRIGGER update_feedback_updated_at BEFORE UPDATE ON public.feedback FOR E
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_manual_payments_updated_at BEFORE UPDATE ON public.manual_payments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_domains_updated_at BEFORE UPDATE ON public.domains FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
+CREATE TRIGGER update_affiliate_partners_updated_at BEFORE UPDATE ON public.affiliate_partners FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 
 
 -- Function to update received_date when order_status = received
@@ -844,6 +870,7 @@ ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.manual_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenant_user_invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.affiliate_partners ENABLE ROW LEVEL SECURITY;
 
 
 -- REALTIME UPDATE
@@ -866,6 +893,7 @@ ALTER publication supabase_realtime add table public.feedback;
 ALTER publication supabase_realtime add table public.manual_payments;
 ALTER publication supabase_realtime add table public.domains;
 ALTER publication supabase_realtime add table public.tenant_user_invites;
+ALTER publication supabase_realtime add table public.affiliate_partners;
 
 -- CHECK IF SUPER_ADMIN
 CREATE OR REPLACE FUNCTION public.isSuperAdmin()
@@ -947,13 +975,32 @@ CREATE POLICY "subscription_plans are viewable by authenticated users" ON public
         auth.role() = 'authenticated'
     );
 
-CREATE POLICY "subscription_plans are insertable by super admin" ON public.subscription_plans
+CREATE POLICY "subscription_plans are insertable by super_admin" ON public.subscription_plans
     FOR INSERT WITH CHECK (
         auth.role() = 'authenticated' AND 
         public.isSuperAdmin()
     );
 
-CREATE POLICY "subscription_plans are updatable by super admin" ON public.subscription_plans
+CREATE POLICY "subscription_plans are updatable by super_admin" ON public.subscription_plans
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND 
+        public.isSuperAdmin()
+    );
+
+-- AFFILIATE_PARTNERS POLICIES
+CREATE POLICY "affiliate_partners are viewable by super_admin" ON public.affiliate_partners
+    FOR SELECT USING (
+        auth.role() = 'authenticated' AND 
+        public.isSuperAdmin()
+    );
+
+CREATE POLICY "affiliate_partners are insertable by super_admin" ON public.affiliate_partners
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND 
+        public.isSuperAdmin()
+    );
+
+CREATE POLICY "affiliate_partners are updatable by super_admin" ON public.affiliate_partners
     FOR UPDATE USING (
         auth.role() = 'authenticated' AND 
         public.isSuperAdmin()
@@ -1313,10 +1360,10 @@ CREATE POLICY "User invites are updatable by superadmin users" ON public.tenant_
 
 /*
 -- AUTH.USERS POLICIES
-CREATE POLICY "Auth.users are viewable by tenant admin" ON auth.users
+CREATE POLICY "Auth.users are viewable by tenant super_admin" ON auth.users
     FOR SELECT USING (auth.role() = 'authenticated' AND public.isTenantAdmin());
 
-CREATE POLICY "Auth.users can be deleted by tenant admin" ON auth.users
+CREATE POLICY "Auth.users can be deleted by tenant super_admin" ON auth.users
     FOR DELETE USING (auth.role() = 'authenticated' AND public.isTenantAdmin());
 */
 

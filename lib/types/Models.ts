@@ -223,43 +223,6 @@ export interface UserFeedback {
 	};
 }
 
-export interface InventoryTurnoverReport {
-	item_id: string;
-	item_name: string;
-	sold_quantity: number;
-}
-
-export interface PendingOrdersReport {
-	item_id: string;
-	item_name: string;
-	total_ordered_quantity: number;
-	order_status: string;
-}
-
-export interface InventoryAgingReport {
-	item_id: string;
-	item_name: string;
-	item_quantity: number;
-	order_id: string;
-	order_number: string;
-	order_received_date: string;
-	days_in_stock: number;
-}
-
-export interface PurchaseOrderMonthlyTrendsData {
-	month_name: string;
-	ordered_quantity: number;
-	canceled_quantity: number;
-	received_quantity: number;
-}
-
-export interface SalesOrderMonthlyTrendsData {
-	month_name: string;
-	ordered_quantity: number;
-	canceled_quantity: number;
-	fulfilled_quantity: number;
-}
-
 export interface SubscriptionPlan {
 	id?: string;
 	subscription_status: string;
@@ -295,6 +258,77 @@ export interface UserInvitation {
 	created_by?: string;
 	updated_at?: string;
 	updated_by?: string;
+}
+
+export interface Tenant {
+	id?: string;
+	email: string;
+	name: string;
+	description?: string;
+	domain_id?: string;
+	price_id?: string;
+	payment_method: string;
+	currency_type: string;
+	current_payment_expiry_date: string;
+	expected_payment_amount: number;
+	subscription_status: string;
+	profile_complete: boolean;
+	affiliate_partner_id?: string;
+	status?: string;
+	created_at?: string;
+	created_by?: string;
+	updated_at?: string;
+	updated_by?: string;
+}
+
+export interface AffiliatePartner {
+	id?: string;
+	name: string;
+	commission_type: string;
+	commission_value: number;
+	description: string;
+	status?: string;
+	created_at?: string;
+	created_by?: string;
+	updated_at?: string;
+	updated_by?: string;
+}
+
+export interface InventoryTurnoverReport {
+	item_id: string;
+	item_name: string;
+	sold_quantity: number;
+}
+
+export interface PendingOrdersReport {
+	item_id: string;
+	item_name: string;
+	total_ordered_quantity: number;
+	order_status: string;
+}
+
+export interface InventoryAgingReport {
+	item_id: string;
+	item_name: string;
+	item_quantity: number;
+	order_id: string;
+	order_number: string;
+	order_received_date: string;
+	days_in_stock: number;
+}
+
+export interface PurchaseOrderMonthlyTrendsData {
+	month_name: string;
+	ordered_quantity: number;
+	canceled_quantity: number;
+	received_quantity: number;
+}
+
+export interface SalesOrderMonthlyTrendsData {
+	month_name: string;
+	ordered_quantity: number;
+	canceled_quantity: number;
+	fulfilled_quantity: number;
 }
 
 export interface StatusPayload {
