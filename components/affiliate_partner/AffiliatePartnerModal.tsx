@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { COMMISSION_TYPES } from "@/lib/Constants";
 import { showErrorToast } from "@/lib/helpers/Helper";
 import type { AffiliatePartner } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 
 interface AffiliatePartnerModalProps {
 	isOpen: boolean;
@@ -13,29 +15,32 @@ interface AffiliatePartnerModalProps {
 	onSave: (affiliatePartner: AffiliatePartner) => void;
 }
 
+const emptyEntry: Partial<AffiliatePartner> = {
+	name: "",
+	description: "",
+	commission_type: "",
+	commission_value: 0,
+};
+
 export function AffiliatePartnerModal({
 	isOpen,
 	onClose,
 	affiliatePartner,
 	onSave,
 }: AffiliatePartnerModalProps) {
-	const emptyEntry: Partial<AffiliatePartner> = {
-		name: "",
-		description: "",
-		commission_type: "",
-		commission_value: 0,
-	};
-
 	const [formData, setFormData] =
 		useState<Partial<AffiliatePartner>>(emptyEntry);
+	const { loading } = useLoadingContext();
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		if (affiliatePartner) {
 			setFormData(affiliatePartner);
 		} else {
 			setFormData(emptyEntry);
 		}
-	}, [affiliatePartner]);
+	}, [affiliatePartner, isOpen]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -95,6 +100,7 @@ export function AffiliatePartnerModal({
 							value={formData.name}
 							onChange={(e) => handleInputChange("name", e.target.value)}
 							className="input-field"
+							autoFocus
 							required
 						/>
 					</div>
@@ -138,24 +144,16 @@ export function AffiliatePartnerModal({
 						<span className="block text-sm font-medium text-gray-700 mb-1">
 							Description
 						</span>
-						<input
-							type="text"
+						<textarea
 							value={formData.description}
 							onChange={(e) => handleInputChange("description", e.target.value)}
 							className="input-field"
+							rows={3}
 						/>
 					</div>
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn-outline-primary">
-							Save
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton loading={loading} />
 					</div>
 				</form>
 			</div>

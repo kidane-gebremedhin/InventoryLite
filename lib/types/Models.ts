@@ -225,7 +225,8 @@ export interface UserFeedback {
 
 export interface SubscriptionPlan {
 	id?: string;
-	subscription_status: string;
+	billing_cycle: string;
+	subscription_tier: string;
 	currency_type: string;
 	payment_amount: number;
 	status?: string;
@@ -268,17 +269,19 @@ export interface Tenant {
 	domain_id?: string;
 	price_id?: string;
 	payment_method: string;
-	currency_type: string;
 	current_payment_expiry_date: string;
-	expected_payment_amount: number;
 	subscription_status: string;
 	profile_complete: boolean;
 	affiliate_partner_id?: string;
+	subscription_plan_id?: string;
 	status?: string;
 	created_at?: string;
 	created_by?: string;
 	updated_at?: string;
 	updated_by?: string;
+	domain?: Domain;
+	affiliate_partner?: AffiliatePartner;
+	subscription_plan?: SubscriptionPlan;
 }
 
 export interface AffiliatePartner {
@@ -377,6 +380,7 @@ export interface UserSubscriptionInfo {
 	tenant_id: string;
 	tenant_name: string;
 	domain_id: string;
+	subscription_plan_id: string;
 	price_id: string;
 	payment_method: string;
 	currency_type: string;

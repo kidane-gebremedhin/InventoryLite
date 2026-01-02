@@ -1,4 +1,4 @@
-import { APP_NAME } from "@/lib/app_config/config";
+import { APP_NAME, CONTACT_EMAIL } from "@/lib/app_config/config";
 
 export function EmailInvitation({
 	userName,
@@ -54,7 +54,7 @@ export function EmailInvitation({
             <hr style="margin:24px 0;" />
 
             <p style="font-size:12px; color:#9ca3af;">
-              © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.
+              © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved | Contact us ${CONTACT_EMAIL}
             </p>
           </td>
         </tr>

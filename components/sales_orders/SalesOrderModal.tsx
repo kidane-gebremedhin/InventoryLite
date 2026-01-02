@@ -13,6 +13,8 @@ import type {
 	Store,
 	Variant,
 } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 import Tooltip from "../helpers/ToolTip";
 
 interface SalesOrderModalProps {
@@ -47,10 +49,9 @@ export default function SalesOrderModal({
 	variants,
 	onSave,
 }: SalesOrderModalProps) {
-	const [loading, setLoading] = useState(false);
+	const { loading } = useLoadingContext();
 	const [formData, setFormData] = useState<Partial<SalesOrder>>(emptyEntry);
 	const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([]);
-	//const [itemVariants, setItemVariants] = useState<Variant[]>([])
 
 	const resetForm = useCallback(() => {
 		setFormData({
@@ -63,21 +64,21 @@ export default function SalesOrderModal({
 	}, []);
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		// reset form
 		setFormData(emptyEntry);
 
-		if (isOpen) {
-			if (order) {
-				setFormData({
-					so_number: order.so_number || "",
-					customer_id: order.customer_id || "",
-					expected_date: order.expected_date ? order.expected_date : "",
-					order_status: order.order_status || SalesOrderStatus.PENDING,
-				});
-				setSalesOrderItems(order.order_items || []);
-			} else {
-				resetForm();
-			}
+		if (order) {
+			setFormData({
+				so_number: order.so_number || "",
+				customer_id: order.customer_id || "",
+				expected_date: order.expected_date ? order.expected_date : "",
+				order_status: order.order_status || SalesOrderStatus.PENDING,
+			});
+			setSalesOrderItems(order.order_items || []);
+		} else {
+			resetForm();
 		}
 	}, [isOpen, order, resetForm]);
 
@@ -139,33 +140,27 @@ export default function SalesOrderModal({
 			return;
 		}
 
-		try {
-			const itemsToInsert: SalesOrderItem[] = salesOrderItems.map((item) => ({
-				...(item.id && { id: item.id }),
-				store_id: item.store_id,
-				variant_id: item?.variant_id,
-				sales_order_id: order?.id || "",
-				inventory_item_id: item.inventory_item_id || "",
-				quantity: item.quantity || 0,
-				unit_price: item.unit_price || 0,
-			}));
+		const itemsToInsert: SalesOrderItem[] = salesOrderItems.map((item) => ({
+			...(item.id && { id: item.id }),
+			store_id: item.store_id,
+			variant_id: item?.variant_id,
+			sales_order_id: order?.id || "",
+			inventory_item_id: item.inventory_item_id || "",
+			quantity: item.quantity || 0,
+			unit_price: item.unit_price || 0,
+		}));
 
-			const newSalesOrder: SalesOrder = {
-				id: order?.id || "",
-				so_number: formData.so_number || "",
-				customer_id: formData.customer_id || "",
-				order_status: formData.order_status,
-				status: order?.status || RecordStatus.ACTIVE,
-				expected_date: formData.expected_date,
-				order_items: itemsToInsert,
-			};
+		const newSalesOrder: SalesOrder = {
+			id: order?.id || "",
+			so_number: formData.so_number || "",
+			customer_id: formData.customer_id || "",
+			order_status: formData.order_status,
+			status: order?.status || RecordStatus.ACTIVE,
+			expected_date: formData.expected_date,
+			order_items: itemsToInsert,
+		};
 
-			onSave(newSalesOrder);
-		} catch (_error) {
-			showErrorToast("Failed to save sales order");
-		} finally {
-			setLoading(false);
-		}
+		onSave(newSalesOrder);
 	};
 
 	if (!isOpen) return null;
@@ -199,6 +194,7 @@ export default function SalesOrderModal({
 									setFormData({ ...formData, so_number: e.target.value })
 								}
 								className="input-field"
+								autoFocus
 								required
 							/>
 						</div>
@@ -333,7 +329,6 @@ export default function SalesOrderModal({
 													updateItem(index, "variant_id", e.target.value)
 												}
 												className="input-field"
-												required
 											>
 												<option value="">Select Variant</option>
 												{variants
@@ -412,21 +407,11 @@ export default function SalesOrderModal({
 
 					{/* Form Actions */}
 					<div className="flex justify-end space-x-3 pt-6 border-t">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-							disabled={loading}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							className="btn-outline-primary"
-							disabled={loading}
-						>
-							{loading ? "Saving..." : order ? "Update Order" : "Create Order"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={order ? "Update Order" : "Create Order"}
+						/>
 					</div>
 				</form>
 			</div>

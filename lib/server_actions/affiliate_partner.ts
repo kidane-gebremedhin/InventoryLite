@@ -29,7 +29,7 @@ export async function fetchAffiliatePartners({
 
 	const cacheKey = `${RedisCacheKey.affiliate_partners}_${searchTerm}_${commissionType}_${selectedStatus}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.affiliate_partners)
 			.select("*", { count: "exact", head: false });
@@ -38,6 +38,11 @@ export async function fetchAffiliatePartners({
 		}
 		if (selectedStatus !== ALL_OPTIONS) {
 			query = query.eq("status", selectedStatus);
+		}
+		if (searchTerm) {
+			query = query.or(
+				`name.ilike.%${searchTerm}%, description.ilike.%${searchTerm}%`,
+			);
 		}
 		const { data, count, error } = await query
 			.order("created_at", { ascending: false })
@@ -56,7 +61,7 @@ export async function fetchAffiliatePartnerOptions(): Promise<ServerActionsRespo
 
 	const cacheKey = `${RedisCacheKey.affiliate_partners}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		const { data, count, error } = await supabase
 			.from(DATABASE_TABLE.affiliate_partners)
 			.select("id, name", { count: "exact", head: false })
@@ -83,7 +88,7 @@ export async function saveAffiliatePartner(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.affiliate_partners}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -102,7 +107,7 @@ export async function updateAffiliatePartner(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.affiliate_partners}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -121,7 +126,7 @@ export async function updateAffiliatePartnerRecordStatus(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.affiliate_partners}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }

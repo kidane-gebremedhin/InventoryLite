@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ConsentCookieStatus, ROUTE_PATH } from "@/lib/Enums";
+import { ROUTE_PATH } from "@/lib/Enums";
 import { acceptCookies, consentGiven } from "@/lib/helpers/Helper";
 import { useLoadingContext } from "../context_apis/LoadingProvider";
 
@@ -34,18 +34,18 @@ export default function CookiesConsent() {
 								We value your privacy
 							</p>
 							<p className="text-sm text-gray-300">
-								We use cookies to store the necessary HTTP-only session cookies
-								needed for core functionality of this system. By clicking
-								"Accept", you consent to our use of these cookies.
+								We use cookies to store the necessary HTTP-only session and auth
+								cookies needed for core functionality of this system. By
+								clicking "Accept", you consent to our use of these cookies.
 							</p>
 						</div>
 						<div className="flex-shrink-0">
 							<button
 								type="button"
 								id="accept-button"
-								onClick={() => {
-									acceptCookies();
-									setConsent(ConsentCookieStatus.accepted.toString());
+								onClick={async () => {
+									await acceptCookies();
+									setConsent(true);
 									setLoading(true);
 									router.push(ROUTE_PATH.DASHBOARD);
 								}}

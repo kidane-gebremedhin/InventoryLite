@@ -3,63 +3,49 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { showErrorToast } from "@/lib/helpers/Helper";
-import type { Domain } from "@/lib/types/Models";
+import type { AffiliatePartner, Tenant } from "@/lib/types/Models";
 import { useLoadingContext } from "../context_apis/LoadingProvider";
 import { CancelButton, SaveButton } from "../helpers/buttons";
 
-interface DomainModalProps {
+interface TenantModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	domain: Domain | null;
-	onSave: (domain: Domain) => void;
+	tenant: Tenant | null;
+	affiliatePartners: AffiliatePartner[];
+	onSave: (tenant: Partial<Tenant>) => void;
 }
 
-const emptyEntry: Domain = {
-	name: "",
-	description: "",
-};
-
-export function DomainModal({
+export function TenantModal({
 	isOpen,
 	onClose,
-	domain,
+	tenant,
+	affiliatePartners,
 	onSave,
-}: DomainModalProps) {
-	const [formData, setFormData] = useState<Partial<Domain>>(emptyEntry);
+}: TenantModalProps) {
+	const [formData, setFormData] = useState<Partial<Tenant>>(null);
 	const { loading } = useLoadingContext();
 
 	useEffect(() => {
-		if (!isOpen) return;
-
-		if (domain) {
-			setFormData(domain);
-		} else {
-			setFormData(emptyEntry);
-		}
-	}, [domain, isOpen]);
+		setFormData({
+			id: tenant?.id,
+			affiliate_partner_id: tenant?.affiliate_partner_id || "",
+		});
+	}, [tenant]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!formData.name) {
+		if (!formData.affiliate_partner_id) {
 			showErrorToast("Please fill in all required fields.");
 			return;
 		}
 
-		const newDomain: Domain = {
-			id: domain?.id,
-			name: formData.name,
-			description: formData.description || "",
+		const updatedTenant: Partial<Tenant> = {
+			id: tenant?.id,
+			affiliate_partner_id: formData.affiliate_partner_id,
 		};
 
-		onSave(newDomain);
-	};
-
-	const handleInputChange = (field: keyof Domain, value) => {
-		setFormData((prev) => ({
-			...prev,
-			[field]: value,
-		}));
+		onSave(updatedTenant);
 	};
 
 	if (!isOpen) return null;
@@ -69,7 +55,7 @@ export function DomainModal({
 			<div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
 				<div className="flex justify-between items-center mb-4">
 					<h3 className="text-lg font-semibold text-gray-900">
-						{domain ? "Edit" : "Add New"}
+						{tenant ? "Edit" : "Add New"}
 					</h3>
 					<button
 						type="button"
@@ -83,36 +69,32 @@ export function DomainModal({
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
 						<span className="block text-sm font-medium text-gray-700 mb-1">
-							Name *
+							Affiliate Partner *
 						</span>
-						<input
-							type="text"
-							value={formData.name}
-							onChange={(e) => handleInputChange("name", e.target.value)}
+						<select
+							value={formData.affiliate_partner_id}
+							onChange={(e) =>
+								setFormData({
+									...formData,
+									affiliate_partner_id: e.target.value,
+								})
+							}
 							className="input-field"
 							autoFocus
 							required
-						/>
-					</div>
-
-					<div>
-						<span className="block text-sm font-medium text-gray-700 mb-1">
-							Description
-						</span>
-						<textarea
-							value={formData.description}
-							onChange={(e) => handleInputChange("description", e.target.value)}
-							className="input-field"
-							rows={3}
-						/>
+						>
+							<option value="">Select partner</option>
+							{affiliatePartners.map((affiliatePartner) => (
+								<option key={affiliatePartner.id} value={affiliatePartner.id}>
+									{affiliatePartner.name}
+								</option>
+							))}
+						</select>
 					</div>
 
 					<div className="flex justify-end space-x-3 pt-4">
 						<CancelButton loading={loading} onClose={onClose} />
-						<SaveButton
-							loading={loading}
-							label={domain ? "Update" : "Create"}
-						/>
+						<SaveButton loading={loading} label={"Update Affiliate Partner"} />
 					</div>
 				</form>
 			</div>

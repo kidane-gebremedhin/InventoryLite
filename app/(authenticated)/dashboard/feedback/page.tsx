@@ -3,7 +3,6 @@
 import {
 	ChatBubbleLeftRightIcon,
 	MagnifyingGlassIcon,
-	PlusIcon,
 	StarIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
@@ -12,6 +11,7 @@ import { useLoadingContext } from "@/components/context_apis/LoadingProvider";
 import { FeedbackRating } from "@/components/feedback/FeedbackRating";
 import ExportExcel from "@/components/file_import_export/ExportExcel";
 import ExportPDF from "@/components/file_import_export/ExportPDF";
+import { AddButton } from "@/components/helpers/buttons";
 import Pagination from "@/components/helpers/Pagination";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import {
@@ -168,15 +168,10 @@ export default function FeedbackPage() {
 					<h1 className="text-2xl font-bold text-gray-900">
 						Feedback & Support
 					</h1>
-
-					<button
-						type="button"
-						onClick={() => setShowForm(true)}
-						className="btn-outline-primary flex items-center"
-					>
-						<PlusIcon className="h-4 w-4 mr-2" />
-						Submit Feedback
-					</button>
+					<AddButton
+						label={"Submit Feedback"}
+						handleAdd={() => setShowForm(true)}
+					/>
 				</div>
 			</div>
 

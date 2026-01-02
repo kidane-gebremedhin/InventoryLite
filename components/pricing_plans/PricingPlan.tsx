@@ -1,32 +1,56 @@
 import { CheckIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
+import { APP_ACTIVE_CURRENCY } from "@/lib/app_config/config";
 import {
 	FREE_PLAN_DURATION,
 	FREE_PLAN_LABEL,
-	PAID_PLAN_DURATION,
+	PAID_PLAN_MONTHLY,
+	PAID_PLAN_YEARLY,
 } from "@/lib/Constants";
+import { CurrencyType, ROUTE_PATH } from "@/lib/Enums";
+
+const app_prices = {
+	ETB: { monthly: 300, yearly: 2500, icon: "ETB" },
+	USD: { monthly: 9.99, yearly: 79.99, icon: "$" },
+};
+
+const appFeatures = [
+	"Unlimited products",
+	"Product & SKU management",
+	"Product variants (size, color, ...)",
+	"Stock tracking (in/out/current quantity)",
+	"Multi-store support",
+	"Demand monitoring",
+	"Low-stock alerts",
+	"Supplier management",
+	"Purchase orders (POs)",
+	"Customer management",
+	"Sales orders (SOs)",
+	"Reporting",
+	"Inventory turnover ratio",
+	"Dead stock & slow-moving products",
+	"Unlimited users",
+	"SSO (OAuth)",
+	"Daily backups",
+	"Data export & ownership",
+	"24/7 support",
+];
 
 const tiers = [
 	{
-		name: "Starter",
+		name: "Free Trial",
 		id: "tier-starter",
 		priceId: "#",
 		paymentLink: "#",
-		priceMonthly: "Free",
+		price: "Free",
 		description:
 			"Get full access for a week just to get a feel of the application.",
-		features: [
-			"Single user",
-			"Up to 50 items",
-			"Reporting",
-			"Multi-store support",
-			"Email support",
-		],
+		features: appFeatures,
 		mostPopular: false,
 	},
 	{
-		name: "Standard",
-		id: "tier-standard",
+		name: "Monthly Plan",
+		id: "tier-monthly",
 		priceId:
 			process.env.NODE_ENV === "development"
 				? "price_1S8foNBi9Mbeb3tzh9fStzk3"
@@ -35,21 +59,15 @@ const tiers = [
 			process.env.NODE_ENV === "development"
 				? "https://buy.stripe.com/test_3cI28qdtX0jkbZSaTFeIw00"
 				: "",
-		priceMonthly: "$9.99",
+		price: app_prices[APP_ACTIVE_CURRENCY].monthly,
 		description:
 			"Unlock powerful demand and inventory managment tools for your business.",
-		features: [
-			"Unlimited users",
-			"Up to 500 items",
-			"Reporting",
-			"Multi-store support",
-			"Priority email support",
-		],
+		features: appFeatures,
 		mostPopular: true,
 	},
 	{
-		name: "Premium",
-		id: "tier-premium",
+		name: "Yearly Plan",
+		id: "tier-yearly",
 		priceId:
 			process.env.NODE_ENV === "development"
 				? "price_1S8fvJBi9Mbeb3tziMSULl6X"
@@ -58,16 +76,10 @@ const tiers = [
 			process.env.NODE_ENV === "development"
 				? "https://buy.stripe.com/test_8x29AS89D0jk1le2n9eIw01"
 				: "",
-		priceMonthly: "$29.99",
+		price: app_prices[APP_ACTIVE_CURRENCY].yearly,
 		description:
 			"For businesses that need a comprehensive demand and inventory management solution.",
-		features: [
-			"Unlimited users",
-			"Unlimited Items",
-			"Advanced reporting",
-			"Multi-store support",
-			"24/7 support",
-		],
+		features: appFeatures,
 		mostPopular: false,
 	},
 ];
@@ -113,7 +125,7 @@ export default function PricingPlan() {
 						</div>
 						<p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-8">
 							Choose a plan that matches with your business needs. Get started
-							with a 7-day free trial on any plan, no credit card required.
+							with a 7-day free trial, no credit card required.
 						</p>
 					</div>
 					{/* This is the container for the pricing tiers. It is now a responsive grid. */}
@@ -131,12 +143,19 @@ export default function PricingPlan() {
 								</h3>
 								<div className="mt-4 flex items-baseline gap-x-2">
 									<span className="text-5xl font-bold tracking-tight text-gray-900">
-										{tier.priceMonthly}
+										{tier.price !== FREE_PLAN_LABEL && (
+											<span className="text-base font-semibold leading-7 text-gray-600">
+												{app_prices[APP_ACTIVE_CURRENCY].icon}
+											</span>
+										)}
+										{tier.price}
 									</span>
 									<span className="text-base font-semibold leading-7 text-gray-600">
 										/
-										{tier.priceMonthly !== FREE_PLAN_LABEL
-											? PAID_PLAN_DURATION
+										{tier.price !== FREE_PLAN_LABEL
+											? tier.id === "tier-monthly"
+												? PAID_PLAN_MONTHLY
+												: PAID_PLAN_YEARLY
 											: FREE_PLAN_DURATION}
 									</span>
 								</div>
@@ -156,7 +175,11 @@ export default function PricingPlan() {
 								</ul>
 								<Link
 									target="_blank"
-									href={tier.paymentLink}
+									href={
+										APP_ACTIVE_CURRENCY === CurrencyType.ETB
+											? ROUTE_PATH.SIGNIN
+											: tier.paymentLink
+									}
 									aria-describedby={tier.id}
 									className={`mt-8 block rounded-md py-0 px-3 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition-all duration-300
                     ${

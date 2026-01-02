@@ -11,6 +11,15 @@ export enum SubscriptionPaymentType {
 	PAYMENT_GATEWAY = "payment_gateway",
 }
 
+export enum SubscriptionTier {
+	STANDARD = "standard",
+}
+
+export enum BillingCycle {
+	MONTHLY = "monthly",
+	YEARLY = "yearly",
+}
+
 export enum CurrencyType {
 	ETB = "ETB",
 	USD = "USD",
@@ -145,6 +154,7 @@ export enum RedisCacheKey {
 
 export enum CookiesKey {
 	ucookiesinfo = "ucookiesinfo",
+	gdpr_consent = "gdpr_consent",
 }
 
 export enum ConsentCookieStatus {
@@ -211,6 +221,8 @@ export enum ROUTE_PATH {
 	TRANSACTION = "/dashboard/transaction",
 	INVITE_USER = "/dashboard/user-invitation",
 	SUBSCRIPTION_PLAN = "/dashboard/subscription-plan",
+	AFFILIATE_PARTNER = "/dashboard/affiliate-partner",
+	TENANT = "/dashboard/tenant",
 	ENABLE_COOKIES = "/dashboard/fallback/enable-cookies",
 }
 

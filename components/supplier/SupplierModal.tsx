@@ -4,6 +4,8 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
 import { showErrorToast } from "@/lib/helpers/Helper";
 import type { Supplier } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 
 const emptyEntry: Supplier = {
 	name: "",
@@ -31,7 +33,7 @@ export default function SupplierModal({
 	supplier,
 	onSave,
 }: SupplierModalProps) {
-	const [loading] = useState(false);
+	const { loading } = useLoadingContext();
 	const [formData, setFormData] = useState<Partial<Supplier>>(emptyEntry);
 	const [errors, setErrors] = useState<FormErrors>({});
 
@@ -46,19 +48,19 @@ export default function SupplierModal({
 	}, []);
 
 	useEffect(() => {
-		if (isOpen) {
-			if (supplier) {
-				setFormData({
-					name: supplier.name || "",
-					email: supplier.email || "",
-					phone: supplier.phone || "",
-					address: supplier.address || "",
-				});
-			} else {
-				resetForm();
-			}
-			setErrors({});
+		if (!isOpen) return;
+
+		if (supplier) {
+			setFormData({
+				name: supplier.name || "",
+				email: supplier.email || "",
+				phone: supplier.phone || "",
+				address: supplier.address || "",
+			});
+		} else {
+			resetForm();
 		}
+		setErrors({});
 	}, [isOpen, supplier, resetForm]);
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -118,6 +120,7 @@ export default function SupplierModal({
 							onChange={(e) => handleInputChange("name", e.target.value)}
 							className={`input-field ${errors.name ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
 							placeholder="Enter supplier name"
+							autoFocus
 							required
 						/>
 						{errors.name && (
@@ -171,25 +174,11 @@ export default function SupplierModal({
 					</div>
 
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-							disabled={loading}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							className="btn-outline-primary"
-							disabled={loading}
-						>
-							{loading
-								? "Saving..."
-								: supplier
-									? "Update Supplier"
-									: "Create Supplier"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={supplier ? "Update Supplier" : "Create Supplier"}
+						/>
 					</div>
 				</form>
 			</div>

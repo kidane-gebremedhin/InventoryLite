@@ -1,6 +1,6 @@
 "use server";
 import nodemailer from "nodemailer";
-import { APP_NAME } from "../app_config/config";
+import { APP_NAME, CONTACT_EMAIL } from "../app_config/config";
 import type { ServerActionsResponse } from "../types/Models";
 
 export async function sendMail({
@@ -45,8 +45,6 @@ export async function sendMail({
 		invitationLink,
 		invitationExpiresAt,
 	});
-	// `Hi ${email.split('@')[0]},
-	//     You are invited to complete your account at ${process.env.APP_URL} following this link: ${invitationLink}`;
 
 	try {
 		transporter.sendMail({
@@ -122,7 +120,7 @@ function emailInvitationTemplate({
             <hr style="margin:24px 0;" />
 
             <p style="font-size:12px; color:#9ca3af;">
-              © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.
+              © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved| Contact us ${CONTACT_EMAIL}
             </p>
           </td>
         </tr>

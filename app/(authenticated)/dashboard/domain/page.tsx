@@ -4,7 +4,6 @@ import {
 	ArrowUpOnSquareIcon,
 	MagnifyingGlassIcon,
 	PencilIcon,
-	PlusIcon,
 	TrashIcon,
 } from "@heroicons/react/24/outline";
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -15,9 +14,9 @@ import { DomainModal } from "@/components/domain/DomainModal";
 import ExportExcel from "@/components/file_import_export/ExportExcel";
 import ExportPDF from "@/components/file_import_export/ExportPDF";
 import ActionsMenu from "@/components/helpers/ActionsMenu";
+import { AddButton } from "@/components/helpers/buttons";
 import { ConfirmationModal } from "@/components/helpers/ConfirmationModal";
 import Pagination from "@/components/helpers/Pagination";
-import { useAuthContext } from "@/components/providers/AuthProvider";
 import {
 	ALL_OPTIONS,
 	FIRST_PAGE_NUMBER,
@@ -69,7 +68,6 @@ export default function DomainPage() {
 		useState(false);
 	// Global States
 	const { setLoading } = useLoadingContext();
-	const { currentUser } = useAuthContext();
 
 	const reportHeaders = {
 		name: "Tenant Domain",
@@ -87,7 +85,6 @@ export default function DomainPage() {
 			setLoading(true);
 
 			const { data, count, error } = await fetchDomains({
-				tenantId: currentUser?.subscriptionInfo?.tenant_id,
 				selectedStatus,
 				searchTerm,
 				startIndex,
@@ -104,14 +101,7 @@ export default function DomainPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [
-		setLoading,
-		currentUser?.subscriptionInfo?.tenant_id,
-		searchTerm,
-		selectedStatus,
-		recordsPerPage,
-		currentPage,
-	]);
+	}, [setLoading, searchTerm, selectedStatus, recordsPerPage, currentPage]);
 
 	useEffect(() => {
 		// reset pagination
@@ -183,7 +173,7 @@ export default function DomainPage() {
 			const { data, error } = await saveDomain(domainWithNoId);
 
 			if (error) {
-				handleServerError(error.message);
+				handleServerError(error);
 				return;
 			}
 
@@ -202,7 +192,7 @@ export default function DomainPage() {
 			const { data, error } = await updateDomain(domain.id, domain);
 
 			if (error) {
-				handleServerError(error.message);
+				handleServerError(error);
 				return;
 			}
 
@@ -249,14 +239,7 @@ export default function DomainPage() {
 						</h1>
 						<p className="text-gray-600">Manage your business industries</p>
 					</div>
-					<button
-						type="button"
-						onClick={handleAdd}
-						className="w-full md:w-1/5 btn-outline-primary flex justify-center items-center"
-					>
-						<PlusIcon className="h-5 w-5 mr-2" />
-						Add Domain
-					</button>
+					<AddButton label={"Add Domain"} handleAdd={handleAdd} />
 				</div>
 			</div>
 

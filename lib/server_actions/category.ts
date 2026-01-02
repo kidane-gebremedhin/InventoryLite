@@ -29,7 +29,7 @@ export async function fetchCategories({
 
 	const cacheKey = `${RedisCacheKey.categories}_${tenantId}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.categories)
 			.select("*", { count: "exact", head: false });
@@ -46,7 +46,9 @@ export async function fetchCategories({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -60,7 +62,7 @@ export async function fetchCategoryOptions(
 
 	const cacheKey = `${RedisCacheKey.categories}_${tenantId}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		const { data, count, error } = await supabase
 			.from(DATABASE_TABLE.categories)
 			.select("id, name", { count: "exact", head: false })
@@ -68,7 +70,9 @@ export async function fetchCategoryOptions(
 			.order("name", { ascending: true });
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -87,7 +91,7 @@ export async function saveCategory(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.categories}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 
 	return { data, error };
@@ -107,7 +111,7 @@ export async function updateCategory(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.categories}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 
 	return { data, error };
@@ -127,7 +131,7 @@ export async function updateCategoryRecordStatus(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.categories}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 
 	return { data, error };

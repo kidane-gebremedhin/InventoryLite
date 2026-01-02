@@ -5,7 +5,6 @@ import {
 	EyeIcon,
 	MagnifyingGlassIcon,
 	PencilIcon,
-	PlusIcon,
 	TrashIcon,
 } from "@heroicons/react/24/outline";
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -15,6 +14,7 @@ import { useLoadingContext } from "@/components/context_apis/LoadingProvider";
 import ExportExcel from "@/components/file_import_export/ExportExcel";
 import ExportPDF from "@/components/file_import_export/ExportPDF";
 import ActionsMenu from "@/components/helpers/ActionsMenu";
+import { AddButton } from "@/components/helpers/buttons";
 import { ConfirmationModal } from "@/components/helpers/ConfirmationModal";
 import LowStock from "@/components/helpers/LowStock";
 import Pagination from "@/components/helpers/Pagination";
@@ -362,14 +362,7 @@ export default function InventoryPage() {
 							Manage your inventory items and stock levels
 						</p>
 					</div>
-					<button
-						type="button"
-						onClick={handleAddItem}
-						className="w-full md:w-1/5 btn-outline-primary flex justify-center items-center"
-					>
-						<PlusIcon className="h-5 w-5 mr-2" />
-						Add Item
-					</button>
+					<AddButton label={"Add Item"} handleAdd={handleAddItem} />
 				</div>
 			</div>
 

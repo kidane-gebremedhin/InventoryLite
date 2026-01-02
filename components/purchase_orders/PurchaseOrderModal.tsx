@@ -13,6 +13,8 @@ import type {
 	Supplier,
 	Variant,
 } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 import Tooltip from "../helpers/ToolTip";
 
 interface PurchaseOrderModalProps {
@@ -47,7 +49,7 @@ export default function PurchaseOrderModal({
 	variants,
 	onSave,
 }: PurchaseOrderModalProps) {
-	const [loading, setLoading] = useState(false);
+	const { loading } = useLoadingContext();
 	const [formData, setFormData] = useState<Partial<PurchaseOrder>>(emptyEntry);
 	const [purchaseOrderItems, setPurchaseOrderItems] = useState<
 		PurchaseOrderItem[]
@@ -64,21 +66,21 @@ export default function PurchaseOrderModal({
 	}, []);
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		// reset form
 		setFormData(emptyEntry);
 
-		if (isOpen) {
-			if (order) {
-				setFormData({
-					po_number: order.po_number || "",
-					supplier_id: order.supplier_id || "",
-					expected_date: order.expected_date ? order.expected_date : "",
-					order_status: order.order_status || PurchaseOrderStatus.PENDING,
-				});
-				setPurchaseOrderItems(order.order_items || []);
-			} else {
-				resetForm();
-			}
+		if (order) {
+			setFormData({
+				po_number: order.po_number || "",
+				supplier_id: order.supplier_id || "",
+				expected_date: order.expected_date ? order.expected_date : "",
+				order_status: order.order_status || PurchaseOrderStatus.PENDING,
+			});
+			setPurchaseOrderItems(order.order_items || []);
+		} else {
+			resetForm();
 		}
 	}, [isOpen, order, resetForm]);
 
@@ -144,35 +146,29 @@ export default function PurchaseOrderModal({
 			return;
 		}
 
-		try {
-			const itemsToInsert: PurchaseOrderItem[] = purchaseOrderItems.map(
-				(item) => ({
-					...(item.id && { id: item.id }),
-					store_id: item?.store_id,
-					variant_id: item?.variant_id,
-					purchase_order_id: order?.id || "",
-					inventory_item_id: item.inventory_item_id || "",
-					quantity: item.quantity || 0,
-					unit_price: item.unit_price || 0,
-				}),
-			);
+		const itemsToInsert: PurchaseOrderItem[] = purchaseOrderItems.map(
+			(item) => ({
+				...(item.id && { id: item.id }),
+				store_id: item?.store_id,
+				variant_id: item?.variant_id,
+				purchase_order_id: order?.id || "",
+				inventory_item_id: item.inventory_item_id || "",
+				quantity: item.quantity || 0,
+				unit_price: item.unit_price || 0,
+			}),
+		);
 
-			const newPurchaseOrder: PurchaseOrder = {
-				id: order?.id || "",
-				po_number: formData.po_number || "",
-				supplier_id: formData.supplier_id || "",
-				order_status: formData.order_status,
-				status: order?.status || RecordStatus.ACTIVE,
-				expected_date: formData.expected_date,
-				order_items: itemsToInsert,
-			};
+		const newPurchaseOrder: PurchaseOrder = {
+			id: order?.id || "",
+			po_number: formData.po_number || "",
+			supplier_id: formData.supplier_id || "",
+			order_status: formData.order_status,
+			status: order?.status || RecordStatus.ACTIVE,
+			expected_date: formData.expected_date,
+			order_items: itemsToInsert,
+		};
 
-			onSave(newPurchaseOrder);
-		} catch (_error) {
-			showErrorToast("Failed to save purchase order");
-		} finally {
-			setLoading(false);
-		}
+		onSave(newPurchaseOrder);
 	};
 
 	if (!isOpen) return null;
@@ -207,6 +203,7 @@ export default function PurchaseOrderModal({
 									setFormData({ ...formData, po_number: e.target.value })
 								}
 								className="input-field"
+								autoFocus
 								required
 							/>
 						</div>
@@ -342,7 +339,6 @@ export default function PurchaseOrderModal({
 													updateItem(index, "variant_id", e.target.value)
 												}
 												className="input-field"
-												required
 											>
 												<option value="">Select Variant</option>
 												{variants
@@ -422,21 +418,11 @@ export default function PurchaseOrderModal({
 
 					{/* Form Actions */}
 					<div className="flex justify-end space-x-3 pt-6 border-t">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-							disabled={loading}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							className="btn-outline-primary"
-							disabled={loading}
-						>
-							{loading ? "Saving..." : order ? "Update Order" : "Create Order"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={order ? "Update Order" : "Create Order"}
+						/>
 					</div>
 				</form>
 			</div>

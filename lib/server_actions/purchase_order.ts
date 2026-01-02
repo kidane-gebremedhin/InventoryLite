@@ -47,7 +47,7 @@ export async function fetchPurchaseOrders({
 
 	const cacheKey = `${RedisCacheKey.purchase_orders}_${tenantId}_${selectedOrderStatus}_${selectedStatus}_${selectedSupplierId}_${searchTerm}_${startDate}_${endDate}_${receivedDateStart}_${receivedDateEnd}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase.from(DATABASE_TABLE.purchase_orders).select(
 			`
             *,
@@ -99,7 +99,9 @@ export async function fetchPurchaseOrders({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 

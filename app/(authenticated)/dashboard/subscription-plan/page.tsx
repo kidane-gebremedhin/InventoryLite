@@ -3,7 +3,6 @@
 import {
 	ArrowUpOnSquareIcon,
 	PencilIcon,
-	PlusIcon,
 	TrashIcon,
 } from "@heroicons/react/24/outline";
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -13,18 +12,19 @@ import { useLoadingContext } from "@/components/context_apis/LoadingProvider";
 import ExportExcel from "@/components/file_import_export/ExportExcel";
 import ExportPDF from "@/components/file_import_export/ExportPDF";
 import ActionsMenu from "@/components/helpers/ActionsMenu";
+import { AddButton } from "@/components/helpers/buttons";
 import { ConfirmationModal } from "@/components/helpers/ConfirmationModal";
 import Pagination from "@/components/helpers/Pagination";
-import { useAuthContext } from "@/components/providers/AuthProvider";
 import { SubscriptionPlanModal } from "@/components/subscription_plan/SubscriptionPlanModal";
 import {
 	ALL_OPTIONS,
+	BILLING_CYCLES,
 	CURRENCY_TYPES,
 	FIRST_PAGE_NUMBER,
 	MAX_DROPDOWN_TEXT_LENGTH,
 	RECORD_STATUSES,
 	RECORDS_PER_PAGE,
-	SUBSCRIPTION_STATUSES,
+	SUBSCRIPTION_TIERS,
 	VALIDATION_ERRORS_MAPPING,
 } from "@/lib/Constants";
 import { RecordStatus } from "@/lib/Enums";
@@ -72,10 +72,10 @@ export default function SubscriptionPlanPage() {
 		useState(false);
 	// Global States
 	const { setLoading } = useLoadingContext();
-	const { currentUser } = useAuthContext();
 
 	const reportHeaders = {
-		subscription_status: "Subscription Status",
+		billing_cycle: "Billing Cycle",
+		subscription_tier: "Subscription Tier",
 		currency_type: "Currency",
 		payment_amount: "Payment Amount",
 		created_at: "Date Created",
@@ -91,7 +91,6 @@ export default function SubscriptionPlanPage() {
 			setLoading(true);
 
 			const { data, count, error } = await fetchSubscriptionPlans({
-				tenantId: currentUser?.subscriptionInfo?.tenant_id,
 				selectedSubscriptionStatus,
 				selectedCurrencyType,
 				selectedStatus,
@@ -112,7 +111,6 @@ export default function SubscriptionPlanPage() {
 	}, [
 		currentPage,
 		recordsPerPage,
-		currentUser?.subscriptionInfo?.tenant_id,
 		selectedSubscriptionStatus,
 		selectedCurrencyType,
 		selectedStatus,
@@ -244,8 +242,8 @@ export default function SubscriptionPlanPage() {
 	const handleServerError = (error: PostgrestError) => {
 		if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
 			showErrorToast(
-				VALIDATION_ERRORS_MAPPING.entities.subscriptionPlan.fields
-					.subscription_status.displayError,
+				VALIDATION_ERRORS_MAPPING.entities.subscriptionPlan.fields.billing_cycle
+					.displayError,
 			);
 		} else {
 			showServerErrorToast(error.message);
@@ -260,18 +258,9 @@ export default function SubscriptionPlanPage() {
 						<h1 className="text-2xl font-bold text-gray-900">
 							Subscription Plan Management
 						</h1>
-						<p className="text-gray-600">
-							Manage subscription Subscription plans
-						</p>
+						<p className="text-gray-600">Manage Subscription plans</p>
 					</div>
-					<button
-						type="button"
-						onClick={handleAdd}
-						className="w-full md:w-1/4 btn-outline-primary flex justify-center items-center"
-					>
-						<PlusIcon className="h-5 w-5 mr-2" />
-						Add Subscription Plan
-					</button>
+					<AddButton label={"Add Plan"} handleAdd={handleAdd} />
 				</div>
 			</div>
 
@@ -296,7 +285,8 @@ export default function SubscriptionPlanPage() {
 									(subscriptionPlan, idx) => {
 										return {
 											row_no: idx > 0 ? idx : "Row No.",
-											subscription_status: subscriptionPlan.subscription_status,
+											billing_cycle: subscriptionPlan.billing_cycle,
+											subsubscription_tier: subscriptionPlan.subscription_tier,
 											currency_type: subscriptionPlan.currency_type,
 											payment_amount: subscriptionPlan.payment_amount,
 											created_at: getDateWithoutTime(
@@ -313,7 +303,8 @@ export default function SubscriptionPlanPage() {
 									(subscriptionPlan, idx) => {
 										return {
 											row_no: idx > 0 ? idx : "Row No.",
-											subscription_status: subscriptionPlan.subscription_status,
+											billing_cycle: subscriptionPlan.billing_cycle,
+											subscription_tier: subscriptionPlan.subscription_tier,
 											currency_type: subscriptionPlan.currency_type,
 											payment_amount: subscriptionPlan.payment_amount,
 											created_at: getDateWithoutTime(
@@ -328,7 +319,10 @@ export default function SubscriptionPlanPage() {
 							<thead className="bg-gray-50">
 								<tr>
 									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Subscription Type
+										Billing Cycle
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Subscription Tier
 									</th>
 									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 										Currency
@@ -355,10 +349,27 @@ export default function SubscriptionPlanPage() {
 												}}
 												className="input-field"
 											>
-												<option value="">All Subscription Types</option>
-												{SUBSCRIPTION_STATUSES.map((status) => (
-													<option key={status} value={status}>
-														{shortenText(status, MAX_DROPDOWN_TEXT_LENGTH)}
+												<option value="">All Billing Cycles</option>
+												{BILLING_CYCLES.map((cycle) => (
+													<option key={cycle} value={cycle}>
+														{shortenText(cycle, MAX_DROPDOWN_TEXT_LENGTH)}
+													</option>
+												))}
+											</select>
+										</th>
+										<th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+											<select
+												value={selectedSubscriptionStatus}
+												onChange={(e) => {
+													setCurrentPage(FIRST_PAGE_NUMBER);
+													setSelectedSubscriptionStatus(e.target.value);
+												}}
+												className="input-field"
+											>
+												<option value="">All Subscription Tiers</option>
+												{SUBSCRIPTION_TIERS.map((tier) => (
+													<option key={tier} value={tier}>
+														{shortenText(tier, MAX_DROPDOWN_TEXT_LENGTH)}
 													</option>
 												))}
 											</select>
@@ -411,7 +422,14 @@ export default function SubscriptionPlanPage() {
 										<td className="px-6 py-4">
 											<div>
 												<div className="text-sm font-medium text-gray-900">
-													{subscriptionPlan.subscription_status}
+													{subscriptionPlan.billing_cycle}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{subscriptionPlan.subscription_tier}
 												</div>
 											</div>
 										</td>

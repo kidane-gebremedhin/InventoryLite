@@ -2,21 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { ROUTE_PATH } from "@/lib/Enums";
-import MiniLoading from "../helpers/MiniLoading";
 import { useAuthContext } from "../providers/AuthProvider";
 
 export function Auth() {
 	const { signInWithGoogle } = useAuthContext();
 	const googleSSOImage = "/images/auth_providers/google/google-sso-1.JPG";
-	const [isMounted, setIsMounted] = useState(false);
-
-	useEffect(() => {
-		setIsMounted(true);
-	});
-
-	if (!isMounted) return <MiniLoading />;
 
 	return (
 		<div className="space-y-6">
@@ -50,7 +41,9 @@ export function Auth() {
 							href={ROUTE_PATH.TERMS_OF_SERVICE}
 							className="text-blue-600"
 						>
-							<u>Terms of Service</u>
+							<u>
+								<small>Terms of Service</small>
+							</u>
 						</Link>{" "}
 						and{" "}
 						<Link
@@ -58,7 +51,9 @@ export function Auth() {
 							href={ROUTE_PATH.PRIVACY_POLICY}
 							className="text-blue-600"
 						>
-							<u>Privacy Policy</u>
+							<u>
+								<small>Privacy Policy</small>
+							</u>
 						</Link>
 					</p>
 				</div>

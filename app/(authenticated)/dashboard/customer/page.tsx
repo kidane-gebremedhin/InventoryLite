@@ -4,7 +4,6 @@ import {
 	ArrowUpOnSquareIcon,
 	MagnifyingGlassIcon,
 	PencilIcon,
-	PlusIcon,
 	TrashIcon,
 } from "@heroicons/react/24/outline";
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -15,6 +14,7 @@ import CustomerModal from "@/components/customer/CustomerModal";
 import ExportExcel from "@/components/file_import_export/ExportExcel";
 import ExportPDF from "@/components/file_import_export/ExportPDF";
 import ActionsMenu from "@/components/helpers/ActionsMenu";
+import { AddButton } from "@/components/helpers/buttons";
 import { ConfirmationModal } from "@/components/helpers/ConfirmationModal";
 import Pagination from "@/components/helpers/Pagination";
 import { useAuthContext } from "@/components/providers/AuthProvider";
@@ -189,7 +189,7 @@ export default function CustomerPage() {
 			const { data, error } = await saveCustomer(customerWithNoId);
 
 			if (error) {
-				handleServerError(error.message);
+				handleServerError(error);
 				return;
 			}
 
@@ -208,7 +208,7 @@ export default function CustomerPage() {
 			const { data, error } = await updateCustomer(customer.id, customer);
 
 			if (error) {
-				handleServerError(error.message);
+				handleServerError(error);
 				return;
 			}
 
@@ -255,14 +255,7 @@ export default function CustomerPage() {
 						</h1>
 						<p className="text-gray-600">Manage your customers of items</p>
 					</div>
-					<button
-						type="button"
-						onClick={handleAdd}
-						className="w-full md:w-1/5 btn-outline-primary flex justify-center items-center"
-					>
-						<PlusIcon className="h-5 w-5 mr-2" />
-						Add Customer
-					</button>
+					<AddButton label={"Add Customer"} handleAdd={handleAdd} />
 				</div>
 			</div>
 

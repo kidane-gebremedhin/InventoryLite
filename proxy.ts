@@ -3,7 +3,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import {
 	ADMIN_PATHS,
 	CACHE_TTL_USER_SUBSCRIPTION_INFO,
-	CONSENT_COOKIE_KEY,
 	PUBLIC_PATHS,
 } from "./lib/Constants";
 import {
@@ -24,8 +23,11 @@ export async function proxy(request: NextRequest) {
 	const userSubscriptionInfo = request.cookies.get(
 		CookiesKey.ucookiesinfo,
 	)?.value;
+	const cookiesExist = request.cookies
+		.getAll()
+		.find((cookie) => cookie.name.includes("sb-"));
 	// Reauthenticate when not sufficient cookies
-	if (!userSubscriptionInfo || request.cookies.getAll().length <= 1) {
+	if (!userSubscriptionInfo || !cookiesExist) {
 		const supabase = createServerClient(
 			process.env.NEXT_PUBLIC_SUPABASE_URL,
 			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -77,23 +79,19 @@ export async function proxy(request: NextRequest) {
 
 		// Block requests if cookies not enabled
 		const cookiesEnabled =
-			request.cookies.get(CONSENT_COOKIE_KEY)?.value ===
+			request.cookies.get(CookiesKey.gdpr_consent)?.value ===
 			ConsentCookieStatus.accepted.toString();
 		if (
-			user?.subscriptionInfo?.profile_complete &&
 			!cookiesEnabled &&
-			request.nextUrl.pathname !== ROUTE_PATH.ENABLE_COOKIES
+			request.nextUrl.pathname !== ROUTE_PATH.ENABLE_COOKIES &&
+			(user?.subscriptionInfo?.profile_complete ||
+				user?.subscriptionInfo?.role === UserRole.SUPER_ADMIN)
 		) {
 			return NextResponse.redirect(
 				new URL(ROUTE_PATH.ENABLE_COOKIES, request.url),
 			);
 		}
 
-		console.log(
-			"user?.subscriptionInfo?.role",
-			user?.subscriptionInfo?.role,
-			user?.subscriptionInfo?.profile_complete,
-		);
 		// Redirect tenant admins to complete profile
 		if (
 			user?.subscriptionInfo?.role === UserRole.TENANT_ADMIN &&

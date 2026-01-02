@@ -1,4 +1,5 @@
 import {
+	BillingCycle,
 	CommissionType,
 	CurrencyType,
 	FeedbackCategory,
@@ -11,7 +12,7 @@ import {
 	RecordStatus,
 	ROUTE_PATH,
 	SalesOrderStatus,
-	SubscriptionStatus,
+	SubscriptionTier,
 	TransactionDirection,
 } from "./Enums";
 
@@ -20,15 +21,13 @@ export const TEXT_SEARCH_TRIGGER_KEY = "Enter";
 
 // Pricing
 export const FREE_PLAN_LABEL = "Free";
-export const FREE_PLAN_DURATION = "week";
-export const PAID_PLAN_DURATION = "month";
+export const FREE_PLAN_DURATION = "7 days";
+export const PAID_PLAN_MONTHLY = "month";
+export const PAID_PLAN_YEARLY = "year";
 
 // Auth constants
 export const SIGNED_OUT = "SIGNED_OUT";
 export const DEFAULT_USER_ROLE = "user";
-
-// Cookies
-export const CONSENT_COOKIE_KEY = "gdpr_consent";
 
 // Decimal validation
 export const DECIMAL_REGEX = /^\d*\.?\d*$/;
@@ -81,8 +80,13 @@ export const TRANSACTION_DIRECTIONS: string[] = [
 	TransactionDirection.OUT,
 ];
 
-export const SUBSCRIPTION_STATUSES: SubscriptionStatus[] = [
-	SubscriptionStatus.SUBSCRIBED,
+export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
+	SubscriptionTier.STANDARD,
+];
+
+export const BILLING_CYCLES: BillingCycle[] = [
+	BillingCycle.MONTHLY,
+	BillingCycle.YEARLY,
 ];
 
 export const CURRENCY_TYPES: CurrencyType[] = [
@@ -199,7 +203,8 @@ export const VALIDATION_ERRORS_MAPPING = {
 		},
 		subscriptionPlan: {
 			fields: {
-				subscription_status: { displayError: "Subscription type error." },
+				billing_cycle: { displayError: "Billing Cycle error." },
+				subscription_tier: { displayError: "Subscription Tier error." },
 				currency_type: { displayError: "Currency error." },
 				payment_amount: { displayError: "Payment amount error." },
 			},

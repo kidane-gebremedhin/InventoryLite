@@ -1,28 +1,60 @@
-import {
-	SiNextdotjs,
-	SiReact,
-	SiTailwindcss,
-	SiTypescript,
-} from "react-icons/si";
+import Image from "next/image";
 import LogoLoop from "./logo_loop/LogoLoop";
 
 const techLogos = [
-	{ id: 1, node: <SiReact />, title: "React", href: "https://react.dev" },
+	{
+		id: 1,
+		node: (
+			<Image
+				src="/images/logos/partner-companies/icon-d.JPG"
+				width={80}
+				height={80}
+				alt="PL"
+				className="rounded-lg shadow-lg"
+			/>
+		),
+		title: "React",
+		href: "https://react.dev",
+	},
 	{
 		id: 2,
-		node: <SiNextdotjs />,
+		node: (
+			<Image
+				src="/images/logos/partner-companies/icon-t.JPG"
+				width={80}
+				height={80}
+				alt="PL"
+				className="rounded-lg shadow-lg"
+			/>
+		),
 		title: "Next.js",
 		href: "https://nextjs.org",
 	},
 	{
 		id: 3,
-		node: <SiTypescript />,
+		node: (
+			<Image
+				src="/images/logos/partner-companies/icon-n.JPG"
+				width={80}
+				height={80}
+				alt="PL"
+				className="rounded-lg shadow-lg"
+			/>
+		),
 		title: "TypeScript",
 		href: "https://www.typescriptlang.org",
 	},
 	{
 		id: 4,
-		node: <SiTailwindcss />,
+		node: (
+			<Image
+				src="/images/logos/partner-companies/icon-e.JPG"
+				width={80}
+				height={80}
+				alt="PL"
+				className="rounded-lg shadow-lg"
+			/>
+		),
 		title: "Tailwind CSS",
 		href: "https://tailwindcss.com",
 	},
@@ -31,7 +63,7 @@ const techLogos = [
 export default function PartnersLogoLoop() {
 	return (
 		<div
-			className="pt-5"
+			className="pt-1"
 			style={{ height: "100px", position: "relative", overflow: "hidden" }}
 		>
 			<LogoLoop

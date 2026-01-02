@@ -23,9 +23,9 @@ export async function fetchManualPayments({
 }: SearchParams): Promise<ServerActionsResponse> {
 	const supabase = await createClient();
 
-	const cacheKey = `${RedisCacheKey.manual_payments}_${tenantId}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
+	const cacheKey = `${RedisCacheKey.manual_payments}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.manual_payments)
 			.select("*", { count: "exact", head: false });
@@ -41,7 +41,9 @@ export async function fetchManualPayments({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -60,8 +62,8 @@ export async function approveManualPayment(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.manual_payments}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.manual_payments}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -78,8 +80,8 @@ export async function declineManualPayment(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.manual_payments}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.manual_payments}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -95,8 +97,8 @@ export async function saveManualPayment(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.manual_payments}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.manual_payments}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -114,8 +116,8 @@ export async function updateManualPayment(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.manual_payments}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.manual_payments}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }

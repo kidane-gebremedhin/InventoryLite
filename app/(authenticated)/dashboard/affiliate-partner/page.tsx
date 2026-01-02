@@ -4,7 +4,6 @@ import {
 	ArrowUpOnSquareIcon,
 	MagnifyingGlassIcon,
 	PencilIcon,
-	PlusIcon,
 	TrashIcon,
 } from "@heroicons/react/24/outline";
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -15,6 +14,7 @@ import { useLoadingContext } from "@/components/context_apis/LoadingProvider";
 import ExportExcel from "@/components/file_import_export/ExportExcel";
 import ExportPDF from "@/components/file_import_export/ExportPDF";
 import ActionsMenu from "@/components/helpers/ActionsMenu";
+import { AddButton } from "@/components/helpers/buttons";
 import { ConfirmationModal } from "@/components/helpers/ConfirmationModal";
 import Pagination from "@/components/helpers/Pagination";
 import {
@@ -265,20 +265,11 @@ export default function AffiliatePartnerPage() {
 				<div className="md:flex md:justify-between md:items-center">
 					<div>
 						<h1 className="text-2xl font-bold text-gray-900">
-							Subscription Plan Management
+							Affiliate Partner Management
 						</h1>
-						<p className="text-gray-600">
-							Manage subscription Subscription plans
-						</p>
+						<p className="text-gray-600">Manage Affiliate Partners</p>
 					</div>
-					<button
-						type="button"
-						onClick={handleAdd}
-						className="w-full md:w-1/4 btn-outline-primary flex justify-center items-center"
-					>
-						<PlusIcon className="h-5 w-5 mr-2" />
-						Add Subscription Plan
-					</button>
+					<AddButton label={"Add Partner"} handleAdd={handleAdd} />
 				</div>
 			</div>
 
@@ -455,13 +446,13 @@ export default function AffiliatePartnerPage() {
 										>
 											{canSeeMore
 												? shortenText(
-													affiliatePartner.description,
-													MAX_TABLE_TEXT_LENGTH,
-												)
+														affiliatePartner.description,
+														MAX_TABLE_TEXT_LENGTH,
+													)
 												: affiliatePartner.description}
 											{affiliatePartner.description &&
 												affiliatePartner.description.length >
-												MAX_TABLE_TEXT_LENGTH && (
+													MAX_TABLE_TEXT_LENGTH && (
 													<button
 														type="button"
 														onClick={() => setCanSeeMore(!canSeeMore)}

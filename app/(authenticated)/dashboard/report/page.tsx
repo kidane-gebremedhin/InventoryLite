@@ -100,7 +100,8 @@ export default function App() {
 	};
 
 	const reportTypes = [
-		{ name: "Inventory Turnover", type: ReportType.INVENTORY_TURNOVER },
+		{ name: "Most Selling Items", type: ReportType.INVENTORY_TURNOVER },
+		{ name: "Inventory Aging Report", type: ReportType.INVENTORY_AGING },
 		{ name: "Unfulfilled Demand", type: ReportType.PENDING_SALES_ORDERS },
 		{ name: "Canceled Sales Orders", type: ReportType.CANCELED_SALES_ORDERS },
 		{
@@ -111,7 +112,6 @@ export default function App() {
 			name: "Canceled Purchase Orders",
 			type: ReportType.CANCELED_PURCHASE_ORDERS,
 		},
-		{ name: "Inventory Aging Report", type: ReportType.INVENTORY_AGING },
 	];
 
 	const loadInventoryItems = useCallback(async () => {
@@ -353,7 +353,8 @@ export default function App() {
 					<div className="w-full overflow-x-scroll p-4">
 						<div className="w-[1000px]">
 							<h2 className="text-2xl font-bold mb-4 text-gray-800">
-								Inventory Turnover Report
+								{/* Inventory Turnover Report */}
+								Most Selling Items
 							</h2>
 							<p className="mb-6 text-gray-600">
 								Items sorted by sale frequency (highest first).{" "}
@@ -394,7 +395,7 @@ export default function App() {
 								/>
 								<span className="px-1"></span>
 								<ExportPDF
-									reportName="Inventory Turnover"
+									reportName="Most Selling Items"
 									records={[
 										inventoryTurnoverReportHeaders,
 										...inventoryTurnoverReport,

@@ -9,7 +9,6 @@ import {
 	TruckIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
-import { CheckmarkIcon } from "react-hot-toast";
 import {
 	Bar,
 	BarChart,
@@ -28,7 +27,7 @@ import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { MONTH_NAME_MAPPING } from "@/lib/Constants";
 import { DATABASE_TABLE, RPC_FUNCTION, UserRole } from "@/lib/Enums";
-import { showServerErrorToast, showSuccessToast } from "@/lib/helpers/Helper";
+import { showServerErrorToast } from "@/lib/helpers/Helper";
 import { makeRpcCall } from "@/lib/server_actions/rpc";
 import type {
 	PurchaseOrderMonthlyTrendsData,
@@ -40,8 +39,10 @@ interface DashboardStats {
 	lowStockItems: number;
 	pendingPurchaseOrders: number;
 	receivedPurchaseOrders: number;
+	canceledPurchaseOrders: number;
 	pendingSalesOrders: number;
 	fulfilledSalesOrders: number;
+	canceledSalesOrders: number;
 	totalValue: number;
 	monthlyGrowth: number;
 }
@@ -52,8 +53,10 @@ export default function DashboardPage() {
 		lowStockItems: 0,
 		pendingPurchaseOrders: 0,
 		receivedPurchaseOrders: 0,
+		canceledPurchaseOrders: 0,
 		pendingSalesOrders: 0,
 		fulfilledSalesOrders: 0,
+		canceledSalesOrders: 0,
 		totalValue: 0,
 		monthlyGrowth: 0,
 	});
@@ -65,7 +68,6 @@ export default function DashboardPage() {
 	const { supabase, currentUser } = useAuthContext();
 
 	const loadDashboardStats = useCallback(async () => {
-		showSuccessToast("fetching...");
 		makeRpcCall(RPC_FUNCTION.DASHBOARD_STATS).then(({ data, error }) => {
 			if (error) {
 				showServerErrorToast(error.message);
@@ -163,7 +165,9 @@ export default function DashboardPage() {
 
 		const rate = (
 			(stats.receivedPurchaseOrders /
-				(stats.receivedPurchaseOrders + stats.pendingPurchaseOrders)) *
+				(stats.receivedPurchaseOrders +
+					stats.pendingPurchaseOrders +
+					stats.canceledPurchaseOrders)) *
 			100
 		).toFixed(2);
 		return `${rate}%`;
@@ -176,7 +180,9 @@ export default function DashboardPage() {
 
 		const rate = (
 			(stats.fulfilledSalesOrders /
-				(stats.fulfilledSalesOrders + stats.pendingSalesOrders)) *
+				(stats.fulfilledSalesOrders +
+					stats.pendingSalesOrders +
+					stats.canceledSalesOrders)) *
 			100
 		).toFixed(2);
 		return `${rate}%`;
@@ -264,6 +270,17 @@ export default function DashboardPage() {
 			{/* Stats Cards */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 				<StatCard
+					title="Total Purchase Orders"
+					value={
+						stats.pendingPurchaseOrders +
+						stats.receivedPurchaseOrders +
+						stats.canceledPurchaseOrders
+					}
+					icon={TruckIcon}
+					color="bg-purple-500"
+					trend=""
+				/>
+				<StatCard
 					title="Pending Purchase Orders"
 					value={stats.pendingPurchaseOrders}
 					icon={TruckIcon}
@@ -279,17 +296,21 @@ export default function DashboardPage() {
 					trend=""
 				/>
 				<StatCard
-					title="TBD"
-					value={orderReceiveRate()}
-					icon={CheckmarkIcon}
-					color="bg-purple-500"
-					trend=""
-				/>
-				<StatCard
 					title="Total Items"
 					value={stats.totalItems.toString()}
 					icon={CubeIcon}
 					color="bg-blue-500"
+					trend=""
+				/>
+				<StatCard
+					title="Total Sales Orders"
+					value={
+						stats.pendingSalesOrders +
+						stats.fulfilledSalesOrders +
+						stats.canceledSalesOrders
+					}
+					icon={ShoppingCartIcon}
+					color="bg-purple-500"
 					trend=""
 				/>
 				<StatCard
@@ -305,13 +326,6 @@ export default function DashboardPage() {
 					percentage={orderFulfillmentRate()}
 					icon={ShoppingCartIcon}
 					color="bg-green-500"
-					trend=""
-				/>
-				<StatCard
-					title="TBD"
-					value={orderFulfillmentRate()}
-					icon={CheckmarkIcon}
-					color="bg-purple-500"
 					trend=""
 				/>
 				<StatCard

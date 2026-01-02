@@ -1,6 +1,5 @@
 import toast from "react-hot-toast";
 import {
-	CONSENT_COOKIE_KEY,
 	CUSTOM_SERVER_ERRORS,
 	FEEDBACK_CATEGORIES,
 	FEEDBACK_PRIORITIES,
@@ -8,6 +7,7 @@ import {
 } from "../Constants";
 import {
 	ConsentCookieStatus,
+	CookiesKey,
 	InvitationStatus,
 	PaymentStatus,
 	PurchaseOrderStatus,
@@ -196,7 +196,8 @@ export const formatDateToYYMMDD = (date: Date | null): string => {
 	if (!date) return "";
 
 	const dateWithTimezone = new Date(getDateStringForDisplay(date));
-	return `${dateWithTimezone.getDate()}-${dateWithTimezone.getMonth()}-${dateWithTimezone.getFullYear()}`;
+	// Note: getMonth is zero indexed
+	return `${dateWithTimezone.getDate()}-${dateWithTimezone.getMonth() + 1}-${dateWithTimezone.getFullYear()}`;
 };
 
 export const getCurrentDateTime = (date?: Date): Date => {
@@ -280,26 +281,17 @@ export const calculateStartAndEndIndex = ({
 /**
  * Get a specific cookie value from document.cookie
  */
-export function getClientCookie(name) {
-	const nameEQ = `${name}=`;
-	const ca = document.cookie.split(";");
-	for (let i = 0; i < ca.length; i++) {
-		const c = ca[i].trim();
-		if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-	}
-	return null;
+export function getClientCookie(cookieName) {
+	const enabled = document.cookie.includes(`${cookieName}=`);
+	return enabled;
 }
 
-export function acceptCookies() {
-	// Set for 1 year
-	setConsentCookie(ConsentCookieStatus.accepted.toString());
+export async function acceptCookies() {
+	await setConsentCookie(ConsentCookieStatus.accepted.toString());
 }
 
 export function consentGiven() {
-	return (
-		getClientCookie(CONSENT_COOKIE_KEY) ===
-		ConsentCookieStatus.accepted.toString()
-	);
+	return getClientCookie(CookiesKey.gdpr_consent);
 }
 
 export const getRatingLabel = (rating: RatingStar): string => {

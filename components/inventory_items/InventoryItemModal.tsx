@@ -10,6 +10,8 @@ import type {
 	InventoryItemVariant,
 	Variant,
 } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 import MultiSelect from "../helpers/MultiSelect";
 
 interface InventoryItemModalProps {
@@ -46,8 +48,11 @@ export function InventoryItemModal({
 	const [formData, setFormData] = useState<Partial<InventoryItem>>(emptyEntry);
 	const [selectedVariants, setSelectedVariants] = useState<Variant[]>([]);
 	const [itemVariants, setItemVariants] = useState<InventoryItemVariant[]>([]);
+	const { loading } = useLoadingContext();
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		if (item) {
 			setFormData(item);
 			setItemVariants(item.item_variants || []);
@@ -56,10 +61,6 @@ export function InventoryItemModal({
 		} else {
 			setFormData(emptyEntry);
 			setSelectedVariants([]);
-		}
-
-		if (isOpen) {
-			console.log("Just to pass Biome");
 		}
 	}, [isOpen, item]);
 
@@ -143,6 +144,7 @@ export function InventoryItemModal({
 							value={formData.name}
 							onChange={(e) => handleInputChange("name", e.target.value)}
 							className="input-field"
+							autoFocus
 							required
 						/>
 					</div>
@@ -236,16 +238,8 @@ export function InventoryItemModal({
 					</div>
 
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn-outline-primary">
-							{item ? "Update" : "Create"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton loading={loading} label={item ? "Update" : "Create"} />
 					</div>
 				</form>
 			</div>

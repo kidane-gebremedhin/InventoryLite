@@ -2,9 +2,15 @@
 
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-import { CURRENCY_TYPES, SUBSCRIPTION_STATUSES } from "@/lib/Constants";
+import {
+	BILLING_CYCLES,
+	CURRENCY_TYPES,
+	SUBSCRIPTION_TIERS,
+} from "@/lib/Constants";
 import { showErrorToast } from "@/lib/helpers/Helper";
 import type { SubscriptionPlan } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 
 interface SubscriptionPlanModalProps {
 	isOpen: boolean;
@@ -20,28 +26,33 @@ export function SubscriptionPlanModal({
 	onSave,
 }: SubscriptionPlanModalProps) {
 	const emptyEntry: Partial<SubscriptionPlan> = {
-		subscription_status: "",
+		billing_cycle: "",
+		subscription_tier: "",
 		currency_type: "",
 		payment_amount: 0,
 	};
 
 	const [formData, setFormData] =
 		useState<Partial<SubscriptionPlan>>(emptyEntry);
+	const { loading } = useLoadingContext();
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		if (subscriptionPlan) {
 			setFormData(subscriptionPlan);
 		} else {
 			setFormData(emptyEntry);
 		}
-	}, [subscriptionPlan]);
+	}, [subscriptionPlan, isOpen]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 
 		if (
 			!formData.currency_type ||
-			!formData.subscription_status ||
+			!formData.subscription_tier ||
+			!formData.billing_cycle ||
 			!formData.payment_amount
 		) {
 			showErrorToast("Please fill in all required fields.");
@@ -50,7 +61,8 @@ export function SubscriptionPlanModal({
 
 		const newSubscriptionPlan: SubscriptionPlan = {
 			id: subscriptionPlan?.id,
-			subscription_status: formData.subscription_status,
+			subscription_tier: formData.subscription_tier,
+			billing_cycle: formData.billing_cycle,
 			currency_type: formData.currency_type,
 			payment_amount: formData.payment_amount,
 		};
@@ -86,20 +98,40 @@ export function SubscriptionPlanModal({
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
 						<span className="block text-sm font-medium text-gray-700 mb-1">
-							Subscription Type *
+							Subscription Tier *
 						</span>
 						<select
-							value={formData.subscription_status}
+							value={formData.subscription_tier}
 							onChange={(e) =>
-								handleInputChange("subscription_status", e.target.value)
+								handleInputChange("subscription_tier", e.target.value)
 							}
 							className="input-field"
 							required
 						>
-							<option value="">Select Subscription Status</option>
-							{SUBSCRIPTION_STATUSES.map((status) => (
-								<option key={status} value={status}>
-									{status}
+							<option value="">Select Subscription Tier</option>
+							{SUBSCRIPTION_TIERS.map((tier) => (
+								<option key={tier} value={tier}>
+									{tier}
+								</option>
+							))}
+						</select>
+					</div>
+					<div>
+						<span className="block text-sm font-medium text-gray-700 mb-1">
+							Billing Cycle *
+						</span>
+						<select
+							value={formData.billing_cycle}
+							onChange={(e) =>
+								handleInputChange("billing_cycle", e.target.value)
+							}
+							className="input-field"
+							required
+						>
+							<option value="">Select billing cycle</option>
+							{BILLING_CYCLES.map((billingCycle) => (
+								<option key={billingCycle} value={billingCycle}>
+									{billingCycle}
 								</option>
 							))}
 						</select>
@@ -139,16 +171,8 @@ export function SubscriptionPlanModal({
 						/>
 					</div>
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn-outline-primary">
-							Save
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton loading={loading} />
 					</div>
 				</form>
 			</div>

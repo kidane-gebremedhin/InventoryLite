@@ -2,8 +2,11 @@
 
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
+import { SubscriptionStatus } from "@/lib/Enums";
 import { showErrorToast } from "@/lib/helpers/Helper";
 import type { ManualPayment } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 import { useAuthContext } from "../providers/AuthProvider";
 
 interface ManualPaymentModalProps {
@@ -29,14 +32,17 @@ export function ManualPaymentModal({
 	};
 
 	const [formData, setFormData] = useState<Partial<ManualPayment>>(emptyEntry);
+	const { loading } = useLoadingContext();
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		if (manualPayment) {
 			setFormData(manualPayment);
 		} else {
 			setFormData(emptyEntry);
 		}
-	}, [manualPayment]);
+	}, [manualPayment, isOpen]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -64,6 +70,10 @@ export function ManualPaymentModal({
 		}));
 	};
 
+	const allowCancelButton =
+		currentUser?.subscriptionInfo?.subscription_status !==
+		SubscriptionStatus.EXPIRED;
+
 	if (!isOpen) return null;
 
 	return (
@@ -73,21 +83,35 @@ export function ManualPaymentModal({
 					<h3 className="text-lg font-semibold text-gray-900">
 						{manualPayment ? "Edit" : "Make Payment"}
 					</h3>
-					<button
-						type="button"
-						onClick={onClose}
-						className="text-gray-400 hover:text-gray-600"
-					>
-						<XMarkIcon className="h-6 w-6" />
-					</button>
+					{allowCancelButton && (
+						<button
+							type="button"
+							onClick={onClose}
+							className="text-gray-400 hover:text-gray-600"
+						>
+							<XMarkIcon className="h-6 w-6" />
+						</button>
+					)}
 				</div>
 
 				<form onSubmit={handleSubmit} className="space-y-4">
+					<div className="w-full bg-white rounded-lg shadow border p-6">
+						<p>{subscriptionMessage}</p>
+					</div>
 					<div>
-						<h3>
-							Enter reference number for{" "}
-							{currentUser?.subscriptionInfo?.currency_type}
-							{currentUser?.subscriptionInfo?.expected_payment_amount} payment
+						<h3 className="text-green-400 mx-4">
+							<ul style={{ listStyleType: "square" }}>
+								<li>
+									Please transfer{" "}
+									<u>
+										{currentUser?.subscriptionInfo?.currency_type}
+										{currentUser?.subscriptionInfo?.expected_payment_amount}
+									</u>{" "}
+									to the account number{" "}
+									<u>{process.env.NEXT_PUBLIC_APP_BANK_ACCOUNT_NUMBER}</u>
+								</li>
+								<li>Enter reference number for payment</li>
+							</ul>
 						</h3>
 					</div>
 					<div>
@@ -101,23 +125,18 @@ export function ManualPaymentModal({
 								handleInputChange("reference_number", e.target.value)
 							}
 							className="input-field"
+							autoFocus
 							required
 						/>
 					</div>
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn-outline-primary">
-							{manualPayment ? "Update" : "Make Payment"}
-						</button>
-					</div>
-					<div className="w-full bg-white rounded-lg shadow border p-6">
-						<p>{subscriptionMessage}</p>
+						{allowCancelButton && (
+							<CancelButton loading={loading} onClose={onClose} />
+						)}
+						<SaveButton
+							loading={loading}
+							label={manualPayment ? "Update" : "Make Payment"}
+						/>
 					</div>
 				</form>
 			</div>

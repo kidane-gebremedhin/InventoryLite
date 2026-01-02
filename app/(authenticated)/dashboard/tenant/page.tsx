@@ -13,11 +13,9 @@ import { useLoadingContext } from "@/components/context_apis/LoadingProvider";
 import ExportExcel from "@/components/file_import_export/ExportExcel";
 import ExportPDF from "@/components/file_import_export/ExportPDF";
 import ActionsMenu from "@/components/helpers/ActionsMenu";
-import { AddButton } from "@/components/helpers/buttons";
 import { ConfirmationModal } from "@/components/helpers/ConfirmationModal";
 import Pagination from "@/components/helpers/Pagination";
-import { useAuthContext } from "@/components/providers/AuthProvider";
-import { StoreModal } from "@/components/store/StoreModal";
+import { TenantModal } from "@/components/tenant/TenantModal";
 import {
 	ALL_OPTIONS,
 	FIRST_PAGE_NUMBER,
@@ -25,11 +23,11 @@ import {
 	RECORD_STATUSES,
 	RECORDS_PER_PAGE,
 	TEXT_SEARCH_TRIGGER_KEY,
-	VALIDATION_ERRORS_MAPPING,
 } from "@/lib/Constants";
 import { RecordStatus } from "@/lib/Enums";
 import {
 	calculateStartAndEndIndex,
+	formatDateToLocalDate,
 	getDateWithoutTime,
 	getRecordStatusColor,
 	shortenText,
@@ -37,21 +35,21 @@ import {
 	showServerErrorToast,
 	showSuccessToast,
 } from "@/lib/helpers/Helper";
+import { fetchAffiliatePartnerOptions } from "@/lib/server_actions/affiliate_partner";
 import {
-	fetchStores,
-	saveStore,
-	updateStore,
-	updateStoreRecordStatus,
-} from "@/lib/server_actions/store";
-import type { Store } from "@/lib/types/Models";
+	fetchTenants,
+	updateTenantAffiliatePartner,
+	updateTenantRecordStatus,
+} from "@/lib/server_actions/tenant";
+import type { AffiliatePartner, Tenant } from "@/lib/types/Models";
 
-export default function StorePage() {
+export default function TenantPage() {
 	const router = useRouter();
 	const [searchTermTemp, setSearchTermTemp] = useState("");
 	const [searchTerm, setSearchTerm] = useState("");
-	const [stores, setStores] = useState<Store[]>([]);
+	const [tenants, setTenants] = useState<Tenant[]>([]);
 	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [editingStore, setEditingStore] = useState<Store | null>(null);
+	const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
 	const [canSeeMore, setCanSeeMore] = useState(true);
 	const [showFilters, setShowFilters] = useState(false);
 	const [selectedStatus, setSelectedStatus] = useState(
@@ -67,17 +65,26 @@ export default function StorePage() {
 		useState(false);
 	const [isRestoreConfirmationModalOpen, setIsRestoreConfirmationModalOpen] =
 		useState(false);
+	const [affiliatePartners, setAffiliatePartners] = useState<
+		AffiliatePartner[]
+	>([]);
 	// Global States
 	const { setLoading } = useLoadingContext();
-	const { currentUser } = useAuthContext();
 
 	const reportHeaders = {
-		name: "Store Name",
+		name: "Tenant Tenant",
 		description: "Description",
 		created_at: "Date Created",
 	};
+	const loadAffiliatePartners = useCallback(async () => {
+		fetchAffiliatePartnerOptions().then(({ data, error }) => {
+			if (error) return;
 
-	const loadStores = useCallback(async () => {
+			setAffiliatePartners(data || []);
+		});
+	}, []);
+
+	const loadTenants = useCallback(async () => {
 		const { startIndex, endIndex } = calculateStartAndEndIndex({
 			currentPage,
 			recordsPerPage,
@@ -86,8 +93,7 @@ export default function StorePage() {
 		try {
 			setLoading(true);
 
-			const { data, count, error } = await fetchStores({
-				tenantId: currentUser?.subscriptionInfo?.tenant_id,
+			const { data, count, error } = await fetchTenants({
 				selectedStatus,
 				searchTerm,
 				startIndex,
@@ -97,36 +103,25 @@ export default function StorePage() {
 			if (error) {
 				showServerErrorToast(error.message);
 			}
-			setStores(data || []);
+			setTenants(data || []);
 			setTotalRecordsCount(count || 0);
 		} catch (_error) {
 			showErrorToast();
 		} finally {
 			setLoading(false);
 		}
-	}, [
-		currentUser?.subscriptionInfo?.tenant_id,
-		searchTerm,
-		selectedStatus,
-		recordsPerPage,
-		currentPage,
-		setLoading,
-	]);
+	}, [setLoading, searchTerm, selectedStatus, recordsPerPage, currentPage]);
 
 	useEffect(() => {
 		// reset pagination
 		router.push(`?page=${currentPage}`);
-		loadStores();
-	}, [currentPage, router, loadStores]);
-
-	const handleAdd = () => {
-		setEditingStore(null);
-		setIsModalOpen(true);
-	};
+		loadAffiliatePartners();
+		loadTenants();
+	}, [router, currentPage, loadTenants, loadAffiliatePartners]);
 
 	const handleEdit = (id: string) => {
-		const store = stores.find((store) => store.id === id);
-		setEditingStore(store);
+		const tenant = tenants.find((tenant) => tenant.id === id);
+		setEditingTenant(tenant);
 		setIsModalOpen(true);
 	};
 
@@ -134,7 +129,7 @@ export default function StorePage() {
 		resetModalState();
 
 		try {
-			const { error } = await updateStoreRecordStatus(id, {
+			const { error } = await updateTenantRecordStatus(id, {
 				status: RecordStatus.ARCHIVED,
 			});
 
@@ -142,8 +137,8 @@ export default function StorePage() {
 				showServerErrorToast(error.message);
 			} else {
 				showSuccessToast("Record Archived.");
-				const remainingRecords = stores.filter((store) => store.id !== id);
-				setStores(remainingRecords);
+				const remainingRecords = tenants.filter((tenant) => tenant.id !== id);
+				setTenants(remainingRecords);
 				setTotalRecordsCount(remainingRecords.length);
 			}
 		} catch (_error) {
@@ -157,7 +152,7 @@ export default function StorePage() {
 		resetModalState();
 
 		try {
-			const { error } = await updateStoreRecordStatus(id, {
+			const { error } = await updateTenantRecordStatus(id, {
 				status: RecordStatus.ACTIVE,
 			});
 
@@ -165,8 +160,8 @@ export default function StorePage() {
 				showServerErrorToast(error.message);
 			} else {
 				showSuccessToast("Record Restored.");
-				const remainingRecords = stores.filter((store) => store.id !== id);
-				setStores(remainingRecords);
+				const remainingRecords = tenants.filter((tenant) => tenant.id !== id);
+				setTenants(remainingRecords);
 				setTotalRecordsCount(remainingRecords.length);
 			}
 		} catch (_error) {
@@ -176,30 +171,14 @@ export default function StorePage() {
 		}
 	};
 
-	const handleCreate = async (store: Store) => {
-		// Exclude id field while creating new record
-		const { id, ...storeWithNoId } = store;
+	const handleUpdateTenantAffiliatePartner = async (
+		tenant: Partial<Tenant>,
+	) => {
 		try {
-			const { data, error } = await saveStore(storeWithNoId);
-
-			if (error) {
-				handleServerError(error);
-				return;
-			}
-
-			setIsModalOpen(false);
-			showSuccessToast("Record Created.");
-			setStores((prev) => [...data, ...prev]);
-		} catch (_error) {
-			showErrorToast();
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const handleUpdate = async (store: Store) => {
-		try {
-			const { data, error } = await updateStore(store.id, store);
+			const { error } = await updateTenantAffiliatePartner(
+				tenant?.id,
+				tenant?.affiliate_partner_id,
+			);
 
 			if (error) {
 				handleServerError(error);
@@ -208,9 +187,7 @@ export default function StorePage() {
 
 			setIsModalOpen(false);
 			showSuccessToast("Record Updated.");
-			setStores((prev) =>
-				prev.map((elem) => (elem.id === store.id ? data[0] : elem)),
-			);
+			loadTenants();
 		} catch (_error) {
 			showErrorToast();
 		} finally {
@@ -230,13 +207,7 @@ export default function StorePage() {
 	};
 
 	const handleServerError = (error: PostgrestError) => {
-		if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
-			showErrorToast(
-				VALIDATION_ERRORS_MAPPING.entities.store.fields.name.displayError,
-			);
-		} else {
-			showServerErrorToast(error.message);
-		}
+		showServerErrorToast(error.message);
 	};
 
 	return (
@@ -245,15 +216,14 @@ export default function StorePage() {
 				<div className="md:flex md:justify-between md:items-center">
 					<div>
 						<h1 className="text-2xl font-bold text-gray-900">
-							Store Management
+							Tenant Management
 						</h1>
-						<p className="text-gray-600">Manage your stores of items</p>
+						<p className="text-gray-600">Manage your tenants</p>
 					</div>
-					<AddButton label={"Add Store"} handleAdd={handleAdd} />
 				</div>
 			</div>
 
-			{/* Store Table */}
+			{/* Tenant Table */}
 			<div className="card">
 				<div className="w-full overflow-x-scroll p-4">
 					<div className="w-[1000px]">
@@ -269,25 +239,25 @@ export default function StorePage() {
 							</button>
 							<span className="px-1"></span>
 							<ExportExcel
-								reportName="Stores"
-								records={[reportHeaders, ...stores].map((store, idx) => {
+								reportName="Tenant Tenants"
+								records={[reportHeaders, ...tenants].map((tenant, idx) => {
 									return {
 										row_no: idx > 0 ? idx : "Row No.",
-										name: store.name,
-										description: store.description,
-										created_at: getDateWithoutTime(store.created_at),
+										name: tenant.name,
+										description: tenant.description,
+										created_at: getDateWithoutTime(tenant.created_at),
 									};
 								})}
 							/>
 							<span className="px-1"></span>
 							<ExportPDF
-								reportName="Stores"
-								records={[reportHeaders, ...stores].map((store, idx) => {
+								reportName="Tenant Tenants"
+								records={[reportHeaders, ...tenants].map((tenant, idx) => {
 									return {
 										row_no: idx > 0 ? idx : "Row No.",
-										name: store.name,
-										description: store.description,
-										created_at: getDateWithoutTime(store.created_at),
+										name: tenant.name,
+										description: tenant.description,
+										created_at: getDateWithoutTime(tenant.created_at),
 									};
 								})}
 							/>
@@ -296,10 +266,40 @@ export default function StorePage() {
 							<thead className="bg-gray-50">
 								<tr>
 									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Store
+										Tenant
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Domain
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Profile Complete
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Subscription Status
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Price
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Payment Method
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Curency
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Payment Due Date
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Payment Amount
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Affiliate Partner
 									</th>
 									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 										Description
+									</th>
+									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Registration Date
 									</th>
 									<th
 										className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -307,7 +307,9 @@ export default function StorePage() {
 									>
 										Record Status
 									</th>
-									<th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+									<th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Actions
+									</th>
 								</tr>
 								{showFilters && (
 									<tr>
@@ -360,12 +362,78 @@ export default function StorePage() {
 								)}
 							</thead>
 							<tbody className="bg-white divide-y divide-gray-200">
-								{stores.map((store) => (
-									<tr key={store.id} className="hover:bg-gray-50">
+								{tenants.map((tenant) => (
+									<tr key={tenant.id} className="hover:bg-gray-50">
 										<td className="px-6 py-4">
 											<div>
 												<div className="text-sm font-medium text-gray-900">
-													{store.name}
+													{tenant.name} {tenant.email}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.domain?.name}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.profile_complete
+														? "completed"
+														: "not completed"}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.subscription_status}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.price_id}
+												</div>
+											</div>
+										</td>
+
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.payment_method}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.subscription_plan?.currency_type}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.current_payment_expiry_date}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.subscription_plan?.payment_amount}
+												</div>
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{tenant.affiliate_partner?.name}
 												</div>
 											</div>
 										</td>
@@ -374,9 +442,9 @@ export default function StorePage() {
 											className="px-6 py-4 text-sm text-gray-900 o"
 										>
 											{canSeeMore
-												? shortenText(store.description, MAX_TABLE_TEXT_LENGTH)
-												: store.description}
-											{store.description?.length > MAX_TABLE_TEXT_LENGTH && (
+												? shortenText(tenant.description, MAX_TABLE_TEXT_LENGTH)
+												: tenant.description}
+											{tenant.description?.length > MAX_TABLE_TEXT_LENGTH && (
 												<button
 													type="button"
 													onClick={() => setCanSeeMore(!canSeeMore)}
@@ -386,11 +454,18 @@ export default function StorePage() {
 												</button>
 											)}
 										</td>
+										<td className="px-6 py-4">
+											<div>
+												<div className="text-sm font-medium text-gray-900">
+													{formatDateToLocalDate(tenant.created_at)}
+												</div>
+											</div>
+										</td>
 										<td className="px-6 py-4 text-center">
 											<span
-												className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(store.status)}`}
+												className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRecordStatusColor(tenant.status)}`}
 											>
-												{store.status}
+												{tenant.status}
 											</span>
 										</td>
 										<td className="px-6 py-4 text-right text-sm font-medium">
@@ -398,7 +473,7 @@ export default function StorePage() {
 												<ActionsMenu
 													actions={[
 														{
-															id: store.id,
+															id: tenant.id,
 															hideOption:
 																selectedStatus === RecordStatus.ARCHIVED,
 															icon: <PencilIcon className="h-4 w-4" />,
@@ -408,19 +483,19 @@ export default function StorePage() {
 															listener: handleEdit,
 														},
 														{
-															id: store.id,
+															id: tenant.id,
 															hideOption:
 																selectedStatus !== RecordStatus.ACTIVE,
 															icon: <TrashIcon className="h-4 w-4" />,
 															label: "Archive",
 															class: "w-full text-red-600 hover:text-red-900",
 															listener: () => {
-																setCurrentActiveId(store.id);
+																setCurrentActiveId(tenant.id);
 																setIsArchiveConfirmationModalOpen(true);
 															},
 														},
 														{
-															id: store.id,
+															id: tenant.id,
 															hideOption:
 																selectedStatus === RecordStatus.ACTIVE,
 															icon: <ArrowUpOnSquareIcon className="h-4 w-4" />,
@@ -428,7 +503,7 @@ export default function StorePage() {
 															class:
 																"w-full text-yellow-600 hover:text-yellow-900",
 															listener: () => {
-																setCurrentActiveId(store.id);
+																setCurrentActiveId(tenant.id);
 																setIsRestoreConfirmationModalOpen(true);
 															},
 														},
@@ -451,18 +526,15 @@ export default function StorePage() {
 				</div>
 			</div>
 
-			{/* Store Modal */}
-			<StoreModal
+			{/* Tenant Modal */}
+			<TenantModal
 				isOpen={isModalOpen}
 				onClose={() => setIsModalOpen(false)}
-				store={editingStore}
-				onSave={(store) => {
+				tenant={editingTenant}
+				affiliatePartners={affiliatePartners}
+				onSave={(tenant) => {
 					setLoading(true);
-					if (editingStore) {
-						handleUpdate(store);
-					} else {
-						handleCreate(store);
-					}
+					handleUpdateTenantAffiliatePartner(tenant);
 				}}
 			/>
 
@@ -470,16 +542,16 @@ export default function StorePage() {
 			<ConfirmationModal
 				isOpen={isArchiveConfirmationModalOpen}
 				id={currentActiveId}
-				message="Are you sure you want to archive this store?"
+				message="Are you sure you want to archive this tenant?"
 				onConfirmationSuccess={handleArchive}
 				onConfirmationFailure={resetModalState}
 			/>
 
-			{/* Confirmation Modal for Restore */}
+			{/* Confirmation Modal for RestoreConfirmationModalOpen */}
 			<ConfirmationModal
 				isOpen={isRestoreConfirmationModalOpen}
 				id={currentActiveId}
-				message="Are you sure you want to restore this store?"
+				message="Are you sure you want to restore this tenant?"
 				onConfirmationSuccess={handleRestore}
 				onConfirmationFailure={resetModalState}
 			/>

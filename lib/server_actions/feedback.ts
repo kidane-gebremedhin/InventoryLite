@@ -31,7 +31,7 @@ export async function fetchUserFeedbacks({
 
 	const cacheKey = `${RedisCacheKey.feedback}_${tenantId}_${selectedStatus}_${selectedCategory}_${selectedPriority}_${selectedRating}_${searchTerm}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.feedback)
 			.select("*", { count: "exact", head: false });
@@ -58,7 +58,9 @@ export async function fetchUserFeedbacks({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -79,7 +81,7 @@ export async function manageUserFeedbacks({
 
 	const cacheKey = `${RedisCacheKey.feedback}_${tenantId}_${selectedStatus}_${selectedCategory}_${selectedPriority}_${selectedRating}_${searchTerm}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase.from(DATABASE_TABLE.feedback).select(
 			`
             *,
@@ -111,7 +113,9 @@ export async function manageUserFeedbacks({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -135,10 +139,10 @@ export async function saveUserFeedback(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.feedback}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
-		const cacheKey2 = `${RedisCacheKey.feedback_stats}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey = `${RedisCacheKey.feedback}`;
+		await deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey2 = `${RedisCacheKey.feedback_stats}`;
+		await deleteCacheByKeyPrefix(cacheKey2);
 	}
 	return { data, error };
 }
@@ -159,10 +163,10 @@ export async function updateFeedbackStatus({
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.feedback}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
-		const cacheKey2 = `${RedisCacheKey.feedback_stats}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey = `${RedisCacheKey.feedback}}`;
+		await deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey2 = `${RedisCacheKey.feedback_stats}}`;
+		await deleteCacheByKeyPrefix(cacheKey2);
 	}
 	return { data, error };
 }
@@ -188,10 +192,10 @@ export async function saveRatingFeedback({
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.feedback}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
-		const cacheKey2 = `${RedisCacheKey.feedback_stats}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey = `${RedisCacheKey.feedback}`;
+		await deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey2 = `${RedisCacheKey.feedback_stats}`;
+		await deleteCacheByKeyPrefix(cacheKey2);
 	}
 	return { data, error };
 }
@@ -214,13 +218,15 @@ export async function fetchFeedbackStats(
 
 	const cacheKey = `${RedisCacheKey.feedback}_${tenantId}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		const { data, error } = await supabase
 			.from(DATABASE_TABLE.feedback)
 			.select("*");
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, error });
+		}
 		return { data, error };
 	}
 
@@ -248,10 +254,10 @@ export async function saveFeedbackAdminResponse({
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.feedback}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
-		const cacheKey2 = `${RedisCacheKey.feedback_stats}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey = `${RedisCacheKey.feedback}`;
+		await deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey2 = `${RedisCacheKey.feedback_stats}`;
+		await deleteCacheByKeyPrefix(cacheKey2);
 	}
 	return { data, error };
 }

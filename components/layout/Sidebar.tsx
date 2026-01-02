@@ -106,6 +106,16 @@ export default function Sidebar() {
 					href: ROUTE_PATH.DOMAIN,
 					icon: BuildingStorefrontIcon,
 				},
+				{
+					name: "Affiliate Partners",
+					href: ROUTE_PATH.AFFILIATE_PARTNER,
+					icon: BuildingStorefrontIcon,
+				},
+				{
+					name: "Tenants",
+					href: ROUTE_PATH.TENANT,
+					icon: BuildingStorefrontIcon,
+				},
 			];
 		}
 
@@ -145,26 +155,28 @@ export default function Sidebar() {
 						</button>
 					</div>
 
-					<nav className="flex-1 space-y-1 px-2 py-4">
-						{options.map((item) => {
-							const isActive = pathname === item.href;
-							return (
-								<Link
-									key={item.name}
-									href={item.href}
-									className={clsx(
-										"sidebar-link",
-										isActive &&
-											"bg-primary-100 text-primary-700 border-primary-500",
-									)}
-									onClick={() => setSidebarOpen(false)}
-								>
-									<item.icon className="h-5 w-5" />
-									{item.name}
-								</Link>
-							);
-						})}
-					</nav>
+					<div className="h-[85%] overflow-y-auto">
+						<nav className="flex-1 space-y-1 px-2 py-4">
+							{options.map((item) => {
+								const isActive = pathname === item.href;
+								return (
+									<Link
+										key={item.name}
+										href={item.href}
+										className={clsx(
+											"sidebar-link",
+											isActive &&
+												"bg-primary-100 text-primary-700 border-primary-500",
+										)}
+										onClick={() => setSidebarOpen(false)}
+									>
+										<item.icon className="h-5 w-5" />
+										{item.name}
+									</Link>
+								);
+							})}
+						</nav>
+					</div>
 				</div>
 			</div>
 
@@ -175,25 +187,27 @@ export default function Sidebar() {
 						<h1 className="text-xl font-bold text-gray-900">{APP_NAME}</h1>
 					</div>
 
-					<nav className="flex-1 space-y-1 px-2 py-4">
-						{options.map((item) => {
-							const isActive = pathname === item.href;
-							return (
-								<Link
-									key={item.name}
-									href={item.href}
-									className={clsx(
-										"sidebar-link",
-										isActive &&
-											"bg-primary-100 text-primary-700 border-primary-500",
-									)}
-								>
-									<item.icon className="h-5 w-5" />
-									{item.name}
-								</Link>
-							);
-						})}
-					</nav>
+					<div className="h-[85%] overflow-y-auto">
+						<nav className="flex-1 space-y-1 px-2 py-4">
+							{options.map((item) => {
+								const isActive = pathname === item.href;
+								return (
+									<Link
+										key={item.name}
+										href={item.href}
+										className={clsx(
+											"sidebar-link",
+											isActive &&
+												"bg-primary-100 text-primary-700 border-primary-500",
+										)}
+									>
+										<item.icon className="h-5 w-5" />
+										{item.name}
+									</Link>
+								);
+							})}
+						</nav>
+					</div>
 				</div>
 			</div>
 

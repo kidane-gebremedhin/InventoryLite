@@ -87,9 +87,10 @@ export default function ManualPaymentPage() {
 	};
 
 	const handleAdd = useCallback(() => {
+		setLoading(false);
 		setEditingManualPayment(null);
 		setIsModalOpen(true);
-	}, []);
+	}, [setLoading]);
 
 	const loadManualPayments = useCallback(async () => {
 		const { startIndex, endIndex } = calculateStartAndEndIndex({
@@ -98,8 +99,6 @@ export default function ManualPaymentPage() {
 		});
 
 		try {
-			setLoading(true);
-
 			const { data, count, error } = await fetchManualPayments({
 				tenantId: currentUser?.subscriptionInfo?.tenant_id,
 				selectedStatus,
@@ -214,6 +213,7 @@ export default function ManualPaymentPage() {
 
 			if (error) {
 				handleServerError(error);
+				setLoading(false);
 				return;
 			}
 
@@ -235,7 +235,9 @@ export default function ManualPaymentPage() {
 			);
 
 			if (error) {
+				console.log("yyyyy1", error);
 				handleServerError(error);
+				setLoading(false);
 				return;
 			}
 
@@ -243,6 +245,7 @@ export default function ManualPaymentPage() {
 			showSuccessToast("Record Updated.");
 			loadManualPayments();
 		} catch (_error) {
+			console.log("yyyyy", _error);
 			showErrorToast();
 		} finally {
 			setLoading(false);
