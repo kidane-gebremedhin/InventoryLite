@@ -212,6 +212,7 @@ const App = () => {
 								className="w-20 h-20 rounded-full mb-4 object-cover"
 								width={48}
 								height={48}
+								unoptimized
 							/>
 							<p className="text-lg italic mb-4 text-gray-700">
 								"{APP_NAME} transformed how we manage our shop. It's stock level
@@ -229,6 +230,7 @@ const App = () => {
 								className="w-20 h-20 rounded-full mb-4 object-cover"
 								width={48}
 								height={48}
+								unoptimized
 							/>
 							<p className="text-lg italic mb-4 text-gray-700">
 								"The Inventory Aging and Turnover reports are business critical

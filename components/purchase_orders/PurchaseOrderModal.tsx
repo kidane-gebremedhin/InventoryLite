@@ -1,10 +1,16 @@
 "use client";
 
 import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
-import { DECIMAL_REGEX } from "@/lib/Constants";
+import { DECIMAL_REGEX, VALIDATION_ERRORS_MAPPING } from "@/lib/Constants";
 import { PurchaseOrderStatus, RecordStatus } from "@/lib/Enums";
-import { calculateOrderTotalProce, showErrorToast } from "@/lib/helpers/Helper";
+import {
+	calculateOrderTotalProce,
+	showErrorToast,
+	showServerErrorToast,
+} from "@/lib/helpers/Helper";
+import { saveSupplier } from "@/lib/server_actions/supplier";
 import type {
 	InventoryItem,
 	PurchaseOrder,
@@ -51,9 +57,13 @@ export default function PurchaseOrderModal({
 }: PurchaseOrderModalProps) {
 	const { loading } = useLoadingContext();
 	const [formData, setFormData] = useState<Partial<PurchaseOrder>>(emptyEntry);
+	const [addNewSupplier, setAddNewSupplier] = useState<boolean>(false);
+	const [isAddingSupplier, setIsAddingSupplier] = useState<boolean>(false);
+	const [newSupplierName, setNewSupplierName] = useState<string>("");
 	const [purchaseOrderItems, setPurchaseOrderItems] = useState<
 		PurchaseOrderItem[]
 	>([]);
+	const [supplierOptions, setSupplierOptions] = useState<Supplier[]>([]);
 
 	const resetForm = useCallback(() => {
 		setFormData({
@@ -64,6 +74,10 @@ export default function PurchaseOrderModal({
 		});
 		setPurchaseOrderItems([]);
 	}, []);
+
+	useEffect(() => {
+		setSupplierOptions(suppliers);
+	}, [suppliers]);
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -171,6 +185,37 @@ export default function PurchaseOrderModal({
 		onSave(newPurchaseOrder);
 	};
 
+	const handleCreateNewSupplier = async () => {
+		try {
+			setIsAddingSupplier(true);
+			const { data, error } = await saveSupplier({ name: newSupplierName });
+
+			if (error) {
+				handleServerError(error);
+				return;
+			}
+
+			setSupplierOptions((prev) => [...prev, ...data]);
+			setFormData({ ...formData, supplier_id: data[0].id });
+			setNewSupplierName("");
+			setAddNewSupplier(false);
+		} catch (_error) {
+			showErrorToast();
+		} finally {
+			setIsAddingSupplier(false);
+		}
+	};
+
+	const handleServerError = (error: PostgrestError) => {
+		if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
+			showErrorToast(
+				VALIDATION_ERRORS_MAPPING.entities.supplier.fields.name.displayError,
+			);
+		} else {
+			showServerErrorToast(error.message);
+		}
+	};
+
 	if (!isOpen) return null;
 
 	return (
@@ -209,23 +254,64 @@ export default function PurchaseOrderModal({
 						</div>
 
 						<div>
-							<span className="block text-sm font-medium text-gray-700 mb-1">
-								Supplier *
-							</span>
-							<select
-								value={formData.supplier_id}
-								onChange={(e) =>
-									setFormData({ ...formData, supplier_id: e.target.value })
-								}
-								className="input-field"
-								required
-							>
-								{suppliers.map((supplier) => (
-									<option key={supplier.id} value={supplier.id}>
-										{supplier.name}
-									</option>
-								))}
-							</select>
+							<div className="w-full flex">
+								<div className="w-3/4">
+									<span className="block text-sm font-medium text-gray-700 mb-1">
+										Supplier *
+									</span>
+								</div>
+								<div className="w-1/4">
+									<PlusIcon
+										className="h-5 w-5 mr-1 ml-auto cursor-pointer text-gray-900 hover:text-green-600 transition"
+										strokeWidth={2.5}
+										onClick={() => {
+											setAddNewSupplier(true);
+										}}
+									/>
+								</div>
+							</div>
+							{!isAddingSupplier ? (
+								<div>
+									{addNewSupplier ? (
+										<input
+											type="text"
+											value={newSupplierName}
+											onChange={(e) => setNewSupplierName(e.target.value)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													e.preventDefault();
+													e.stopPropagation();
+													handleCreateNewSupplier();
+												}
+											}}
+											className="input-field"
+											autoFocus
+											placeholder="Enter new customer name"
+											required
+										/>
+									) : (
+										<select
+											value={formData.supplier_id}
+											onChange={(e) =>
+												setFormData({
+													...formData,
+													supplier_id: e.target.value,
+												})
+											}
+											className="input-field"
+											required
+										>
+											{supplierOptions.map((supplier) => (
+												<option key={supplier.id} value={supplier.id}>
+													{supplier.name}
+												</option>
+											))}
+										</select>
+									)}
+								</div>
+							) : (
+								<span>Saving...</span>
+							)}
 						</div>
 
 						<div>

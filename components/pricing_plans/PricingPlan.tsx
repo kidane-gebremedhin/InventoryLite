@@ -44,7 +44,7 @@ const tiers = [
 		paymentLink: "#",
 		price: "Free",
 		description:
-			"Get full access for a week just to get a feel of the application.",
+			"Get full access for a month just to get a feel of the application.",
 		features: appFeatures,
 		mostPopular: false,
 	},
@@ -125,7 +125,7 @@ export default function PricingPlan() {
 						</div>
 						<p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-8">
 							Choose a plan that matches with your business needs. Get started
-							with a 7-day free trial, no credit card required.
+							with a 1-month free trial, no credit card required.
 						</p>
 					</div>
 					{/* This is the container for the pricing tiers. It is now a responsive grid. */}

@@ -11,6 +11,7 @@ const techLogos = [
 				height={80}
 				alt="PL"
 				className="rounded-lg shadow-lg"
+				unoptimized
 			/>
 		),
 		title: "React",
@@ -25,6 +26,7 @@ const techLogos = [
 				height={80}
 				alt="PL"
 				className="rounded-lg shadow-lg"
+				unoptimized
 			/>
 		),
 		title: "Next.js",
@@ -39,6 +41,7 @@ const techLogos = [
 				height={80}
 				alt="PL"
 				className="rounded-lg shadow-lg"
+				unoptimized
 			/>
 		),
 		title: "TypeScript",
@@ -53,6 +56,7 @@ const techLogos = [
 				height={80}
 				alt="PL"
 				className="rounded-lg shadow-lg"
+				unoptimized
 			/>
 		),
 		title: "Tailwind CSS",

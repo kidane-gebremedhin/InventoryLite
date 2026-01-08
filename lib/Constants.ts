@@ -191,6 +191,8 @@ export const RATING_STARS = [
 	RatingStar.EXCELLENT,
 ];
 
+export const REPORT_DAYS: number[] = [1, 5, 10, 30, 90, 180, 365];
+
 export const VALIDATION_ERRORS_MAPPING = {
 	serverError: "violates unique constraint",
 	entities: {

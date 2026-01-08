@@ -10,7 +10,7 @@ import type {
 	StatusPayload,
 	UserInvitation,
 } from "../types/Models";
-import { sendMail } from "./mail";
+import { sendUserInvitationMail } from "./mail";
 import { deleteCacheByKeyPrefix, getCacheData, setCacheData } from "./redis";
 
 interface SearchParams {
@@ -82,7 +82,7 @@ export async function saveUserInvitation(
 		.select();
 
 	if (!error) {
-		const { data: _, error: emailError } = await sendMail({
+		const { data: _, error: emailError } = await sendUserInvitationMail({
 			email: requestData.email,
 			tenantName,
 			invitationLink,

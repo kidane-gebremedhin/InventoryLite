@@ -387,7 +387,7 @@ BEGIN
      user_tenant_id := public.invited_tenant_id_by_email(NEW.email);
     IF user_tenant_id IS NULL THEN
         -- Create a new tenant record
-        INSERT INTO public.tenants (email, name, current_payment_expiry_date, subscription_plan_id) VALUES (NEW.email, NEW.email, NOW() + INTERVAL '7 days', subscriptionPlanId)
+        INSERT INTO public.tenants (email, name, current_payment_expiry_date, subscription_plan_id) VALUES (NEW.email, NEW.email, NOW() + INTERVAL '30 days', subscriptionPlanId)
         RETURNING id INTO user_tenant_id;
         -- Set user role as 'TENANT_ADMIN'
         userRole := 'TENANT_ADMIN';
@@ -1932,77 +1932,110 @@ CREATE OR REPLACE FUNCTION public.generate_unfulfilled_sales_orders_report(
 
 
 -- Dashboard Stats
-CREATE OR REPLACE FUNCTION public.build_dashboard_stats()
+CREATE OR REPLACE FUNCTION public.build_dashboard_stats(
+    report_days_count INTEGER
+)
     RETURNS JSONB AS $$
     DECLARE
         totalItems INTEGER; 
         lowStockItems INTEGER; 
+        totalSuppliers INTEGER; 
         pendingPurchaseOrders INTEGER;
         receivedPurchaseOrders INTEGER;
         canceledPurchaseOrders INTEGER;
+        overDuePurchaseOrders INTEGER;
         pendingSalesOrders INTEGER;
         fulfilledSalesOrders INTEGER;
         canceledSalesOrders INTEGER;
+        overDueSalesOrders INTEGER;
         result JSONB;
     BEGIN
-        SELECT count(*) INTO totalItems FROM public.inventory_items
+        SELECT count(DISTINCT id) INTO totalItems FROM public.inventory_items
         WHERE status = 'active';
 
-        SELECT count(*) INTO lowStockItems FROM public.inventory_items
+        SELECT count(DISTINCT id) INTO lowStockItems FROM public.inventory_items
         WHERE status = 'active' 
         AND quantity <= min_quantity;
 
-        SELECT count(*) INTO pendingPurchaseOrders FROM public.purchase_orders po
+        SELECT count(DISTINCT id) INTO totalSuppliers FROM public.suppliers
+        WHERE status = 'active';
+
+        SELECT count(DISTINCT po.id) INTO pendingPurchaseOrders FROM public.purchase_orders po
             INNER JOIN public.purchase_order_items poi
             ON poi.purchase_order_id = po.id
             WHERE po.status = 'active' 
             AND poi.status = 'active' 
+            AND po.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND po.order_status = 'pending';
             
-        SELECT count(*) INTO receivedPurchaseOrders FROM public.purchase_orders po
+        SELECT count(DISTINCT po.id) INTO receivedPurchaseOrders FROM public.purchase_orders po
             INNER JOIN public.purchase_order_items poi
             ON poi.purchase_order_id = po.id
             WHERE po.status = 'active' 
             AND poi.status = 'active' 
+            AND po.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND po.order_status = 'received';
 
-        SELECT count(*) INTO canceledPurchaseOrders FROM public.purchase_orders po
+        SELECT count(DISTINCT po.id) INTO canceledPurchaseOrders FROM public.purchase_orders po
             INNER JOIN public.purchase_order_items poi
             ON poi.purchase_order_id = po.id
             WHERE po.status = 'active' 
             AND poi.status = 'active' 
+            AND po.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND po.order_status = 'canceled';
 
-        SELECT count(*) INTO pendingSalesOrders FROM public.sales_orders so
+        SELECT count(DISTINCT po.id) INTO overDuePurchaseOrders FROM public.purchase_orders po
+            INNER JOIN public.purchase_order_items poi
+            ON poi.purchase_order_id = po.id
+            WHERE po.status = 'active' 
+            AND poi.status = 'active' 
+            AND (po.received_date IS NULL AND NOW() > po.expected_date) OR (po.received_date > po.expected_date)
+            AND po.order_status = 'pending';
+
+        SELECT count(DISTINCT so.id) INTO pendingSalesOrders FROM public.sales_orders so
             INNER JOIN public.sales_order_items soi
             ON soi.sales_order_id = so.id
             WHERE so.status = 'active' 
             AND soi.status = 'active' 
+            AND so.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND so.order_status = 'pending';
 
-        SELECT count(*) INTO fulfilledSalesOrders FROM public.sales_orders so
+        SELECT count(DISTINCT so.id) INTO fulfilledSalesOrders FROM public.sales_orders so
             INNER JOIN public.sales_order_items soi
             ON soi.sales_order_id = so.id
             WHERE so.status = 'active' 
             AND soi.status = 'active' 
+            AND so.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND so.order_status = 'fulfilled';
         
-        SELECT count(*) INTO canceledSalesOrders FROM public.sales_orders so
+        SELECT count(DISTINCT so.id) INTO canceledSalesOrders FROM public.sales_orders so
             INNER JOIN public.sales_order_items soi
             ON soi.sales_order_id = so.id
             WHERE so.status = 'active' 
             AND soi.status = 'active' 
+            AND so.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND so.order_status = 'canceled';
+
+        SELECT count(DISTINCT so.id) INTO overDueSalesOrders FROM public.sales_orders so
+            INNER JOIN public.sales_order_items soi
+            ON soi.sales_order_id = so.id
+            WHERE so.status = 'active' 
+            AND soi.status = 'active' 
+            AND (so.fulfilled_date IS NULL AND NOW() > so.expected_date) OR (so.fulfilled_date > so.expected_date)
+            AND so.order_status = 'pending';
 
         result = jsonb_build_object(
                     'totalItems', totalItems, 
+                    'totalSuppliers', totalSuppliers, 
                     'lowStockItems', lowStockItems, 
                     'pendingPurchaseOrders', pendingPurchaseOrders, 
                     'receivedPurchaseOrders', receivedPurchaseOrders, 
                     'canceledPurchaseOrders', canceledPurchaseOrders, 
+                    'overDuePurchaseOrders', overDuePurchaseOrders, 
                     'pendingSalesOrders', pendingSalesOrders, 
                     'fulfilledSalesOrders', fulfilledSalesOrders,
-                    'canceledSalesOrders', canceledSalesOrders
+                    'canceledSalesOrders', canceledSalesOrders,
+                    'overDueSalesOrders', overDueSalesOrders
                 );
 
         RETURN result;
@@ -2011,7 +2044,9 @@ CREATE OR REPLACE FUNCTION public.build_dashboard_stats()
 
 
 -- Purchase Order monthly trends
-CREATE OR REPLACE FUNCTION public.purchase_order_monthly_trends()
+CREATE OR REPLACE FUNCTION public.purchase_order_monthly_trends(
+    report_days_count INTEGER
+)
 RETURNS TABLE(
     month_name TEXT,
     ordered_quantity BIGINT,
@@ -2032,7 +2067,7 @@ BEGIN
             ON poi.purchase_order_id = po.id
             WHERE po.status = 'active' 
             AND poi.status = 'active' 
-            AND po.created_at >= DATE_TRUNC('month', NOW() - INTERVAL '6 months')
+            AND po.created_at >= DATE_TRUNC('month', NOW() - (report_days_count * INTERVAL '1 day'))
     GROUP BY
         month_name
     ORDER BY
@@ -2041,7 +2076,9 @@ END;
 $$;
 
 -- Sales Order monthly trends
-CREATE OR REPLACE FUNCTION public.sales_order_monthly_trends()
+CREATE OR REPLACE FUNCTION public.sales_order_monthly_trends(
+    report_days_count INTEGER
+)
 RETURNS TABLE(
     month_name TEXT,
     ordered_quantity BIGINT,
@@ -2062,7 +2099,7 @@ BEGIN
         ON poi.sales_order_id = po.id
         WHERE po.status = 'active' 
         AND poi.status = 'active' 
-        AND po.created_at >= DATE_TRUNC('month', NOW() - INTERVAL '6 months')
+        AND po.created_at >= DATE_TRUNC('month', NOW() - (report_days_count * INTERVAL '1 day'))
     GROUP BY
         month_name
     ORDER BY
@@ -2080,4 +2117,55 @@ SELECT cron.schedule(
     WHERE current_payment_expiry_date < NOW()
     AND subscription_status IN ('free_trial', 'subscribed');
   $$
+);
+
+CREATE OR REPLACE FUNCTION public.run_notify_upcoming_payment_due_cron()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_secret text;
+  v_payload jsonb;
+BEGIN
+  SELECT decrypted_secret INTO v_secret FROM vault.decrypted_secrets WHERE name = 'cron_api_key' LIMIT 1;
+
+  -- Use jsonb_agg to create an array of objects
+  SELECT jsonb_build_object(
+    'timestamp', now(),
+    'source', 'supabase_cron',
+    'data', (
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'email', t.email,
+          'tenantName', t.name,
+          'paymentAmount', sp.payment_amount,
+          'currencyType', sp.currency_type,
+          'dueDate', t.current_payment_expiry_date
+        )
+      )
+      FROM public.tenants t
+      INNER JOIN public.subscription_plans sp
+      ON t.subscription_plan_id = sp.id
+      WHERE t.current_payment_expiry_date < NOW() + INTERVAL '7 Days'
+    )
+  ) INTO v_payload;
+
+IF v_payload->>'data' IS NOT NULL THEN
+    PERFORM net.http_post(
+    url := 'https://your-app.vercel.app/api/cron/notify-upcoming-payment-due',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || v_secret
+      ),
+      body := v_payload
+    );
+  END IF;
+END;
+$$;
+
+SELECT cron.schedule(
+  'notify-upcoming-payment-due',
+  '0 0 * * *',
+  'SELECT public.run_notify_upcoming_payment_due_cron();'
 );

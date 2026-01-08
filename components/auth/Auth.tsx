@@ -29,6 +29,7 @@ export function Auth() {
 							height={50}
 							alt="Continue with Google"
 							className="rounded-lg shadow-lg"
+							unoptimized
 						/>
 					</button>
 				</div>

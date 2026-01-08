@@ -1,10 +1,16 @@
 "use client";
 
 import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
-import { DECIMAL_REGEX } from "@/lib/Constants";
+import { DECIMAL_REGEX, VALIDATION_ERRORS_MAPPING } from "@/lib/Constants";
 import { RecordStatus, SalesOrderStatus } from "@/lib/Enums";
-import { calculateOrderTotalProce, showErrorToast } from "@/lib/helpers/Helper";
+import {
+	calculateOrderTotalProce,
+	showErrorToast,
+	showServerErrorToast,
+} from "@/lib/helpers/Helper";
+import { saveCustomer } from "@/lib/server_actions/customer";
 import type {
 	Customer,
 	InventoryItem,
@@ -51,7 +57,11 @@ export default function SalesOrderModal({
 }: SalesOrderModalProps) {
 	const { loading } = useLoadingContext();
 	const [formData, setFormData] = useState<Partial<SalesOrder>>(emptyEntry);
+	const [addNewCustomer, setAddNewCustomer] = useState<boolean>(false);
+	const [isAddingCustomer, setIsAddingCustomer] = useState<boolean>(false);
+	const [newCustomerName, setNewCustomerName] = useState<string>("");
 	const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([]);
+	const [customerOptions, setCustomerOptions] = useState<Customer[]>([]);
 
 	const resetForm = useCallback(() => {
 		setFormData({
@@ -62,6 +72,10 @@ export default function SalesOrderModal({
 		});
 		setSalesOrderItems([]);
 	}, []);
+
+	useEffect(() => {
+		setCustomerOptions(customers);
+	}, [customers]);
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -163,6 +177,37 @@ export default function SalesOrderModal({
 		onSave(newSalesOrder);
 	};
 
+	const handleCreateNewCustomer = async () => {
+		try {
+			setIsAddingCustomer(true);
+			const { data, error } = await saveCustomer({ name: newCustomerName });
+
+			if (error) {
+				handleServerError(error);
+				return;
+			}
+
+			setCustomerOptions((prev) => [...prev, ...data]);
+			setFormData({ ...formData, customer_id: data[0].id });
+			setNewCustomerName("");
+			setAddNewCustomer(false);
+		} catch (_error) {
+			showErrorToast();
+		} finally {
+			setIsAddingCustomer(false);
+		}
+	};
+
+	const handleServerError = (error: PostgrestError) => {
+		if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
+			showErrorToast(
+				VALIDATION_ERRORS_MAPPING.entities.customer.fields.name.displayError,
+			);
+		} else {
+			showServerErrorToast(error.message);
+		}
+	};
+
 	if (!isOpen) return null;
 
 	return (
@@ -200,23 +245,64 @@ export default function SalesOrderModal({
 						</div>
 
 						<div>
-							<span className="block text-sm font-medium text-gray-700 mb-1">
-								Customer *
-							</span>
-							<select
-								value={formData.customer_id}
-								onChange={(e) =>
-									setFormData({ ...formData, customer_id: e.target.value })
-								}
-								className="input-field"
-								required
-							>
-								{customers.map((customer) => (
-									<option key={customer.id} value={customer.id}>
-										{customer.name}
-									</option>
-								))}
-							</select>
+							<div className="w-full flex">
+								<div className="w-3/4">
+									<span className="block text-sm font-medium text-gray-700 mb-1">
+										Customer *
+									</span>
+								</div>
+								<div className="w-1/4">
+									<PlusIcon
+										className="h-5 w-5 mr-1 ml-auto cursor-pointer text-gray-900 hover:text-green-600 transition"
+										strokeWidth={2.5}
+										onClick={() => {
+											setAddNewCustomer(true);
+										}}
+									/>
+								</div>
+							</div>
+							{!isAddingCustomer ? (
+								<div>
+									{addNewCustomer ? (
+										<input
+											type="text"
+											value={newCustomerName}
+											onChange={(e) => setNewCustomerName(e.target.value)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													e.preventDefault();
+													e.stopPropagation();
+													handleCreateNewCustomer();
+												}
+											}}
+											className="input-field"
+											autoFocus
+											placeholder="Enter new customer name"
+											required
+										/>
+									) : (
+										<select
+											value={formData.customer_id}
+											onChange={(e) =>
+												setFormData({
+													...formData,
+													customer_id: e.target.value,
+												})
+											}
+											className="input-field"
+											required
+										>
+											{customerOptions.map((customer) => (
+												<option key={customer.id} value={customer.id}>
+													{customer.name}
+												</option>
+											))}
+										</select>
+									)}
+								</div>
+							) : (
+								<span>Saving...</span>
+							)}
 						</div>
 
 						<div>
