@@ -219,7 +219,7 @@ const App = () => {
 								monitor is powerful which saved us countless hours!"
 							</p>
 							<p className="font-semibold text-gray-800">
-								- Duram H., CEO of IManufacturingCo
+								- Tesema H., CEO of TManufacturing
 							</p>
 						</div>
 						{/* Testimonial Card 2 */}
@@ -238,7 +238,7 @@ const App = () => {
 								selling and which ones are tying up capital."
 							</p>
 							<p className="font-semibold text-gray-800">
-								- Abebe Alem, Steel Retailer AA
+								- Abel, Steel Retailer AA
 							</p>
 						</div>
 					</div>

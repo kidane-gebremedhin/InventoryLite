@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { APP_NAME } from "@/lib/app_config/config";
 import { ROUTE_PATH } from "@/lib/Enums";
@@ -10,6 +11,14 @@ export default function Navbar() {
 			<nav className="bg-white shadow-sm py-4">
 				<div className="container mx-auto px-4 md:flex md:justify-between md:items-center">
 					<Link href="/" className="flex items-center space-x-2">
+						<Image
+							src="/images/logos/logo-1.JPG"
+							width={40}
+							height={40}
+							alt="APP_LOGO"
+							// className="rounded-lg shadow-lg"
+							unoptimized
+						/>
 						<span className="text-xl font-bold text-gray-900">{APP_NAME}</span>
 					</Link>
 					<div className="flex items-center">

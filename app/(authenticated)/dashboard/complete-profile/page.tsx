@@ -120,7 +120,6 @@ export default function CompleteProfile() {
 			);
 
 			if (error) {
-				console.log("errrrrrrrrrr", error);
 				handleServerError(error);
 				return;
 			}
@@ -132,7 +131,6 @@ export default function CompleteProfile() {
 			showSuccessToast("Profile updated.");
 			router.push(ROUTE_PATH.DASHBOARD);
 		} catch (_error) {
-			console.log("errrrrrrrrrr2", _error);
 			showErrorToast();
 		} finally {
 			setLoading(false);

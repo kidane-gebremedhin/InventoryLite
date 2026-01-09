@@ -12,6 +12,7 @@ import {
 	RecordStatus,
 	ROUTE_PATH,
 	SalesOrderStatus,
+	StockLevel,
 	SubscriptionTier,
 	TransactionDirection,
 } from "./Enums";
@@ -21,7 +22,7 @@ export const TEXT_SEARCH_TRIGGER_KEY = "Enter";
 
 // Pricing
 export const FREE_PLAN_LABEL = "Free";
-export const FREE_PLAN_DURATION = "7 days";
+export const FREE_PLAN_DURATION = "1 month";
 export const PAID_PLAN_MONTHLY = "month";
 export const PAID_PLAN_YEARLY = "year";
 
@@ -96,6 +97,13 @@ export const CURRENCY_TYPES: CurrencyType[] = [
 export const COMMISSION_TYPES: CommissionType[] = [
 	CommissionType.PERCENTAGE,
 	CommissionType.FIXED,
+];
+
+export const STOCK_LEVELS: string[] = [
+	ALL_OPTIONS,
+	StockLevel.IN_STOCK,
+	StockLevel.LOW_STOCK,
+	StockLevel.OUT_STOCK,
 ];
 
 export const FEEDBACK_STATUSES = [

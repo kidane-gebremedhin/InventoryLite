@@ -48,6 +48,12 @@ export enum InvitationStatus {
 	EXPIRED = "expired",
 }
 
+export enum StockLevel {
+	IN_STOCK = "in_stock",
+	LOW_STOCK = "low_stock",
+	OUT_STOCK = "out_stock",
+}
+
 export enum PurchaseOrderStatus {
 	PENDING = OrderStatus.PENDING,
 	RECEIVED = OrderStatus.RECEIVED,
@@ -126,6 +132,10 @@ export enum DATABASE_TABLE {
 	tenant_user_invites = "tenant_user_invites",
 	subscription_plans = "subscription_plans",
 	affiliate_partners = "affiliate_partners",
+}
+
+export enum DATABASE_TABLE_VIEW {
+	inventory_items_view = "inventory_items_view",
 }
 
 export enum RedisCacheKey {

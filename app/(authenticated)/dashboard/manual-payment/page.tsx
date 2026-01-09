@@ -235,7 +235,6 @@ export default function ManualPaymentPage() {
 			);
 
 			if (error) {
-				console.log("yyyyy1", error);
 				handleServerError(error);
 				setLoading(false);
 				return;
@@ -245,7 +244,6 @@ export default function ManualPaymentPage() {
 			showSuccessToast("Record Updated.");
 			loadManualPayments();
 		} catch (_error) {
-			console.log("yyyyy", _error);
 			showErrorToast();
 		} finally {
 			setLoading(false);

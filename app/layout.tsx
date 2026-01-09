@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 	title: `${APP_NAME} - ${APP_TITLE}`,
 	description: APP_DESCRIPTION,
 	icons: {
-		icon: "/images/logos/logo 1.JPG",
+		icon: "/images/logos/logo-1.JPG",
 	},
 };
 

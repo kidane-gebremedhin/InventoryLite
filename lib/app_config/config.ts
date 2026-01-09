@@ -1,6 +1,6 @@
 import { CurrencyType } from "../Enums";
 
-export const APP_NAME = "InventoryLite";
+export const APP_NAME = "Gebeya Stock";
 export const APP_MOTO =
 	"Demand and Inventory Management Software for Modern Businesses";
 export const CONTACT_EMAIL = "info@ethiotechsolutions.com";

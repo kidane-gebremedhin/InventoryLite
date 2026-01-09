@@ -27,6 +27,7 @@ import {
 	MAX_DROPDOWN_TEXT_LENGTH,
 	RECORD_STATUSES,
 	RECORDS_PER_PAGE,
+	STOCK_LEVELS,
 	TEXT_SEARCH_TRIGGER_KEY,
 	VALIDATION_ERRORS_MAPPING,
 } from "@/lib/Constants";
@@ -61,6 +62,7 @@ export default function InventoryPage() {
 	const [selectedStatus, setSelectedStatus] = useState(
 		RecordStatus.ACTIVE.toString(),
 	);
+	const [selectedStockLevel, setSelectedStockLevel] = useState(ALL_OPTIONS);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [showFilters, setShowFilters] = useState(false);
 	const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -107,6 +109,7 @@ export default function InventoryPage() {
 					{
 						tenantId: currentUser?.subscriptionInfo?.tenant_id,
 						selectedCategoryId,
+						selectedStockLevel,
 						selectedStatus,
 						searchTerm,
 						startIndex,
@@ -129,6 +132,7 @@ export default function InventoryPage() {
 		[
 			searchTerm,
 			selectedCategoryId,
+			selectedStockLevel,
 			selectedStatus,
 			recordsPerPage,
 			currentPage,
@@ -470,7 +474,24 @@ export default function InventoryPage() {
 											</select>
 										</th>
 										<th></th>
-										<th></th>
+										<th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+											<select
+												value={selectedStockLevel}
+												onChange={(e) => {
+													setCurrentPage(FIRST_PAGE_NUMBER);
+													setSelectedStockLevel(e.target.value);
+												}}
+												className="input-field"
+											>
+												{STOCK_LEVELS.map((stockLevel) => (
+													<option key={stockLevel} value={stockLevel}>
+														{stockLevel === ALL_OPTIONS
+															? "Select stock level"
+															: stockLevel.replaceAll("_", " ")}
+													</option>
+												))}
+											</select>
+										</th>
 										<th></th>
 										<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 											<select
@@ -515,11 +536,19 @@ export default function InventoryPage() {
 										<td className="px-6 py-4 text-sm text-gray-900">
 											{item.unit_price.toFixed(2)}
 										</td>
-										<td className="px-6 py-4 flex">
-											<div className="text-sm text-gray-900">
-												{item.quantity}
+										<td className="px-6 py-4">
+											<div className="flex">
+												<div className="text-sm text-gray-900">
+													{item.quantity}
+												</div>
+												{item.quantity <= item.min_quantity && (
+													<LowStock
+														label={
+															item.quantity === 0 ? "Out Stock" : "Low Stock"
+														}
+													/>
+												)}
 											</div>
-											{item.quantity <= item.min_quantity && <LowStock />}
 										</td>
 										<td className="px-6 py-4">
 											<div className="text-sm text-gray-900">

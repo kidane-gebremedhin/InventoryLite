@@ -4,7 +4,6 @@ import {
 	CubeIcon,
 	ExclamationTriangleIcon,
 	ShoppingCartIcon,
-	TruckIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -28,30 +27,16 @@ import { DATABASE_TABLE, RPC_FUNCTION, UserRole } from "@/lib/Enums";
 import { showServerErrorToast } from "@/lib/helpers/Helper";
 import { makeRpcCall } from "@/lib/server_actions/rpc";
 import type {
+	DashboardStats,
 	PurchaseOrderMonthlyTrendsData,
 	SalesOrderMonthlyTrendsData,
 } from "@/lib/types/Models";
-
-interface DashboardStats {
-	totalItems: number;
-	lowStockItems: number;
-	totalSuppliers: number;
-	pendingPurchaseOrders: number;
-	receivedPurchaseOrders: number;
-	canceledPurchaseOrders: number;
-	overDuePurchaseOrders: number;
-	pendingSalesOrders: number;
-	fulfilledSalesOrders: number;
-	canceledSalesOrders: number;
-	overDueSalesOrders: number;
-	totalValue: number;
-	monthlyGrowth: number;
-}
 
 export default function DashboardPage() {
 	const [stats, setStats] = useState<DashboardStats>({
 		totalItems: 0,
 		lowStockItems: 0,
+		outStockItems: 0,
 		totalSuppliers: 0,
 		pendingPurchaseOrders: 0,
 		receivedPurchaseOrders: 0,
@@ -343,14 +328,14 @@ export default function DashboardPage() {
 						},
 						{
 							label: "Out of Stock Items",
-							amount: stats.lowStockItems,
-							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+							amount: stats.outStockItems,
+							percentage: getPercentage(stats.outStockItems, stats.totalItems),
 						},
-						{
+						/*{
 							label: "Inventory Value",
 							amount: stats.lowStockItems,
 							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
-						},
+						},*/
 					]}
 					icon={CubeIcon}
 					color="bg-green-500"
@@ -367,7 +352,7 @@ export default function DashboardPage() {
 					icon={ExclamationTriangleIcon}
 					color="bg-red-500"
 				/>
-				<StatCard
+				{/* <StatCard
 					title="📈Trend Context"
 					values={[
 						{
@@ -433,7 +418,7 @@ export default function DashboardPage() {
 					values={[{ label: "Active Suppliers", amount: stats.totalSuppliers }]}
 					icon={TruckIcon}
 					color="bg-purple-500"
-				/>
+				/> */}
 			</div>
 
 			{/* Charts */}

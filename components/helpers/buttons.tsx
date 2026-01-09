@@ -24,15 +24,17 @@ export function AddButton({
 export function SaveButton({
 	loading,
 	label,
+	disabled,
 }: {
 	loading: boolean;
 	label?: string;
+	disabled?: boolean;
 }) {
 	return (
 		<button
 			type="submit"
 			className={loading ? "btn-outline-default" : "btn-outline-primary"}
-			disabled={loading}
+			disabled={loading || disabled}
 			style={{ cursor: loading ? "not-allowed" : "pointer" }}
 		>
 			{loading ? "Saving..." : (label ?? "Save")}

@@ -199,12 +199,14 @@ function emailUpcomingPaymentDueTemplate({
 	currencyType: string;
 	dueDate: string;
 }) {
-  console.log('remove this', email,
-	tenantName,
-	paymentAmount,
-	currencyType,
-	dueDate
-)
+	console.log(
+		"remove this",
+		email,
+		tenantName,
+		paymentAmount,
+		currencyType,
+		dueDate,
+	);
 	return `
   <!DOCTYPE html>
   <html>

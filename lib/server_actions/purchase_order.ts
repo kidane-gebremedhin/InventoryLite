@@ -123,6 +123,8 @@ export async function savePurchaseOrder(
 		await deleteCacheByKeyPrefix(cacheKey);
 		const cacheKey2 = `${RedisCacheKey.transactions}_${data[0].tenant_id}`;
 		await deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey3 = `${RedisCacheKey.inventory_items}_${data[0].tenant_id}`;
+		await deleteCacheByKeyPrefix(cacheKey3);
 	}
 	return { data, error };
 }
@@ -142,6 +144,8 @@ export async function updatePurchaseOrder(
 		await deleteCacheByKeyPrefix(cacheKey);
 		const cacheKey2 = `${RedisCacheKey.transactions}_${data[0].tenant_id}`;
 		await deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey3 = `${RedisCacheKey.inventory_items}_${data[0].tenant_id}`;
+		await deleteCacheByKeyPrefix(cacheKey3);
 	}
 	return { data, error };
 }
@@ -163,6 +167,8 @@ export async function updatePurchaseOrderRecordStatus(
 		await deleteCacheByKeyPrefix(cacheKey);
 		const cacheKey2 = `${RedisCacheKey.transactions}_${data[0].tenant_id}`;
 		await deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey3 = `${RedisCacheKey.inventory_items}_${data[0].tenant_id}`;
+		await deleteCacheByKeyPrefix(cacheKey3);
 	}
 	return { data, error };
 }
@@ -184,6 +190,8 @@ export async function updatePurchaseOrderStatus(
 		await deleteCacheByKeyPrefix(cacheKey);
 		const cacheKey2 = `${RedisCacheKey.transactions}_${data[0].tenant_id}`;
 		await deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey3 = `${RedisCacheKey.inventory_items}_${data[0].tenant_id}`;
+		await deleteCacheByKeyPrefix(cacheKey3);
 	}
 	return { data, error };
 }

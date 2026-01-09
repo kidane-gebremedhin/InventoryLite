@@ -20,7 +20,7 @@ const appFeatures = [
 	"Product variants (size, color, ...)",
 	"Stock tracking (in/out/current quantity)",
 	"Multi-store support",
-	"Demand monitoring",
+	"Preorder & Demand monitoring",
 	"Low-stock alerts",
 	"Supplier management",
 	"Purchase orders (POs)",
@@ -78,7 +78,7 @@ const tiers = [
 				: "",
 		price: app_prices[APP_ACTIVE_CURRENCY].yearly,
 		description:
-			"For businesses that need a comprehensive demand and inventory management solution.",
+			"Unlock powerful demand and inventory managment tools for your business.",
 		features: appFeatures,
 		mostPopular: false,
 	},

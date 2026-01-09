@@ -63,7 +63,11 @@ export default function ItemModal({ isOpen, onClose, item }: ItemModalProps) {
 								<div className="flex">
 									<span className="text-gray-600">Available Quantity:</span>
 									<span className="mx-2 font-medium">{item.quantity}</span>
-									{item.quantity <= item.min_quantity && <LowStock />}
+									{item.quantity <= item.min_quantity && (
+										<LowStock
+											label={item.quantity === 0 ? "Out Stock" : "Low Stock"}
+										/>
+									)}
 								</div>
 								<div>
 									<span className="text-gray-600">Min Quantity:</span>

@@ -349,6 +349,15 @@ CREATE TABLE IF NOT EXISTS public.manual_payments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- VIEWS
+CREATE VIEW public.inventory_items_view
+WITH (security_invoker = true)
+AS
+SELECT *,
+       quantity <= min_quantity AND quantity > 0 AS is_low_stock,
+       quantity > min_quantity AS is_in_stock
+FROM public.inventory_items;
+
 ------------------------------------------------------------------------------------------
 -- Helper function to get user's tenant without RLS recursion
 CREATE OR REPLACE FUNCTION public.user_tenant_id()
@@ -1435,9 +1444,9 @@ CREATE OR REPLACE FUNCTION public.delete_user_account()
         DELETE FROM public.categories WHERE tenant_id = user_tenant_id;
         DELETE FROM public.suppliers WHERE tenant_id = user_tenant_id;
         DELETE FROM public.customers WHERE tenant_id = user_tenant_id;
-        --DELETE FROM tenants WHERE id = user_tenant_id;
         DELETE FROM public.user_tenant_mappings WHERE tenant_id = user_tenant_id;
-        RETURN NEW;
+        DELETE FROM public.tenants WHERE id = user_tenant_id;
+        RETURN OLD;
     END;
     $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -1939,6 +1948,7 @@ CREATE OR REPLACE FUNCTION public.build_dashboard_stats(
     DECLARE
         totalItems INTEGER; 
         lowStockItems INTEGER; 
+        outStockItems INTEGER; 
         totalSuppliers INTEGER; 
         pendingPurchaseOrders INTEGER;
         receivedPurchaseOrders INTEGER;
@@ -1955,7 +1965,11 @@ CREATE OR REPLACE FUNCTION public.build_dashboard_stats(
 
         SELECT count(DISTINCT id) INTO lowStockItems FROM public.inventory_items
         WHERE status = 'active' 
-        AND quantity <= min_quantity;
+        AND quantity > 0 AND quantity <= min_quantity;
+
+        SELECT count(DISTINCT id) INTO outStockItems FROM public.inventory_items
+        WHERE status = 'active' 
+        AND quantity = 0;
 
         SELECT count(DISTINCT id) INTO totalSuppliers FROM public.suppliers
         WHERE status = 'active';
@@ -2028,6 +2042,7 @@ CREATE OR REPLACE FUNCTION public.build_dashboard_stats(
                     'totalItems', totalItems, 
                     'totalSuppliers', totalSuppliers, 
                     'lowStockItems', lowStockItems, 
+                    'outStockItems', outStockItems,
                     'pendingPurchaseOrders', pendingPurchaseOrders, 
                     'receivedPurchaseOrders', receivedPurchaseOrders, 
                     'canceledPurchaseOrders', canceledPurchaseOrders, 
@@ -2125,10 +2140,12 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_secret text;
+  v_cron_api_key text;
+  v_payment_notification_api text;
   v_payload jsonb;
 BEGIN
-  SELECT decrypted_secret INTO v_secret FROM vault.decrypted_secrets WHERE name = 'cron_api_key' LIMIT 1;
+  SELECT decrypted_secret INTO v_cron_api_key FROM vault.decrypted_secrets WHERE name = 'cron_api_key' LIMIT 1;
+  SELECT decrypted_secret INTO v_payment_notification_api FROM vault.decrypted_secrets WHERE name = 'payment_notification_api' LIMIT 1;
 
   -- Use jsonb_agg to create an array of objects
   SELECT jsonb_build_object(
@@ -2153,10 +2170,10 @@ BEGIN
 
 IF v_payload->>'data' IS NOT NULL THEN
     PERFORM net.http_post(
-    url := 'https://your-app.vercel.app/api/cron/notify-upcoming-payment-due',
+    url := v_payment_notification_api,
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer ' || v_secret
+        'Authorization', 'Bearer ' || v_cron_api_key
       ),
       body := v_payload
     );
@@ -2169,3 +2186,13 @@ SELECT cron.schedule(
   '0 0 * * *',
   'SELECT public.run_notify_upcoming_payment_due_cron();'
 );
+
+
+-- GRANT PERMISSIONS TO VIEWS
+GRANT SELECT ON public.inventory_items_view TO anon;
+GRANT SELECT ON public.inventory_items_view TO authenticated;
+
+ALTER VIEW public.inventory_items_view OWNER TO postgres;
+
+-- FINALLY, REFRESH SCHEMA
+NOTIFY pgrst, 'reload schema';

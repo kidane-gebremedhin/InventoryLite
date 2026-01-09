@@ -37,6 +37,7 @@ BEGIN
 END;
 $$;
 
+DROP VIEW IF EXISTS public.inventory_items_view;
 DELETE FROM auth.users;
 
 -- Drop All Functions (REMOVE THIS)

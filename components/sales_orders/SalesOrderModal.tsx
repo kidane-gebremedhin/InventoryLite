@@ -82,6 +82,7 @@ export default function SalesOrderModal({
 
 		// reset form
 		setFormData(emptyEntry);
+		setAddNewCustomer(false);
 
 		if (order) {
 			setFormData({
@@ -241,6 +242,7 @@ export default function SalesOrderModal({
 								className="input-field"
 								autoFocus
 								required
+								disabled={addNewCustomer}
 							/>
 						</div>
 
@@ -277,7 +279,7 @@ export default function SalesOrderModal({
 											}}
 											className="input-field"
 											autoFocus
-											placeholder="Enter new customer name"
+											placeholder="Enter customer & press ENTER"
 											required
 										/>
 									) : (
@@ -301,7 +303,7 @@ export default function SalesOrderModal({
 									)}
 								</div>
 							) : (
-								<span>Saving...</span>
+								<div className="p-2">Saving...</div>
 							)}
 						</div>
 
@@ -317,6 +319,7 @@ export default function SalesOrderModal({
 								}
 								className="input-field"
 								required
+								disabled={addNewCustomer}
 							/>
 						</div>
 					</div>
@@ -329,6 +332,7 @@ export default function SalesOrderModal({
 								type="button"
 								onClick={addItem}
 								className="btn-outline-success text-xs flex items-center"
+								disabled={addNewCustomer}
 							>
 								<PlusIcon className="h-4 w-4 mr-2" />
 								Add Item
@@ -357,7 +361,7 @@ export default function SalesOrderModal({
 												}
 												className={`input-field ${item?.id !== undefined ? "btn-secondary" : ""}`}
 												required
-												disabled={item?.id !== undefined}
+												disabled={item?.id !== undefined || addNewCustomer}
 											>
 												<option value="">Select Item</option>
 												{inventoryItems.map((invItem) => (
@@ -387,6 +391,7 @@ export default function SalesOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewCustomer}
 											/>
 										</div>
 
@@ -402,6 +407,7 @@ export default function SalesOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewCustomer}
 											/>
 										</div>
 
@@ -415,6 +421,7 @@ export default function SalesOrderModal({
 													updateItem(index, "variant_id", e.target.value)
 												}
 												className="input-field"
+												disabled={addNewCustomer}
 											>
 												<option value="">Select Variant</option>
 												{variants
@@ -447,6 +454,7 @@ export default function SalesOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewCustomer}
 											>
 												<option value="">Select Store</option>
 												{stores.map((store) => (
@@ -465,6 +473,7 @@ export default function SalesOrderModal({
 													type="button"
 													onClick={() => removeItem(index)}
 													className="hidden md:block md:mt-3 text-red-600 hover:text-red-900"
+													disabled={addNewCustomer}
 												>
 													<TrashIcon className="h-4 w-4" />
 												</button>
@@ -472,6 +481,7 @@ export default function SalesOrderModal({
 													type="button"
 													onClick={() => removeItem(index)}
 													className="flex block md:hidden md:mt-3 text-red-600 hover:text-red-900"
+													disabled={addNewCustomer}
 												>
 													<TrashIcon className="h-4 w-4 mt-1" />
 													<span className="px-2">Remove</span>
@@ -497,6 +507,7 @@ export default function SalesOrderModal({
 						<SaveButton
 							loading={loading}
 							label={order ? "Update Order" : "Create Order"}
+							disabled={addNewCustomer}
 						/>
 					</div>
 				</form>

@@ -402,3 +402,20 @@ export interface User {
 	picturePicture: string;
 	subscriptionInfo: UserSubscriptionInfo;
 }
+
+export interface DashboardStats {
+	totalItems: number;
+	lowStockItems: number;
+	outStockItems: number;
+	totalSuppliers: number;
+	pendingPurchaseOrders: number;
+	receivedPurchaseOrders: number;
+	canceledPurchaseOrders: number;
+	overDuePurchaseOrders: number;
+	pendingSalesOrders: number;
+	fulfilledSalesOrders: number;
+	canceledSalesOrders: number;
+	overDueSalesOrders: number;
+	totalValue: number;
+	monthlyGrowth: number;
+}

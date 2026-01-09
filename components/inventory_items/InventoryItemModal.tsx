@@ -60,6 +60,7 @@ export function InventoryItemModal({
 			setSelectedVariants(itemVariants);
 		} else {
 			setFormData(emptyEntry);
+			setItemVariants([]);
 			setSelectedVariants([]);
 		}
 	}, [isOpen, item]);
@@ -113,7 +114,7 @@ export function InventoryItemModal({
 	};
 
 	const onMultiSeletChange = (selectedValues) => {
-		setSelectedVariants(selectedValues);
+		setSelectedVariants(selectedValues.filter((val) => val.id !== ""));
 	};
 
 	if (!isOpen) return null;
@@ -190,7 +191,7 @@ export function InventoryItemModal({
 								<div className="relative">
 									<input
 										type="text"
-										value={formData.unit_price > 0 ? formData.unit_price : ""}
+										value={formData.unit_price >= 0 ? formData.unit_price : ""}
 										onChange={(e) =>
 											handleInputChange("unit_price", e.target.value)
 										}
@@ -205,7 +206,7 @@ export function InventoryItemModal({
 								</span>
 								<input
 									type="number"
-									value={formData.min_quantity}
+									value={formData.min_quantity || 0}
 									onChange={(e) =>
 										handleInputChange(
 											"min_quantity",
@@ -220,6 +221,7 @@ export function InventoryItemModal({
 					</div>
 
 					<MultiSelect
+						key={selectedVariants.length}
 						options={variants}
 						preSelectedValues={selectedVariants}
 						changeHandler={onMultiSeletChange}

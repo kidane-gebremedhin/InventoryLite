@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { DATABASE_TABLE, ROUTE_PATH, UserRole } from "@/lib/Enums";
 import { fetchUnreadCount } from "@/lib/server_actions/feedback";
+import Tooltip from "../helpers/ToolTip";
 import { useAuthContext } from "../providers/AuthProvider";
 
 interface FeedbackNotificationProps {
@@ -57,9 +58,13 @@ export function FeedbackNotification({
 			href={ROUTE_PATH.ADMIN_FEEDBACK_MANAGEMENT}
 			className={`relative p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 ${className}`}
 		>
-			<ChatBubbleLeftRightIcon className="h-6 w-6" />
+			<div className="mt-0">
+				<Tooltip text="Open feedback">
+					<ChatBubbleLeftRightIcon className="h-6 w-6" />
+				</Tooltip>
+			</div>
 			{unreadCount > 0 && (
-				<span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+				<span className="absolute top-4 -right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
 					{unreadCount > 9 ? "9+" : unreadCount}
 				</span>
 			)}

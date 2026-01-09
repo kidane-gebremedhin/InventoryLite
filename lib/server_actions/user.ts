@@ -57,7 +57,6 @@ export const fetchUserSubscriptionInfo = async (
 				searchParams,
 			);
 			if (error) {
-				console.log("fetchUserSubscriptionInfo errrr", error);
 				return null;
 			}
 			const userSubscriptionInfo = data.length > 0 ? data[0] : null;
