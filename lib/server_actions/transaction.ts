@@ -34,7 +34,7 @@ export async function fetchTransactions({
 
 	const cacheKey = `${RedisCacheKey.transactions}_${tenantId}_${selectedStatus}_${selectedDirection}_${selectedStoreId}_${selectedInventoryItemId}_${startDate}_${endDate}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase.from(DATABASE_TABLE.transactions).select(
 			`
             *,
@@ -69,7 +69,9 @@ export async function fetchTransactions({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 

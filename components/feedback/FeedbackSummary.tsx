@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FeedbackStatus } from "@/lib/Enums";
 import { getCurrentDateTime } from "@/lib/helpers/Helper";
 import { fetchFeedbackStats } from "@/lib/server_actions/feedback";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
 import { useAuthContext } from "../providers/AuthProvider";
 
 interface FeedbackSummaryProps {
@@ -34,7 +35,7 @@ export function FeedbackSummary({ className = "" }: FeedbackSummaryProps) {
 		averageRating: 0,
 		recentCount: 0,
 	});
-	const [loading, setLoading] = useState(true);
+	const { loading, setLoading } = useLoadingContext();
 	const { currentUser } = useAuthContext();
 
 	const loadFeedbackStats = useCallback(async () => {
@@ -82,7 +83,7 @@ export function FeedbackSummary({ className = "" }: FeedbackSummaryProps) {
 		} finally {
 			setLoading(false);
 		}
-	}, [currentUser?.subscriptionInfo?.tenant_id]);
+	}, [currentUser?.subscriptionInfo?.tenant_id, setLoading]);
 
 	useEffect(() => {
 		loadFeedbackStats();

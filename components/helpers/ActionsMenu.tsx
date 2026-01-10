@@ -48,7 +48,7 @@ const ActionsMenu = ({ actions }: ActionsMenuProps) => {
 	);
 
 	return (
-		<div className="md:absolute inline-block text-left" ref={menuRef}>
+		<div className="inline-block text-left ml-auto" ref={menuRef}>
 			<div>
 				<button
 					type="button"

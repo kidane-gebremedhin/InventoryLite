@@ -87,9 +87,10 @@ export default function ManualPaymentPage() {
 	};
 
 	const handleAdd = useCallback(() => {
+		setLoading(false);
 		setEditingManualPayment(null);
 		setIsModalOpen(true);
-	}, []);
+	}, [setLoading]);
 
 	const loadManualPayments = useCallback(async () => {
 		const { startIndex, endIndex } = calculateStartAndEndIndex({
@@ -98,8 +99,6 @@ export default function ManualPaymentPage() {
 		});
 
 		try {
-			setLoading(true);
-
 			const { data, count, error } = await fetchManualPayments({
 				tenantId: currentUser?.subscriptionInfo?.tenant_id,
 				selectedStatus,
@@ -214,6 +213,7 @@ export default function ManualPaymentPage() {
 
 			if (error) {
 				handleServerError(error);
+				setLoading(false);
 				return;
 			}
 
@@ -236,6 +236,7 @@ export default function ManualPaymentPage() {
 
 			if (error) {
 				handleServerError(error);
+				setLoading(false);
 				return;
 			}
 

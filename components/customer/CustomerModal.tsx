@@ -4,6 +4,8 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
 import { showErrorToast } from "@/lib/helpers/Helper";
 import type { Customer } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 
 const emptyEntry: Customer = {
 	name: "",
@@ -31,9 +33,9 @@ export default function CustomerModal({
 	customer,
 	onSave,
 }: CustomerModalProps) {
-	const [loading] = useState(false);
 	const [formData, setFormData] = useState<Partial<Customer>>(emptyEntry);
 	const [errors, setErrors] = useState<FormErrors>({});
+	const { loading } = useLoadingContext();
 
 	const resetForm = useCallback(() => {
 		setFormData({
@@ -46,19 +48,19 @@ export default function CustomerModal({
 	}, []);
 
 	useEffect(() => {
-		if (isOpen) {
-			if (customer) {
-				setFormData({
-					name: customer.name || "",
-					email: customer.email || "",
-					phone: customer.phone || "",
-					address: customer.address || "",
-				});
-			} else {
-				resetForm();
-			}
-			setErrors({});
+		if (!isOpen) return;
+
+		if (customer) {
+			setFormData({
+				name: customer.name || "",
+				email: customer.email || "",
+				phone: customer.phone || "",
+				address: customer.address || "",
+			});
+		} else {
+			resetForm();
 		}
+		setErrors({});
 	}, [isOpen, customer, resetForm]);
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -118,6 +120,7 @@ export default function CustomerModal({
 							onChange={(e) => handleInputChange("name", e.target.value)}
 							className={`input-field ${errors.name ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
 							placeholder="Enter customer name"
+							autoFocus
 							required
 						/>
 						{errors.name && (
@@ -171,25 +174,11 @@ export default function CustomerModal({
 					</div>
 
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-							disabled={loading}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							className="btn-outline-primary"
-							disabled={loading}
-						>
-							{loading
-								? "Saving..."
-								: customer
-									? "Update Customer"
-									: "Create Customer"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={customer ? "Update Customer" : "Create Customer"}
+						/>
 					</div>
 				</form>
 			</div>

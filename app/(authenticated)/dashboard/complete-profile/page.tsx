@@ -13,6 +13,7 @@ import {
 	showSuccessToast,
 } from "@/lib/helpers/Helper";
 import { fetchDomainOptions } from "@/lib/server_actions/domain";
+import { fetchSubscriptionPlanOptions } from "@/lib/server_actions/subscription_plan";
 import {
 	clearSubscriptionInfoCookies,
 	clearUserSubscriptionInfo,
@@ -22,6 +23,7 @@ import type { UserSubscriptionInfo } from "@/lib/types/Models";
 
 export default function CompleteProfile() {
 	const [domains, setDomains] = useState([]);
+	const [subscriptionPlans, setSubscriptionPlans] = useState([]);
 
 	const router = useRouter();
 	const { setLoading } = useLoadingContext();
@@ -30,20 +32,20 @@ export default function CompleteProfile() {
 	const [formData, setFormData] = useState<Partial<UserSubscriptionInfo>>({
 		name: "",
 		domain_id: "",
+		subscription_plan_id: "",
 		price_id: "",
 		current_payment_expiry_date: null,
-		expected_payment_amount: 0,
 	});
 
 	useEffect(() => {
 		const initialData: Partial<UserSubscriptionInfo> = {
 			name: currentUser?.subscriptionInfo?.name.split("@")[0],
 			domain_id: currentUser?.subscriptionInfo?.domain_id || "",
+			subscription_plan_id:
+				currentUser?.subscriptionInfo?.subscription_plan_id || "",
 			price_id: currentUser?.subscriptionInfo?.price_id || "",
 			current_payment_expiry_date:
 				currentUser?.subscriptionInfo?.current_payment_expiry_date,
-			expected_payment_amount:
-				currentUser?.subscriptionInfo?.expected_payment_amount,
 		};
 		setFormData(initialData);
 	}, [currentUser]);
@@ -52,9 +54,7 @@ export default function CompleteProfile() {
 		const loadDomains = async () => {
 			try {
 				setLoading(true);
-				const { data, error } = await fetchDomainOptions(
-					currentUser?.subscriptionInfo?.tenant_id,
-				);
+				const { data, error } = await fetchDomainOptions();
 
 				if (error) {
 					showServerErrorToast(error.message);
@@ -69,22 +69,47 @@ export default function CompleteProfile() {
 		};
 
 		loadDomains();
-	}, [currentUser?.subscriptionInfo?.tenant_id, setLoading]);
+	}, [setLoading]);
+
+	useEffect(() => {
+		const loadSubscriptionPlans = async () => {
+			try {
+				setLoading(true);
+				const { data, error } = await fetchSubscriptionPlanOptions();
+
+				if (error) {
+					showServerErrorToast(error.message);
+				}
+
+				setSubscriptionPlans(data || []);
+			} catch (_error) {
+				showErrorToast();
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		loadSubscriptionPlans();
+	}, [setLoading]);
 
 	const updateProfile = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!formData.domain_id || !formData.name) {
+		if (
+			!formData.domain_id ||
+			!formData.name ||
+			!formData.subscription_plan_id
+		) {
 			showErrorToast("Please fill in all required fields.");
 			return;
 		}
 
 		const userSubscriptionInfo: Partial<UserSubscriptionInfo> = {
 			domain_id: formData.domain_id,
+			subscription_plan_id: formData.subscription_plan_id,
 			name: formData.name,
 			description: formData.description || "",
-			price_id: formData.price_id || "123",
-			expected_payment_amount: formData.expected_payment_amount || 0,
+			price_id: formData.price_id || "NA",
 			profile_complete: true,
 		};
 
@@ -95,7 +120,7 @@ export default function CompleteProfile() {
 			);
 
 			if (error) {
-				handleServerError(error.message);
+				handleServerError(error);
 				return;
 			}
 
@@ -142,7 +167,7 @@ export default function CompleteProfile() {
 				<form onSubmit={updateProfile} className="space-y-4">
 					<div>
 						<span className="block text-sm font-medium text-gray-700 mb-1">
-							What is your business industry?
+							What is your business domain(industry)?
 						</span>
 						<select
 							value={formData.domain_id}
@@ -160,7 +185,7 @@ export default function CompleteProfile() {
 					</div>
 					<div>
 						<span className="block text-sm font-medium text-gray-700 mb-1">
-							Company Name *
+							Your company Name *
 						</span>
 						<input
 							type="text"
@@ -182,11 +207,30 @@ export default function CompleteProfile() {
 							rows={3}
 						/>
 					</div>
-
+					<div>
+						<span className="block text-sm font-medium text-gray-700 mb-1">
+							Choose Payment Plan
+						</span>
+						<select
+							value={formData.subscription_plan_id}
+							onChange={(e) =>
+								handleInputChange("subscription_plan_id", e.target.value)
+							}
+							className="input-field"
+							required
+						>
+							<option value="">Select payment plan</option>
+							{subscriptionPlans.map((subscription_plan) => (
+								<option key={subscription_plan.id} value={subscription_plan.id}>
+									{`${subscription_plan.subscription_tier}(${subscription_plan.billing_cycle}) ${subscription_plan.currency_type}${subscription_plan.payment_amount}`}
+								</option>
+							))}
+						</select>
+					</div>
 					<div className="flex justify-end space-x-3 pt-4">
-						<div className="w-full pl-6 flex justify items-center">
+						<div className="w-full flex justify items-center">
 							<button type="submit" className="btn-outline-primary">
-								Save Profile
+								Update Account Profile
 							</button>
 						</div>
 					</div>

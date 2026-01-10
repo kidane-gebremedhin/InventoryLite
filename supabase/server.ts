@@ -27,6 +27,12 @@ export const createClient = async () => {
 export const createServerClientWithServiceKey = () => {
 	return createClientForServiceRole(
 		process.env.NEXT_PUBLIC_SUPABASE_URL,
-		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6YnhndnpzdmpsZ3Z2ZGhka3dvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTAyNDg3NCwiZXhwIjoyMDcwNjAwODc0fQ.mzJvy_RW_hoUaPoXV7AOzG8Jb8pg1_OzktmfeS0wVH8",
+		process.env.SUPABASE_SERVICE_ROLE_KEY,
+		{
+			auth: {
+				autoRefreshToken: false,
+				persistSession: false,
+			},
+		},
 	);
 };

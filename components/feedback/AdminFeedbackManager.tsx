@@ -499,6 +499,7 @@ export function AdminFeedbackManager() {
 								className="input-field"
 								rows={4}
 								placeholder="Write your response to this feedback..."
+								autoFocus
 								required
 							/>
 						</div>

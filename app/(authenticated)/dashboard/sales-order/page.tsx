@@ -7,7 +7,6 @@ import {
 	EyeIcon,
 	MagnifyingGlassIcon,
 	PencilIcon,
-	PlusIcon,
 	TrashIcon,
 	XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -55,6 +54,7 @@ import { useLoadingContext } from "@/components/context_apis/LoadingProvider";
 import ExportExcel from "@/components/file_import_export/ExportExcel";
 import ExportPDF from "@/components/file_import_export/ExportPDF";
 import ActionsMenu from "@/components/helpers/ActionsMenu";
+import { AddButton } from "@/components/helpers/buttons";
 import { ConfirmationModal } from "@/components/helpers/ConfirmationModal";
 import { useAuthContext } from "@/components/providers/AuthProvider";
 import { fetchCustomerOptions } from "@/lib/server_actions/customer";
@@ -408,8 +408,9 @@ export default function SalesOrderPage() {
 			showSuccessToast(`Order status updated to ${status}`);
 			loadSalesOrders();
 		} catch (_error) {
-			setLoading(false);
 			showErrorToast();
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -497,14 +498,7 @@ export default function SalesOrderPage() {
 							Manage your sales orders from your supplier customers
 						</p>
 					</div>
-					<button
-						type="button"
-						onClick={handleAdd}
-						className="w-full md:w-1/5 btn-outline-primary flex justify-center items-center"
-					>
-						<PlusIcon className="h-5 w-5 mr-2" />
-						Add Sales Order
-					</button>
+					<AddButton label={"Add Order"} handleAdd={handleAdd} />
 				</div>
 			</div>
 

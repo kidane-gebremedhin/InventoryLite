@@ -1,4 +1,6 @@
 import {
+	BillingCycle,
+	CommissionType,
 	CurrencyType,
 	FeedbackCategory,
 	FeedbackPriority,
@@ -10,7 +12,8 @@ import {
 	RecordStatus,
 	ROUTE_PATH,
 	SalesOrderStatus,
-	SubscriptionStatus,
+	StockLevel,
+	SubscriptionTier,
 	TransactionDirection,
 } from "./Enums";
 
@@ -19,15 +22,13 @@ export const TEXT_SEARCH_TRIGGER_KEY = "Enter";
 
 // Pricing
 export const FREE_PLAN_LABEL = "Free";
-export const FREE_PLAN_DURATION = "week";
-export const PAID_PLAN_DURATION = "month";
+export const FREE_PLAN_DURATION = "1 month";
+export const PAID_PLAN_MONTHLY = "month";
+export const PAID_PLAN_YEARLY = "year";
 
 // Auth constants
 export const SIGNED_OUT = "SIGNED_OUT";
 export const DEFAULT_USER_ROLE = "user";
-
-// Cookies
-export const CONSENT_COOKIE_KEY = "gdpr_consent";
 
 // Decimal validation
 export const DECIMAL_REGEX = /^\d*\.?\d*$/;
@@ -80,9 +81,30 @@ export const TRANSACTION_DIRECTIONS: string[] = [
 	TransactionDirection.OUT,
 ];
 
-export const SUBSCRIPTION_STATUSES: string[] = [SubscriptionStatus.SUBSCRIBED];
+export const SUBSCRIPTION_TIERS: SubscriptionTier[] = [
+	SubscriptionTier.STANDARD,
+];
 
-export const CURRENCY_TYPES: string[] = [CurrencyType.ETB, CurrencyType.USD];
+export const BILLING_CYCLES: BillingCycle[] = [
+	BillingCycle.MONTHLY,
+	BillingCycle.YEARLY,
+];
+
+export const CURRENCY_TYPES: CurrencyType[] = [
+	CurrencyType.ETB,
+	CurrencyType.USD,
+];
+export const COMMISSION_TYPES: CommissionType[] = [
+	CommissionType.PERCENTAGE,
+	CommissionType.FIXED,
+];
+
+export const STOCK_LEVELS: string[] = [
+	ALL_OPTIONS,
+	StockLevel.IN_STOCK,
+	StockLevel.LOW_STOCK,
+	StockLevel.OUT_STOCK,
+];
 
 export const FEEDBACK_STATUSES = [
 	{
@@ -177,6 +199,8 @@ export const RATING_STARS = [
 	RatingStar.EXCELLENT,
 ];
 
+export const REPORT_DAYS: number[] = [1, 5, 10, 30, 90, 180, 365];
+
 export const VALIDATION_ERRORS_MAPPING = {
 	serverError: "violates unique constraint",
 	entities: {
@@ -189,7 +213,8 @@ export const VALIDATION_ERRORS_MAPPING = {
 		},
 		subscriptionPlan: {
 			fields: {
-				subscription_status: { displayError: "Subscription type error." },
+				billing_cycle: { displayError: "Billing Cycle error." },
+				subscription_tier: { displayError: "Subscription Tier error." },
 				currency_type: { displayError: "Currency error." },
 				payment_amount: { displayError: "Payment amount error." },
 			},
@@ -248,6 +273,11 @@ export const VALIDATION_ERRORS_MAPPING = {
 		userInvitation: {
 			fields: {
 				email: { displayError: "User email already exists." },
+			},
+		},
+		affiliatePartner: {
+			fields: {
+				name: { displayError: "Affiliate partner already exists." },
 			},
 		},
 	},

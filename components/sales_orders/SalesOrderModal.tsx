@@ -1,10 +1,16 @@
 "use client";
 
 import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
-import { DECIMAL_REGEX } from "@/lib/Constants";
+import { DECIMAL_REGEX, VALIDATION_ERRORS_MAPPING } from "@/lib/Constants";
 import { RecordStatus, SalesOrderStatus } from "@/lib/Enums";
-import { calculateOrderTotalProce, showErrorToast } from "@/lib/helpers/Helper";
+import {
+	calculateOrderTotalProce,
+	showErrorToast,
+	showServerErrorToast,
+} from "@/lib/helpers/Helper";
+import { saveCustomer } from "@/lib/server_actions/customer";
 import type {
 	Customer,
 	InventoryItem,
@@ -13,6 +19,8 @@ import type {
 	Store,
 	Variant,
 } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 import Tooltip from "../helpers/ToolTip";
 
 interface SalesOrderModalProps {
@@ -47,10 +55,13 @@ export default function SalesOrderModal({
 	variants,
 	onSave,
 }: SalesOrderModalProps) {
-	const [loading, setLoading] = useState(false);
+	const { loading } = useLoadingContext();
 	const [formData, setFormData] = useState<Partial<SalesOrder>>(emptyEntry);
+	const [addNewCustomer, setAddNewCustomer] = useState<boolean>(false);
+	const [isAddingCustomer, setIsAddingCustomer] = useState<boolean>(false);
+	const [newCustomerName, setNewCustomerName] = useState<string>("");
 	const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([]);
-	//const [itemVariants, setItemVariants] = useState<Variant[]>([])
+	const [customerOptions, setCustomerOptions] = useState<Customer[]>([]);
 
 	const resetForm = useCallback(() => {
 		setFormData({
@@ -63,21 +74,26 @@ export default function SalesOrderModal({
 	}, []);
 
 	useEffect(() => {
+		setCustomerOptions(customers);
+	}, [customers]);
+
+	useEffect(() => {
+		if (!isOpen) return;
+
 		// reset form
 		setFormData(emptyEntry);
+		setAddNewCustomer(false);
 
-		if (isOpen) {
-			if (order) {
-				setFormData({
-					so_number: order.so_number || "",
-					customer_id: order.customer_id || "",
-					expected_date: order.expected_date ? order.expected_date : "",
-					order_status: order.order_status || SalesOrderStatus.PENDING,
-				});
-				setSalesOrderItems(order.order_items || []);
-			} else {
-				resetForm();
-			}
+		if (order) {
+			setFormData({
+				so_number: order.so_number || "",
+				customer_id: order.customer_id || "",
+				expected_date: order.expected_date ? order.expected_date : "",
+				order_status: order.order_status || SalesOrderStatus.PENDING,
+			});
+			setSalesOrderItems(order.order_items || []);
+		} else {
+			resetForm();
 		}
 	}, [isOpen, order, resetForm]);
 
@@ -139,32 +155,57 @@ export default function SalesOrderModal({
 			return;
 		}
 
+		const itemsToInsert: SalesOrderItem[] = salesOrderItems.map((item) => ({
+			...(item.id && { id: item.id }),
+			store_id: item.store_id,
+			variant_id: item?.variant_id,
+			sales_order_id: order?.id || "",
+			inventory_item_id: item.inventory_item_id || "",
+			quantity: item.quantity || 0,
+			unit_price: item.unit_price || 0,
+		}));
+
+		const newSalesOrder: SalesOrder = {
+			id: order?.id || "",
+			so_number: formData.so_number || "",
+			customer_id: formData.customer_id || "",
+			order_status: formData.order_status,
+			status: order?.status || RecordStatus.ACTIVE,
+			expected_date: formData.expected_date,
+			order_items: itemsToInsert,
+		};
+
+		onSave(newSalesOrder);
+	};
+
+	const handleCreateNewCustomer = async () => {
 		try {
-			const itemsToInsert: SalesOrderItem[] = salesOrderItems.map((item) => ({
-				...(item.id && { id: item.id }),
-				store_id: item.store_id,
-				variant_id: item?.variant_id,
-				sales_order_id: order?.id || "",
-				inventory_item_id: item.inventory_item_id || "",
-				quantity: item.quantity || 0,
-				unit_price: item.unit_price || 0,
-			}));
+			setIsAddingCustomer(true);
+			const { data, error } = await saveCustomer({ name: newCustomerName });
 
-			const newSalesOrder: SalesOrder = {
-				id: order?.id || "",
-				so_number: formData.so_number || "",
-				customer_id: formData.customer_id || "",
-				order_status: formData.order_status,
-				status: order?.status || RecordStatus.ACTIVE,
-				expected_date: formData.expected_date,
-				order_items: itemsToInsert,
-			};
+			if (error) {
+				handleServerError(error);
+				return;
+			}
 
-			onSave(newSalesOrder);
+			setCustomerOptions((prev) => [...prev, ...data]);
+			setFormData({ ...formData, customer_id: data[0].id });
+			setNewCustomerName("");
+			setAddNewCustomer(false);
 		} catch (_error) {
-			showErrorToast("Failed to save sales order");
+			showErrorToast();
 		} finally {
-			setLoading(false);
+			setIsAddingCustomer(false);
+		}
+	};
+
+	const handleServerError = (error: PostgrestError) => {
+		if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
+			showErrorToast(
+				VALIDATION_ERRORS_MAPPING.entities.customer.fields.name.displayError,
+			);
+		} else {
+			showServerErrorToast(error.message);
 		}
 	};
 
@@ -199,28 +240,71 @@ export default function SalesOrderModal({
 									setFormData({ ...formData, so_number: e.target.value })
 								}
 								className="input-field"
+								autoFocus
 								required
+								disabled={addNewCustomer}
 							/>
 						</div>
 
 						<div>
-							<span className="block text-sm font-medium text-gray-700 mb-1">
-								Customer *
-							</span>
-							<select
-								value={formData.customer_id}
-								onChange={(e) =>
-									setFormData({ ...formData, customer_id: e.target.value })
-								}
-								className="input-field"
-								required
-							>
-								{customers.map((customer) => (
-									<option key={customer.id} value={customer.id}>
-										{customer.name}
-									</option>
-								))}
-							</select>
+							<div className="w-full flex">
+								<div className="w-3/4">
+									<span className="block text-sm font-medium text-gray-700 mb-1">
+										Customer *
+									</span>
+								</div>
+								<div className="w-1/4">
+									<PlusIcon
+										className="h-5 w-5 mr-1 ml-auto cursor-pointer text-gray-900 hover:text-green-600 transition"
+										strokeWidth={2.5}
+										onClick={() => {
+											setAddNewCustomer(true);
+										}}
+									/>
+								</div>
+							</div>
+							{!isAddingCustomer ? (
+								<div>
+									{addNewCustomer ? (
+										<input
+											type="text"
+											value={newCustomerName}
+											onChange={(e) => setNewCustomerName(e.target.value)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													e.preventDefault();
+													e.stopPropagation();
+													handleCreateNewCustomer();
+												}
+											}}
+											className="input-field"
+											autoFocus
+											placeholder="Enter customer & press ENTER"
+											required
+										/>
+									) : (
+										<select
+											value={formData.customer_id}
+											onChange={(e) =>
+												setFormData({
+													...formData,
+													customer_id: e.target.value,
+												})
+											}
+											className="input-field"
+											required
+										>
+											{customerOptions.map((customer) => (
+												<option key={customer.id} value={customer.id}>
+													{customer.name}
+												</option>
+											))}
+										</select>
+									)}
+								</div>
+							) : (
+								<div className="p-2">Saving...</div>
+							)}
 						</div>
 
 						<div>
@@ -235,6 +319,7 @@ export default function SalesOrderModal({
 								}
 								className="input-field"
 								required
+								disabled={addNewCustomer}
 							/>
 						</div>
 					</div>
@@ -247,6 +332,7 @@ export default function SalesOrderModal({
 								type="button"
 								onClick={addItem}
 								className="btn-outline-success text-xs flex items-center"
+								disabled={addNewCustomer}
 							>
 								<PlusIcon className="h-4 w-4 mr-2" />
 								Add Item
@@ -275,7 +361,7 @@ export default function SalesOrderModal({
 												}
 												className={`input-field ${item?.id !== undefined ? "btn-secondary" : ""}`}
 												required
-												disabled={item?.id !== undefined}
+												disabled={item?.id !== undefined || addNewCustomer}
 											>
 												<option value="">Select Item</option>
 												{inventoryItems.map((invItem) => (
@@ -305,6 +391,7 @@ export default function SalesOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewCustomer}
 											/>
 										</div>
 
@@ -320,6 +407,7 @@ export default function SalesOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewCustomer}
 											/>
 										</div>
 
@@ -333,7 +421,7 @@ export default function SalesOrderModal({
 													updateItem(index, "variant_id", e.target.value)
 												}
 												className="input-field"
-												required
+												disabled={addNewCustomer}
 											>
 												<option value="">Select Variant</option>
 												{variants
@@ -366,6 +454,7 @@ export default function SalesOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewCustomer}
 											>
 												<option value="">Select Store</option>
 												{stores.map((store) => (
@@ -384,6 +473,7 @@ export default function SalesOrderModal({
 													type="button"
 													onClick={() => removeItem(index)}
 													className="hidden md:block md:mt-3 text-red-600 hover:text-red-900"
+													disabled={addNewCustomer}
 												>
 													<TrashIcon className="h-4 w-4" />
 												</button>
@@ -391,6 +481,7 @@ export default function SalesOrderModal({
 													type="button"
 													onClick={() => removeItem(index)}
 													className="flex block md:hidden md:mt-3 text-red-600 hover:text-red-900"
+													disabled={addNewCustomer}
 												>
 													<TrashIcon className="h-4 w-4 mt-1" />
 													<span className="px-2">Remove</span>
@@ -412,21 +503,12 @@ export default function SalesOrderModal({
 
 					{/* Form Actions */}
 					<div className="flex justify-end space-x-3 pt-6 border-t">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-							disabled={loading}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							className="btn-outline-primary"
-							disabled={loading}
-						>
-							{loading ? "Saving..." : order ? "Update Order" : "Create Order"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={order ? "Update Order" : "Create Order"}
+							disabled={addNewCustomer}
+						/>
 					</div>
 				</form>
 			</div>

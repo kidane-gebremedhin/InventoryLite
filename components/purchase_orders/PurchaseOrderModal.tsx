@@ -1,10 +1,16 @@
 "use client";
 
 import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
-import { DECIMAL_REGEX } from "@/lib/Constants";
+import { DECIMAL_REGEX, VALIDATION_ERRORS_MAPPING } from "@/lib/Constants";
 import { PurchaseOrderStatus, RecordStatus } from "@/lib/Enums";
-import { calculateOrderTotalProce, showErrorToast } from "@/lib/helpers/Helper";
+import {
+	calculateOrderTotalProce,
+	showErrorToast,
+	showServerErrorToast,
+} from "@/lib/helpers/Helper";
+import { saveSupplier } from "@/lib/server_actions/supplier";
 import type {
 	InventoryItem,
 	PurchaseOrder,
@@ -13,6 +19,8 @@ import type {
 	Supplier,
 	Variant,
 } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 import Tooltip from "../helpers/ToolTip";
 
 interface PurchaseOrderModalProps {
@@ -47,11 +55,15 @@ export default function PurchaseOrderModal({
 	variants,
 	onSave,
 }: PurchaseOrderModalProps) {
-	const [loading, setLoading] = useState(false);
+	const { loading } = useLoadingContext();
 	const [formData, setFormData] = useState<Partial<PurchaseOrder>>(emptyEntry);
+	const [addNewSupplier, setAddNewSupplier] = useState<boolean>(false);
+	const [isAddingSupplier, setIsAddingSupplier] = useState<boolean>(false);
+	const [newSupplierName, setNewSupplierName] = useState<string>("");
 	const [purchaseOrderItems, setPurchaseOrderItems] = useState<
 		PurchaseOrderItem[]
 	>([]);
+	const [supplierOptions, setSupplierOptions] = useState<Supplier[]>([]);
 
 	const resetForm = useCallback(() => {
 		setFormData({
@@ -64,21 +76,26 @@ export default function PurchaseOrderModal({
 	}, []);
 
 	useEffect(() => {
+		setSupplierOptions(suppliers);
+	}, [suppliers]);
+
+	useEffect(() => {
+		if (!isOpen) return;
+
 		// reset form
 		setFormData(emptyEntry);
+		setAddNewSupplier(false);
 
-		if (isOpen) {
-			if (order) {
-				setFormData({
-					po_number: order.po_number || "",
-					supplier_id: order.supplier_id || "",
-					expected_date: order.expected_date ? order.expected_date : "",
-					order_status: order.order_status || PurchaseOrderStatus.PENDING,
-				});
-				setPurchaseOrderItems(order.order_items || []);
-			} else {
-				resetForm();
-			}
+		if (order) {
+			setFormData({
+				po_number: order.po_number || "",
+				supplier_id: order.supplier_id || "",
+				expected_date: order.expected_date ? order.expected_date : "",
+				order_status: order.order_status || PurchaseOrderStatus.PENDING,
+			});
+			setPurchaseOrderItems(order.order_items || []);
+		} else {
+			resetForm();
 		}
 	}, [isOpen, order, resetForm]);
 
@@ -144,34 +161,59 @@ export default function PurchaseOrderModal({
 			return;
 		}
 
+		const itemsToInsert: PurchaseOrderItem[] = purchaseOrderItems.map(
+			(item) => ({
+				...(item.id && { id: item.id }),
+				store_id: item?.store_id,
+				variant_id: item?.variant_id,
+				purchase_order_id: order?.id || "",
+				inventory_item_id: item.inventory_item_id || "",
+				quantity: item.quantity || 0,
+				unit_price: item.unit_price || 0,
+			}),
+		);
+
+		const newPurchaseOrder: PurchaseOrder = {
+			id: order?.id || "",
+			po_number: formData.po_number || "",
+			supplier_id: formData.supplier_id || "",
+			order_status: formData.order_status,
+			status: order?.status || RecordStatus.ACTIVE,
+			expected_date: formData.expected_date,
+			order_items: itemsToInsert,
+		};
+
+		onSave(newPurchaseOrder);
+	};
+
+	const handleCreateNewSupplier = async () => {
 		try {
-			const itemsToInsert: PurchaseOrderItem[] = purchaseOrderItems.map(
-				(item) => ({
-					...(item.id && { id: item.id }),
-					store_id: item?.store_id,
-					variant_id: item?.variant_id,
-					purchase_order_id: order?.id || "",
-					inventory_item_id: item.inventory_item_id || "",
-					quantity: item.quantity || 0,
-					unit_price: item.unit_price || 0,
-				}),
-			);
+			setIsAddingSupplier(true);
+			const { data, error } = await saveSupplier({ name: newSupplierName });
 
-			const newPurchaseOrder: PurchaseOrder = {
-				id: order?.id || "",
-				po_number: formData.po_number || "",
-				supplier_id: formData.supplier_id || "",
-				order_status: formData.order_status,
-				status: order?.status || RecordStatus.ACTIVE,
-				expected_date: formData.expected_date,
-				order_items: itemsToInsert,
-			};
+			if (error) {
+				handleServerError(error);
+				return;
+			}
 
-			onSave(newPurchaseOrder);
+			setSupplierOptions((prev) => [...prev, ...data]);
+			setFormData({ ...formData, supplier_id: data[0].id });
+			setNewSupplierName("");
+			setAddNewSupplier(false);
 		} catch (_error) {
-			showErrorToast("Failed to save purchase order");
+			showErrorToast();
 		} finally {
-			setLoading(false);
+			setIsAddingSupplier(false);
+		}
+	};
+
+	const handleServerError = (error: PostgrestError) => {
+		if (error.message.includes(VALIDATION_ERRORS_MAPPING.serverError)) {
+			showErrorToast(
+				VALIDATION_ERRORS_MAPPING.entities.supplier.fields.name.displayError,
+			);
+		} else {
+			showServerErrorToast(error.message);
 		}
 	};
 
@@ -207,28 +249,71 @@ export default function PurchaseOrderModal({
 									setFormData({ ...formData, po_number: e.target.value })
 								}
 								className="input-field"
+								autoFocus
 								required
+								disabled={addNewSupplier}
 							/>
 						</div>
 
 						<div>
-							<span className="block text-sm font-medium text-gray-700 mb-1">
-								Supplier *
-							</span>
-							<select
-								value={formData.supplier_id}
-								onChange={(e) =>
-									setFormData({ ...formData, supplier_id: e.target.value })
-								}
-								className="input-field"
-								required
-							>
-								{suppliers.map((supplier) => (
-									<option key={supplier.id} value={supplier.id}>
-										{supplier.name}
-									</option>
-								))}
-							</select>
+							<div className="w-full flex">
+								<div className="w-3/4">
+									<span className="block text-sm font-medium text-gray-700 mb-1">
+										Supplier *
+									</span>
+								</div>
+								<div className="w-1/4">
+									<PlusIcon
+										className="h-5 w-5 mr-1 ml-auto cursor-pointer text-gray-900 hover:text-green-600 transition"
+										strokeWidth={2.5}
+										onClick={() => {
+											setAddNewSupplier(true);
+										}}
+									/>
+								</div>
+							</div>
+							{!isAddingSupplier ? (
+								<div>
+									{addNewSupplier ? (
+										<input
+											type="text"
+											value={newSupplierName}
+											onChange={(e) => setNewSupplierName(e.target.value)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													e.preventDefault();
+													e.stopPropagation();
+													handleCreateNewSupplier();
+												}
+											}}
+											className="input-field"
+											autoFocus
+											placeholder="Enter supplier & press ENTER"
+											required
+										/>
+									) : (
+										<select
+											value={formData.supplier_id}
+											onChange={(e) =>
+												setFormData({
+													...formData,
+													supplier_id: e.target.value,
+												})
+											}
+											className="input-field"
+											required
+										>
+											{supplierOptions.map((supplier) => (
+												<option key={supplier.id} value={supplier.id}>
+													{supplier.name}
+												</option>
+											))}
+										</select>
+									)}
+								</div>
+							) : (
+								<div className="p-2">Saving...</div>
+							)}
 						</div>
 
 						<div>
@@ -243,6 +328,7 @@ export default function PurchaseOrderModal({
 								}
 								className="input-field"
 								required
+								disabled={addNewSupplier}
 							/>
 						</div>
 					</div>
@@ -255,6 +341,7 @@ export default function PurchaseOrderModal({
 								type="button"
 								onClick={addItem}
 								className="btn-outline-success text-xs flex items-center"
+								disabled={addNewSupplier}
 							>
 								<PlusIcon className="h-4 w-4 mr-2" />
 								Add Item
@@ -284,7 +371,7 @@ export default function PurchaseOrderModal({
 												}
 												className={`input-field ${item?.id !== undefined ? "btn-secondary" : ""}`}
 												required
-												disabled={item?.id !== undefined}
+												disabled={item?.id !== undefined || addNewSupplier}
 											>
 												<option value="">Select Item</option>
 												{inventoryItems.map((invItem) => (
@@ -314,6 +401,7 @@ export default function PurchaseOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewSupplier}
 											/>
 										</div>
 
@@ -329,6 +417,7 @@ export default function PurchaseOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewSupplier}
 											/>
 										</div>
 
@@ -342,7 +431,7 @@ export default function PurchaseOrderModal({
 													updateItem(index, "variant_id", e.target.value)
 												}
 												className="input-field"
-												required
+												disabled={addNewSupplier}
 											>
 												<option value="">Select Variant</option>
 												{variants
@@ -375,6 +464,7 @@ export default function PurchaseOrderModal({
 												}
 												className="input-field"
 												required
+												disabled={addNewSupplier}
 											>
 												<option value="">Select Store</option>
 												{stores.map((store) => (
@@ -394,6 +484,7 @@ export default function PurchaseOrderModal({
 													type="button"
 													onClick={() => removeItem(index)}
 													className="hidden md:block md:mt-3 text-red-600 hover:text-red-900"
+													disabled={addNewSupplier}
 												>
 													<TrashIcon className="h-4 w-4" />
 												</button>
@@ -401,6 +492,7 @@ export default function PurchaseOrderModal({
 													type="button"
 													onClick={() => removeItem(index)}
 													className="flex block md:hidden md:mt-3 text-red-600 hover:text-red-900"
+													disabled={addNewSupplier}
 												>
 													<TrashIcon className="h-4 w-4 mt-1" />
 													<span className="px-2">Remove</span>
@@ -422,21 +514,12 @@ export default function PurchaseOrderModal({
 
 					{/* Form Actions */}
 					<div className="flex justify-end space-x-3 pt-6 border-t">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-							disabled={loading}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							className="btn-outline-primary"
-							disabled={loading}
-						>
-							{loading ? "Saving..." : order ? "Update Order" : "Create Order"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={order ? "Update Order" : "Create Order"}
+							disabled={addNewSupplier}
+						/>
 					</div>
 				</form>
 			</div>

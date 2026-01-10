@@ -49,7 +49,7 @@ export const fetchUserSubscriptionInfo = async (
 
 		const cacheKey = `${RedisCacheKey.user_subscription_info}_${user.id}`;
 		const cachedData = await redisClient.get<UserSubscriptionInfo>(cacheKey);
-		if (!cachedData) {
+		if (!cachedData || !cachedData.tenant_id) {
 			// RPC call to fetch subscription info
 			const searchParams = { current_user_id: user.id };
 			const { data, error } = await makeRpcCall(
@@ -57,7 +57,6 @@ export const fetchUserSubscriptionInfo = async (
 				searchParams,
 			);
 			if (error) {
-				console.log("fetchUserSubscriptionInfo errrr", error);
 				return null;
 			}
 			const userSubscriptionInfo = data.length > 0 ? data[0] : null;
@@ -137,6 +136,11 @@ export const clearUserCookies = async () => {
 
 	// 1. Delete cookies by key.
 	cookieStore.getAll().forEach((cookie) => {
+		// Keep gdpr_consent
+		if (cookie.name === CookiesKey.gdpr_consent) {
+			console.log(`Skipped Cookies with key ${cookie.name}`);
+			return;
+		}
 		cookieStore.set(cookie.name, "", {
 			expires: new Date(0),
 			path: "/",
@@ -164,12 +168,6 @@ export const clearSubscriptionInfoCookies = async () => {
 export const deleteUserAccount = async (userId) => {
 	const supabase = createServerClientWithServiceKey();
 	// RPC call
-	// const { data, error } = await supabase
-	//   .rpc(RPC_FUNCTION.DELETE_USER_ACCOUNT);
 	const { data, error } = await supabase.auth.admin.deleteUser(userId);
-	// const { data, error } = await supabase.rpc('delete_user_account');
-	console.log("deletion status");
-	console.log(data);
-	console.log(error);
 	return { data, error };
 };

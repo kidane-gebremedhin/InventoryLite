@@ -47,7 +47,7 @@ export async function fetchSalesOrders({
 
 	const cacheKey = `${RedisCacheKey.sales_orders}_${tenantId}_${selectedOrderStatus}_${selectedStatus}_${selectedCustomerId}_${searchTerm}_${startDate}_${endDate}_${fulfilledDateStart}_${fulfilledDateEnd}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase.from(DATABASE_TABLE.sales_orders).select(
 			`
             *,
@@ -98,7 +98,9 @@ export async function fetchSalesOrders({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -120,6 +122,8 @@ export async function saveSalesOrder(
 		await deleteCacheByKeyPrefix(cacheKey);
 		const cacheKey2 = `${RedisCacheKey.transactions}_${data[0].tenant_id}`;
 		await deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey3 = `${RedisCacheKey.inventory_items}_${data[0].tenant_id}`;
+		await deleteCacheByKeyPrefix(cacheKey3);
 	}
 	return { data, error };
 }
@@ -139,6 +143,8 @@ export async function updateSalesOrder(
 		await deleteCacheByKeyPrefix(cacheKey);
 		const cacheKey2 = `${RedisCacheKey.transactions}_${data[0].tenant_id}`;
 		await deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey3 = `${RedisCacheKey.inventory_items}_${data[0].tenant_id}`;
+		await deleteCacheByKeyPrefix(cacheKey3);
 	}
 	return { data, error };
 }
@@ -160,6 +166,8 @@ export async function updateSalesOrderRecordStatus(
 		await deleteCacheByKeyPrefix(cacheKey);
 		const cacheKey2 = `${RedisCacheKey.transactions}_${data[0].tenant_id}`;
 		await deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey3 = `${RedisCacheKey.inventory_items}_${data[0].tenant_id}`;
+		await deleteCacheByKeyPrefix(cacheKey3);
 	}
 	return { data, error };
 }
@@ -181,6 +189,8 @@ export async function updateSalesOrderStatus(
 		await deleteCacheByKeyPrefix(cacheKey);
 		const cacheKey2 = `${RedisCacheKey.transactions}_${data[0].tenant_id}`;
 		await deleteCacheByKeyPrefix(cacheKey2);
+		const cacheKey3 = `${RedisCacheKey.inventory_items}_${data[0].tenant_id}`;
+		await deleteCacheByKeyPrefix(cacheKey3);
 	}
 	return { data, error };
 }

@@ -10,7 +10,7 @@ import type {
 	StatusPayload,
 	UserInvitation,
 } from "../types/Models";
-import { sendMail } from "./mail";
+import { sendUserInvitationMail } from "./mail";
 import { deleteCacheByKeyPrefix, getCacheData, setCacheData } from "./redis";
 
 interface SearchParams {
@@ -32,7 +32,7 @@ export async function fetchUserInvitations({
 
 	const cacheKey = `${RedisCacheKey.tenant_user_invites}_${tenantId}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.tenant_user_invites)
 			.select("*", { count: "exact", head: false });
@@ -47,7 +47,9 @@ export async function fetchUserInvitations({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -80,7 +82,7 @@ export async function saveUserInvitation(
 		.select();
 
 	if (!error) {
-		const { data: _, error: emailError } = await sendMail({
+		const { data: _, error: emailError } = await sendUserInvitationMail({
 			email: requestData.email,
 			tenantName,
 			invitationLink,
@@ -93,7 +95,7 @@ export async function saveUserInvitation(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.tenant_user_invites}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -112,7 +114,7 @@ export async function updateUserInvitation(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.tenant_user_invites}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -131,7 +133,7 @@ export async function updateUserInvitationStatus(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.tenant_user_invites}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }

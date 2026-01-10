@@ -12,6 +12,8 @@ import {
 	showSuccessToast,
 } from "@/lib/helpers/Helper";
 import { saveRatingFeedback } from "@/lib/server_actions/feedback";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 
 interface FeedbackRatingProps {
 	onFeedbackSubmitted?: () => void;
@@ -31,6 +33,7 @@ export function FeedbackRating({
 		category: "general" as const,
 	});
 	const [submitting, setSubmitting] = useState(false);
+	const { loading } = useLoadingContext();
 
 	const handleStarClick = (star: number) => {
 		setRating(star);
@@ -136,6 +139,7 @@ export function FeedbackRating({
 										setFormData({ ...formData, subject: e.target.value })
 									}
 									className="input-field"
+									autoFocus
 									required
 								/>
 							</div>
@@ -156,21 +160,14 @@ export function FeedbackRating({
 							</div>
 
 							<div className="flex justify-end space-x-3 pt-4">
-								<button
-									type="button"
-									onClick={() => setShowForm(false)}
-									className="btn-outline-default"
-									disabled={submitting}
-								>
-									Cancel
-								</button>
-								<button
-									type="submit"
-									className="btn-outline-primary"
-									disabled={submitting}
-								>
-									{submitting ? "Submitting..." : "Submit Feedback"}
-								</button>
+								<CancelButton
+									loading={loading}
+									onClose={() => setShowForm(false)}
+								/>
+								<SaveButton
+									loading={loading}
+									label={submitting ? "Submitting..." : "Submit Feedback"}
+								/>
 							</div>
 						</form>
 					</div>

@@ -29,7 +29,7 @@ export async function fetchVariants({
 
 	const cacheKey = `${RedisCacheKey.variants}_${tenantId}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.variants)
 			.select("*", { count: "exact", head: false });
@@ -47,7 +47,9 @@ export async function fetchVariants({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -61,7 +63,7 @@ export async function fetchVariantOptions(
 
 	const cacheKey = `${RedisCacheKey.variants}_${tenantId}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		const { data, count, error } = await supabase
 			.from(DATABASE_TABLE.variants)
 			.select("id, name", { count: "exact", head: false })
@@ -69,7 +71,9 @@ export async function fetchVariantOptions(
 			.order("name", { ascending: true });
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -88,7 +92,7 @@ export async function saveVariant(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.variants}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -107,7 +111,7 @@ export async function updateVariant(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.variants}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -126,7 +130,7 @@ export async function updateVariantRecordStatus(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.variants}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }

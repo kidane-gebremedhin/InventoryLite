@@ -11,7 +11,6 @@ import type {
 import { deleteCacheByKeyPrefix, getCacheData, setCacheData } from "./redis";
 
 interface SearchParams {
-	tenantId: string;
 	selectedSubscriptionStatus: string;
 	selectedCurrencyType: string;
 	selectedStatus: string;
@@ -20,7 +19,6 @@ interface SearchParams {
 }
 
 export async function fetchSubscriptionPlans({
-	tenantId,
 	selectedSubscriptionStatus,
 	selectedCurrencyType,
 	selectedStatus,
@@ -29,9 +27,9 @@ export async function fetchSubscriptionPlans({
 }: SearchParams): Promise<ServerActionsResponse> {
 	const supabase = await createClient();
 
-	const cacheKey = `${RedisCacheKey.subscription_plans}_${tenantId}_${selectedSubscriptionStatus}_${selectedCurrencyType}_${selectedStatus}_${startIndex}_${endIndex}`;
+	const cacheKey = `${RedisCacheKey.subscription_plans}_${selectedSubscriptionStatus}_${selectedCurrencyType}_${selectedStatus}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.subscription_plans)
 			.select("*", { count: "exact", head: false });
@@ -56,19 +54,17 @@ export async function fetchSubscriptionPlans({
 	return cachedData;
 }
 
-export async function fetchSubscriptionPlanOptions(
-	tenantId: string,
-): Promise<ServerActionsResponse> {
+export async function fetchSubscriptionPlanOptions(): Promise<ServerActionsResponse> {
 	const supabase = await createClient();
 
-	const cacheKey = `${RedisCacheKey.subscription_plans}_${tenantId}`;
+	const cacheKey = `${RedisCacheKey.subscription_plans}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		const { data, count, error } = await supabase
 			.from(DATABASE_TABLE.subscription_plans)
-			.select("id, name", { count: "exact", head: false })
+			.select("*", { count: "exact", head: false })
 			.eq("status", RecordStatus.ACTIVE)
-			.order("name", { ascending: true });
+			.order("billing_cycle", { ascending: true });
 
 		// Return from DB and update the cache asyncronously
 		setCacheData(cacheKey, { data, count, error });
@@ -89,8 +85,8 @@ export async function saveSubscriptionPlan(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.subscription_plans}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.subscription_plans}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -108,8 +104,8 @@ export async function updateSubscriptionPlan(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.subscription_plans}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.subscription_plans}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -127,8 +123,8 @@ export async function updateSubscriptionPlanRecordStatus(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.subscription_plans}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.subscription_plans}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }

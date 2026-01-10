@@ -6,11 +6,12 @@
 .tooltipContainer::after {
 	content: attr(data-tooltip);
 	position: absolute;
-	bottom: 125%; /* Position the tooltip above the element */
+	bottom: 30%;
+	/* Position the tooltip above the element */
 	left: 50%;
 	transform: translateX(-50%);
 	background-color: #fff;
-	color: grey;
+	color: black;
 	padding: 8px 12px;
 	border-radius: 4px;
 	white-space: nowrap;
@@ -24,5 +25,5 @@
 
 .tooltipContainer:hover::after {
 	visibility: visible;
-	opacity: 1;
+	opacity: 0.7;
 }

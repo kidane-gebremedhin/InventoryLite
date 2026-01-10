@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
 	createContext,
 	useCallback,
@@ -38,15 +38,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const [currentUser, setCurrentUser] = useState<User>(null);
 	const [loading] = useState(true);
 	const router = useRouter();
+	const pathName = usePathname();
 
 	const supabase = createClient();
 
 	const handleTenantSubscriptionInfoUpdate = useCallback(async () => {
+		if (pathName === ROUTE_PATH.TENANT) {
+			// No need to redirect to dashbord
+			return;
+		}
+
 		const cacheKey = `${RedisCacheKey.user_subscription_info}_${currentUser?.id}`;
 		await deleteCacheByKeyPrefix(cacheKey);
+		await clearUserCookieByKey(RedisCacheKey.manual_payments);
 		await clearUserCookieByKey(CookiesKey.ucookiesinfo);
 		router.push(ROUTE_PATH.DASHBOARD);
-	}, [currentUser, router]);
+	}, [currentUser, router, pathName]);
 
 	useEffect(() => {
 		// 1. Get initial session on page reload

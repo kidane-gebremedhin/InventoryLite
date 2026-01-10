@@ -4,6 +4,8 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { showErrorToast } from "@/lib/helpers/Helper";
 import type { Domain } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 
 interface DomainModalProps {
 	isOpen: boolean;
@@ -24,14 +26,17 @@ export function DomainModal({
 	onSave,
 }: DomainModalProps) {
 	const [formData, setFormData] = useState<Partial<Domain>>(emptyEntry);
+	const { loading } = useLoadingContext();
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		if (domain) {
 			setFormData(domain);
 		} else {
 			setFormData(emptyEntry);
 		}
-	}, [domain]);
+	}, [domain, isOpen]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -85,6 +90,7 @@ export function DomainModal({
 							value={formData.name}
 							onChange={(e) => handleInputChange("name", e.target.value)}
 							className="input-field"
+							autoFocus
 							required
 						/>
 					</div>
@@ -102,16 +108,11 @@ export function DomainModal({
 					</div>
 
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn-outline-primary">
-							{domain ? "Update" : "Create"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={domain ? "Update" : "Create"}
+						/>
 					</div>
 				</form>
 			</div>

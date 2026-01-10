@@ -4,6 +4,8 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { showErrorToast } from "@/lib/helpers/Helper";
 import type { Variant } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 
 interface VariantModalProps {
 	isOpen: boolean;
@@ -24,14 +26,17 @@ export function VariantModal({
 	onSave,
 }: VariantModalProps) {
 	const [formData, setFormData] = useState<Partial<Variant>>(emptyEntry);
+	const { loading } = useLoadingContext();
 
 	useEffect(() => {
+		if (!isOpen) return;
+
 		if (variant) {
 			setFormData(variant);
 		} else {
 			setFormData(emptyEntry);
 		}
-	}, [variant]);
+	}, [variant, isOpen]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -86,6 +91,7 @@ export function VariantModal({
 							value={formData.name}
 							onChange={(e) => handleInputChange("name", e.target.value)}
 							className="input-field"
+							autoFocus
 							required
 						/>
 					</div>
@@ -103,16 +109,11 @@ export function VariantModal({
 					</div>
 
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-						>
-							Cancel
-						</button>
-						<button type="submit" className="btn-outline-primary">
-							{variant ? "Update" : "Create"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={variant ? "Update" : "Create"}
+						/>
 					</div>
 				</form>
 			</div>

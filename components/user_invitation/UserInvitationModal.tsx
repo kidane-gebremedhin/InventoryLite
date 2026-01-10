@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { InvitationStatus } from "@/lib/Enums";
 import { showErrorToast } from "@/lib/helpers/Helper";
 import type { UserInvitation } from "@/lib/types/Models";
+import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { CancelButton, SaveButton } from "../helpers/buttons";
 
 const emptyEntry: Partial<UserInvitation> = {
 	email: "",
@@ -29,7 +31,7 @@ export default function UserInvitationModal({
 	userInvitation,
 	onSave,
 }: UserInvitationModalProps) {
-	const [loading] = useState(false);
+	const { loading } = useLoadingContext();
 	const [formData, setFormData] = useState<Partial<UserInvitation>>(emptyEntry);
 	const [errors, setErrors] = useState<FormErrors>({});
 
@@ -41,16 +43,16 @@ export default function UserInvitationModal({
 	}, []);
 
 	useEffect(() => {
-		if (isOpen) {
-			if (userInvitation) {
-				setFormData({
-					email: userInvitation.email,
-				});
-			} else {
-				resetForm();
-			}
-			setErrors({});
+		if (!isOpen) return;
+
+		if (userInvitation) {
+			setFormData({
+				email: userInvitation.email,
+			});
+		} else {
+			resetForm();
 		}
+		setErrors({});
 	}, [isOpen, userInvitation, resetForm]);
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -107,6 +109,7 @@ export default function UserInvitationModal({
 							onChange={(e) => handleInputChange("email", e.target.value)}
 							className={`input-field ${errors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
 							placeholder="Enter user email"
+							autoFocus
 							required
 						/>
 						{errors.email && (
@@ -115,25 +118,11 @@ export default function UserInvitationModal({
 					</div>
 
 					<div className="flex justify-end space-x-3 pt-4">
-						<button
-							type="button"
-							onClick={onClose}
-							className="btn-outline-default"
-							disabled={loading}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							className="btn-outline-primary"
-							disabled={loading}
-						>
-							{loading
-								? "Saving..."
-								: userInvitation
-									? "Update User Invitation"
-									: "Invite User"}
-						</button>
+						<CancelButton loading={loading} onClose={onClose} />
+						<SaveButton
+							loading={loading}
+							label={userInvitation ? "Update User Invitation" : "Invite User"}
+						/>
 					</div>
 				</form>
 			</div>

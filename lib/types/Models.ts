@@ -223,6 +223,80 @@ export interface UserFeedback {
 	};
 }
 
+export interface SubscriptionPlan {
+	id?: string;
+	billing_cycle: string;
+	subscription_tier: string;
+	currency_type: string;
+	payment_amount: number;
+	status?: string;
+	created_at?: string;
+	created_by?: string;
+	updated_at?: string;
+	updated_by?: string;
+}
+
+export interface ManualPayment {
+	id?: string;
+	amount: number;
+	reference_number: string;
+	status: string;
+	description?: string;
+	created_at?: string;
+	updated_at?: string;
+	created_by?: string;
+	updated_by?: string;
+}
+
+export interface UserInvitation {
+	id?: string;
+	tenant_name: string;
+	email: string;
+	status?: string;
+	token: string;
+	expires_at: string;
+	created_at?: string;
+	created_by?: string;
+	updated_at?: string;
+	updated_by?: string;
+}
+
+export interface Tenant {
+	id?: string;
+	email: string;
+	name: string;
+	description?: string;
+	domain_id?: string;
+	price_id?: string;
+	payment_method: string;
+	current_payment_expiry_date: string;
+	subscription_status: string;
+	profile_complete: boolean;
+	affiliate_partner_id?: string;
+	subscription_plan_id?: string;
+	status?: string;
+	created_at?: string;
+	created_by?: string;
+	updated_at?: string;
+	updated_by?: string;
+	domain?: Domain;
+	affiliate_partner?: AffiliatePartner;
+	subscription_plan?: SubscriptionPlan;
+}
+
+export interface AffiliatePartner {
+	id?: string;
+	name: string;
+	commission_type: string;
+	commission_value: number;
+	description: string;
+	status?: string;
+	created_at?: string;
+	created_by?: string;
+	updated_at?: string;
+	updated_by?: string;
+}
+
 export interface InventoryTurnoverReport {
 	item_id: string;
 	item_name: string;
@@ -258,43 +332,6 @@ export interface SalesOrderMonthlyTrendsData {
 	ordered_quantity: number;
 	canceled_quantity: number;
 	fulfilled_quantity: number;
-}
-
-export interface SubscriptionPlan {
-	id?: string;
-	subscription_status: string;
-	currency_type: string;
-	payment_amount: number;
-	status?: string;
-	created_at?: string;
-	created_by?: string;
-	updated_at?: string;
-	updated_by?: string;
-}
-
-export interface ManualPayment {
-	id?: string;
-	amount: number;
-	reference_number: string;
-	status: string;
-	description?: string;
-	created_at?: string;
-	updated_at?: string;
-	created_by?: string;
-	updated_by?: string;
-}
-
-export interface UserInvitation {
-	id?: string;
-	tenant_name: string;
-	email: string;
-	status?: string;
-	token: string;
-	expires_at: string;
-	created_at?: string;
-	created_by?: string;
-	updated_at?: string;
-	updated_by?: string;
 }
 
 export interface StatusPayload {
@@ -343,6 +380,7 @@ export interface UserSubscriptionInfo {
 	tenant_id: string;
 	tenant_name: string;
 	domain_id: string;
+	subscription_plan_id: string;
 	price_id: string;
 	payment_method: string;
 	currency_type: string;
@@ -363,4 +401,21 @@ export interface User {
 	email: string;
 	picturePicture: string;
 	subscriptionInfo: UserSubscriptionInfo;
+}
+
+export interface DashboardStats {
+	totalItems: number;
+	lowStockItems: number;
+	outStockItems: number;
+	totalSuppliers: number;
+	pendingPurchaseOrders: number;
+	receivedPurchaseOrders: number;
+	canceledPurchaseOrders: number;
+	overDuePurchaseOrders: number;
+	pendingSalesOrders: number;
+	fulfilledSalesOrders: number;
+	canceledSalesOrders: number;
+	overDueSalesOrders: number;
+	totalValue: number;
+	monthlyGrowth: number;
 }

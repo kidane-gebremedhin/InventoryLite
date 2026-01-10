@@ -2,7 +2,6 @@
 
 import {
 	ArrowRightOnRectangleIcon,
-	BellIcon,
 	Cog6ToothIcon,
 	UserCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -12,6 +11,7 @@ import { useState } from "react";
 import { FeedbackNotification } from "@/components/feedback/FeedbackNotification";
 import { ROUTE_PATH } from "@/lib/Enums";
 import { capitalizeFirstLetter } from "@/lib/helpers/Helper";
+import { LowStockLevelNotification } from "../notifications/LowStockLevelNotification";
 import { useAuthContext } from "../providers/AuthProvider";
 
 export default function Header() {
@@ -43,19 +43,23 @@ export default function Header() {
 				</div>
 
 				<div className="flex items-center md:space-x-4">
-					<FeedbackNotification />
 					<button
 						type="button"
-						className="text-gray-400 hover:text-gray-600 mx-2"
+						className="text-gray-400 hover:text-gray-600 mx-2 mt-2"
 					>
-						<BellIcon className="h-6 w-6" />
+						<FeedbackNotification />
+					</button>
+					<button
+						type="button"
+						className="text-gray-400 hover:text-gray-600 mx-2 mt-2"
+					>
+						<LowStockLevelNotification />
 					</button>
 
 					<div className="relative">
 						<button
 							type="button"
 							onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-							className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
 						>
 							{currentUser.picturePicture ? (
 								<Image
@@ -64,6 +68,7 @@ export default function Header() {
 									className="h-8 w-8 rounded-full"
 									width={48}
 									height={48}
+									unoptimized
 								/>
 							) : (
 								<UserCircleIcon className="h-8 w-8" />

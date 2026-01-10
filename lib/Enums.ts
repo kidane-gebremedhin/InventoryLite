@@ -11,9 +11,23 @@ export enum SubscriptionPaymentType {
 	PAYMENT_GATEWAY = "payment_gateway",
 }
 
+export enum SubscriptionTier {
+	STANDARD = "standard",
+}
+
+export enum BillingCycle {
+	MONTHLY = "monthly",
+	YEARLY = "yearly",
+}
+
 export enum CurrencyType {
 	ETB = "ETB",
 	USD = "USD",
+}
+
+export enum CommissionType {
+	PERCENTAGE = "percentage",
+	FIXED = "fixed",
 }
 
 export enum RecordStatus {
@@ -32,6 +46,12 @@ export enum InvitationStatus {
 	OPEN = "open",
 	ACCEPTTED = "accepted",
 	EXPIRED = "expired",
+}
+
+export enum StockLevel {
+	IN_STOCK = "in_stock",
+	LOW_STOCK = "low_stock",
+	OUT_STOCK = "out_stock",
 }
 
 export enum PurchaseOrderStatus {
@@ -111,6 +131,11 @@ export enum DATABASE_TABLE {
 	domains = "domains",
 	tenant_user_invites = "tenant_user_invites",
 	subscription_plans = "subscription_plans",
+	affiliate_partners = "affiliate_partners",
+}
+
+export enum DATABASE_TABLE_VIEW {
+	inventory_items_view = "inventory_items_view",
 }
 
 export enum RedisCacheKey {
@@ -134,10 +159,12 @@ export enum RedisCacheKey {
 	feedback_unread_count = "feedback_unread_count",
 	user_subscription_info = "user_subscription_info",
 	subscription_plans = "subscription_plans",
+	affiliate_partners = "affiliate_partners",
 }
 
 export enum CookiesKey {
 	ucookiesinfo = "ucookiesinfo",
+	gdpr_consent = "gdpr_consent",
 }
 
 export enum ConsentCookieStatus {
@@ -204,6 +231,8 @@ export enum ROUTE_PATH {
 	TRANSACTION = "/dashboard/transaction",
 	INVITE_USER = "/dashboard/user-invitation",
 	SUBSCRIPTION_PLAN = "/dashboard/subscription-plan",
+	AFFILIATE_PARTNER = "/dashboard/affiliate-partner",
+	TENANT = "/dashboard/tenant",
 	ENABLE_COOKIES = "/dashboard/fallback/enable-cookies",
 }
 

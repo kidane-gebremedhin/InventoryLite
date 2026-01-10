@@ -212,13 +212,14 @@ const App = () => {
 								className="w-20 h-20 rounded-full mb-4 object-cover"
 								width={48}
 								height={48}
+								unoptimized
 							/>
 							<p className="text-lg italic mb-4 text-gray-700">
 								"{APP_NAME} transformed how we manage our shop. It's stock level
 								monitor is powerful which saved us countless hours!"
 							</p>
 							<p className="font-semibold text-gray-800">
-								- Duram H., CEO of IManufacturingCo
+								- Tesema H., CEO of TManufacturing
 							</p>
 						</div>
 						{/* Testimonial Card 2 */}
@@ -229,6 +230,7 @@ const App = () => {
 								className="w-20 h-20 rounded-full mb-4 object-cover"
 								width={48}
 								height={48}
+								unoptimized
 							/>
 							<p className="text-lg italic mb-4 text-gray-700">
 								"The Inventory Aging and Turnover reports are business critical
@@ -236,7 +238,7 @@ const App = () => {
 								selling and which ones are tying up capital."
 							</p>
 							<p className="font-semibold text-gray-800">
-								- Abebe Alem, Steel Retailer AA
+								- Abel, Steel Retailer AA
 							</p>
 						</div>
 					</div>

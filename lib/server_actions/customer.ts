@@ -29,7 +29,7 @@ export async function fetchCustomers({
 
 	const cacheKey = `${RedisCacheKey.customers}_${tenantId}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.customers)
 			.select("*", { count: "exact", head: false });
@@ -46,7 +46,9 @@ export async function fetchCustomers({
 			.range(startIndex, endIndex);
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -60,7 +62,7 @@ export async function fetchCustomerOptions(
 
 	const cacheKey = `${RedisCacheKey.customers}_${tenantId}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		const { data, count, error } = await supabase
 			.from(DATABASE_TABLE.customers)
 			.select("id, name", { count: "exact", head: false })
@@ -68,7 +70,9 @@ export async function fetchCustomerOptions(
 			.order("name", { ascending: true });
 
 		// Return from DB and update the cache asyncronously
-		setCacheData(cacheKey, { data, count, error });
+		if (tenantId) {
+			setCacheData(cacheKey, { data, count, error });
+		}
 		return { data, count, error };
 	}
 
@@ -87,7 +91,7 @@ export async function saveCustomer(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.customers}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -106,7 +110,7 @@ export async function updateCustomer(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.customers}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -125,7 +129,7 @@ export async function updateCustomerRecordStatus(
 
 	if (data && data.length > 0) {
 		const cacheKey = `${RedisCacheKey.customers}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }

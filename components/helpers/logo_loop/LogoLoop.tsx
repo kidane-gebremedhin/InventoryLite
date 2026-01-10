@@ -420,6 +420,7 @@ export const LogoLoop = React.memo<LogoLoopProps>(
 						loading="lazy"
 						decoding="async"
 						draggable={false}
+						unoptimized
 					/>
 				);
 

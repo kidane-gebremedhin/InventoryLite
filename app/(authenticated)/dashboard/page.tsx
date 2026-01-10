@@ -1,15 +1,11 @@
 "use client";
 
 import {
-	ArrowTrendingDownIcon,
-	ArrowTrendingUpIcon,
 	CubeIcon,
 	ExclamationTriangleIcon,
 	ShoppingCartIcon,
-	TruckIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useState } from "react";
-import { CheckmarkIcon } from "react-hot-toast";
 import {
 	Bar,
 	BarChart,
@@ -26,34 +22,30 @@ import { useLoadingContext } from "@/components/context_apis/LoadingProvider";
 import { FeedbackSummary } from "@/components/feedback/FeedbackSummary";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { useAuthContext } from "@/components/providers/AuthProvider";
-import { MONTH_NAME_MAPPING } from "@/lib/Constants";
+import { MONTH_NAME_MAPPING, REPORT_DAYS } from "@/lib/Constants";
 import { DATABASE_TABLE, RPC_FUNCTION, UserRole } from "@/lib/Enums";
-import { showServerErrorToast, showSuccessToast } from "@/lib/helpers/Helper";
+import { showServerErrorToast } from "@/lib/helpers/Helper";
 import { makeRpcCall } from "@/lib/server_actions/rpc";
 import type {
+	DashboardStats,
 	PurchaseOrderMonthlyTrendsData,
 	SalesOrderMonthlyTrendsData,
 } from "@/lib/types/Models";
-
-interface DashboardStats {
-	totalItems: number;
-	lowStockItems: number;
-	pendingPurchaseOrders: number;
-	receivedPurchaseOrders: number;
-	pendingSalesOrders: number;
-	fulfilledSalesOrders: number;
-	totalValue: number;
-	monthlyGrowth: number;
-}
 
 export default function DashboardPage() {
 	const [stats, setStats] = useState<DashboardStats>({
 		totalItems: 0,
 		lowStockItems: 0,
+		outStockItems: 0,
+		totalSuppliers: 0,
 		pendingPurchaseOrders: 0,
 		receivedPurchaseOrders: 0,
+		canceledPurchaseOrders: 0,
+		overDuePurchaseOrders: 0,
 		pendingSalesOrders: 0,
 		fulfilledSalesOrders: 0,
+		canceledSalesOrders: 0,
+		overDueSalesOrders: 0,
 		totalValue: 0,
 		monthlyGrowth: 0,
 	});
@@ -61,12 +53,14 @@ export default function DashboardPage() {
 		useState<PurchaseOrderMonthlyTrendsData[]>([]);
 	const [salesOrderMonthlyTrendsData, setSalesOrderMonthlyTrendsData] =
 		useState<SalesOrderMonthlyTrendsData[]>([]);
+	const [reportDaysCount, setReportDaysCount] = useState(90);
 	const { setLoading } = useLoadingContext();
 	const { supabase, currentUser } = useAuthContext();
 
 	const loadDashboardStats = useCallback(async () => {
-		showSuccessToast("fetching...");
-		makeRpcCall(RPC_FUNCTION.DASHBOARD_STATS).then(({ data, error }) => {
+		makeRpcCall(RPC_FUNCTION.DASHBOARD_STATS, {
+			report_days_count: reportDaysCount,
+		}).then(({ data, error }) => {
 			if (error) {
 				showServerErrorToast(error.message);
 				setLoading(false);
@@ -75,51 +69,51 @@ export default function DashboardPage() {
 			setStats(data);
 			setLoading(false);
 		});
-	}, [setLoading]);
+	}, [setLoading, reportDaysCount]);
 
 	const loadOrderMonthlyTrends = useCallback(async () => {
-		makeRpcCall(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS).then(
-			({ data: poData, error: poError }) => {
-				if (poError) {
-					showServerErrorToast(poError.message);
-					setLoading(false);
-					return;
-				}
-
-				const podataProcessed: PurchaseOrderMonthlyTrendsData[] = poData.map(
-					(item: PurchaseOrderMonthlyTrendsData) => {
-						item.month_name = MONTH_NAME_MAPPING.get(
-							item.month_name.split("-")[1],
-						);
-						return item;
-					},
-				);
-				setPurchaseOrderMonthlyTrendsData(podataProcessed);
+		makeRpcCall(RPC_FUNCTION.PURCHASE_ORDER_MONTHLY_TRENDS, {
+			report_days_count: reportDaysCount,
+		}).then(({ data: poData, error: poError }) => {
+			if (poError) {
+				showServerErrorToast(poError.message);
 				setLoading(false);
-			},
-		);
+				return;
+			}
 
-		makeRpcCall(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS).then(
-			({ data: soData, error: soError }) => {
-				if (soError) {
-					showServerErrorToast(soError.message);
-					setLoading(false);
-					return;
-				}
+			const podataProcessed: PurchaseOrderMonthlyTrendsData[] = poData.map(
+				(item: PurchaseOrderMonthlyTrendsData) => {
+					item.month_name = MONTH_NAME_MAPPING.get(
+						item.month_name.split("-")[1],
+					);
+					return item;
+				},
+			);
+			setPurchaseOrderMonthlyTrendsData(podataProcessed);
+			setLoading(false);
+		});
 
-				const soDataProcessed: SalesOrderMonthlyTrendsData[] = soData.map(
-					(item: SalesOrderMonthlyTrendsData) => {
-						item.month_name = MONTH_NAME_MAPPING.get(
-							item.month_name.split("-")[1],
-						);
-						return item;
-					},
-				);
-				setSalesOrderMonthlyTrendsData(soDataProcessed);
+		makeRpcCall(RPC_FUNCTION.SALES_ORDER_MONTHLY_TRENDS, {
+			report_days_count: reportDaysCount,
+		}).then(({ data: soData, error: soError }) => {
+			if (soError) {
+				showServerErrorToast(soError.message);
 				setLoading(false);
-			},
-		);
-	}, [setLoading]);
+				return;
+			}
+
+			const soDataProcessed: SalesOrderMonthlyTrendsData[] = soData.map(
+				(item: SalesOrderMonthlyTrendsData) => {
+					item.month_name = MONTH_NAME_MAPPING.get(
+						item.month_name.split("-")[1],
+					);
+					return item;
+				},
+			);
+			setSalesOrderMonthlyTrendsData(soDataProcessed);
+			setLoading(false);
+		});
+	}, [setLoading, reportDaysCount]);
 
 	const refreshDashboard = useCallback(() => {
 		loadDashboardStats();
@@ -156,38 +150,12 @@ export default function DashboardPage() {
 		refreshDashboard();
 	}, [refreshDashboard]);
 
-	const orderReceiveRate = () => {
-		if (!stats.receivedPurchaseOrders) {
+	const getPercentage = (amount: number, total: number) => {
+		if (!amount || !total) {
 			return "0%";
 		}
 
-		const rate = (
-			(stats.receivedPurchaseOrders /
-				(stats.receivedPurchaseOrders + stats.pendingPurchaseOrders)) *
-			100
-		).toFixed(2);
-		return `${rate}%`;
-	};
-
-	const orderFulfillmentRate = () => {
-		if (!stats.fulfilledSalesOrders) {
-			return "0%";
-		}
-
-		const rate = (
-			(stats.fulfilledSalesOrders /
-				(stats.fulfilledSalesOrders + stats.pendingSalesOrders)) *
-			100
-		).toFixed(2);
-		return `${rate}%`;
-	};
-
-	const lowStockItemsPercentage = () => {
-		if (!stats.lowStockItems) {
-			return "0%";
-		}
-
-		const rate = ((stats.lowStockItems / stats.totalItems) * 100).toFixed(2);
+		const rate = ((amount / total) * 100).toFixed(2);
 		return `${rate}%`;
 	};
 
@@ -214,23 +182,29 @@ export default function DashboardPage() {
 		];
 	};
 
-	const StatCard = ({
-		title,
-		value,
-		percentage = "",
-		icon: Icon,
-		trend,
-		color,
-	}) => (
+	const totalPurchaseOrders =
+		stats.pendingPurchaseOrders +
+		stats.receivedPurchaseOrders +
+		stats.canceledPurchaseOrders;
+	const totalSalesOrders =
+		stats.pendingSalesOrders +
+		stats.fulfilledSalesOrders +
+		stats.canceledSalesOrders;
+
+	const StatCard = ({ title, values, icon: Icon, color }) => (
 		<div className="card">
 			<div className="flex items-center justify-between">
 				<div>
 					<p className="text-sm font-medium text-gray-600">{title}</p>
-					<p className="text-2xl font-bold text-gray-900">
-						{value}
-						{percentage && <span className="text-sm">({percentage})</span>}
-					</p>
-					{trend && (
+					{values.map((value) => (
+						<p key={value.label} className="text-xs text-gray-900">
+							<span className=" font-bold">
+								{value.label}: {value.amount}
+							</span>
+							{value.percentage && <span>({value.percentage})</span>}
+						</p>
+					))}
+					{/* {trend && (
 						<div className="flex items-center mt-1">
 							{trend > 0 ? (
 								<ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
@@ -243,7 +217,7 @@ export default function DashboardPage() {
 								{Math.abs(trend)}% from last month
 							</span>
 						</div>
-					)}
+					)} */}
 				</div>
 				<div className={`p-3 rounded-lg ${color}`}>
 					<Icon className="h-6 w-6 text-white" />
@@ -254,74 +228,197 @@ export default function DashboardPage() {
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-				<p className="text-gray-600">
-					Overview of your inventory management system
-				</p>
+			<div className="w-full flex">
+				<div className="w-3/4">
+					<h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+					<p className="text-gray-600">
+						Overview of your inventory management system
+					</p>
+				</div>
+				<div className="w-1/4">
+					<select
+						value={reportDaysCount}
+						onChange={(e) => setReportDaysCount(Number(e.target.value))}
+						className="input-field mt-3"
+						required
+					>
+						{REPORT_DAYS.map((reportDays) => (
+							<option key={reportDays} value={reportDays}>
+								Last {reportDays} days
+							</option>
+						))}
+					</select>
+				</div>
 			</div>
 
 			{/* Stats Cards */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 				<StatCard
-					title="Pending Purchase Orders"
-					value={stats.pendingPurchaseOrders}
-					icon={TruckIcon}
+					title="⭐Purchase Orders"
+					values={[
+						{ label: "Total Orders", amount: totalPurchaseOrders },
+						{
+							label: "Pending",
+							amount: stats.pendingPurchaseOrders,
+							percentage: getPercentage(
+								stats.pendingPurchaseOrders,
+								totalPurchaseOrders,
+							),
+						},
+						{
+							label: "Received",
+							amount: stats.receivedPurchaseOrders,
+							percentage: getPercentage(
+								stats.receivedPurchaseOrders,
+								totalPurchaseOrders,
+							),
+						},
+						{
+							label: "Canceled",
+							amount: stats.canceledPurchaseOrders,
+							percentage: getPercentage(
+								stats.canceledPurchaseOrders,
+								totalPurchaseOrders,
+							),
+						},
+					]}
+					icon={ShoppingCartIcon}
 					color="bg-purple-500"
-					trend=""
 				/>
 				<StatCard
-					title="Received Orders"
-					value={stats.receivedPurchaseOrders}
-					percentage={orderReceiveRate()}
-					icon={TruckIcon}
-					color="bg-green-500"
-					trend=""
-				/>
-				<StatCard
-					title="TBD"
-					value={orderReceiveRate()}
-					icon={CheckmarkIcon}
+					title="⭐Sales Orders"
+					values={[
+						{ label: "Total Orders", amount: totalSalesOrders },
+						{
+							label: "Pending",
+							amount: stats.pendingSalesOrders,
+							percentage: getPercentage(
+								stats.pendingSalesOrders,
+								totalSalesOrders,
+							),
+						},
+						{
+							label: "Fulfilled",
+							amount: stats.fulfilledSalesOrders,
+							percentage: getPercentage(
+								stats.fulfilledSalesOrders,
+								totalSalesOrders,
+							),
+						},
+						{
+							label: "Canceled",
+							amount: stats.canceledSalesOrders,
+							percentage: getPercentage(
+								stats.canceledSalesOrders,
+								totalSalesOrders,
+							),
+						},
+					]}
+					icon={ShoppingCartIcon}
 					color="bg-purple-500"
-					trend=""
 				/>
 				<StatCard
-					title="Total Items"
-					value={stats.totalItems.toString()}
+					title="🔹Inventory Health"
+					values={[
+						{ label: "Total Items", amount: stats.totalItems },
+						{
+							label: "Low Stock Items",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+						{
+							label: "Out of Stock Items",
+							amount: stats.outStockItems,
+							percentage: getPercentage(stats.outStockItems, stats.totalItems),
+						},
+						/*{
+							label: "Inventory Value",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},*/
+					]}
 					icon={CubeIcon}
-					color="bg-blue-500"
-					trend=""
-				/>
-				<StatCard
-					title="Pending Sales Orders"
-					value={stats.pendingSalesOrders}
-					icon={ShoppingCartIcon}
-					color="bg-purple-500"
-					trend=""
-				/>
-				<StatCard
-					title="Fulfilled Orders"
-					value={stats.fulfilledSalesOrders}
-					percentage={orderFulfillmentRate()}
-					icon={ShoppingCartIcon}
 					color="bg-green-500"
-					trend=""
 				/>
 				<StatCard
-					title="TBD"
-					value={orderFulfillmentRate()}
-					icon={CheckmarkIcon}
-					color="bg-purple-500"
-					trend=""
-				/>
-				<StatCard
-					title="Low Stock Items"
-					value={stats.lowStockItems}
-					percentage={lowStockItemsPercentage()}
+					title="⭐Action Required"
+					values={[
+						{
+							label: "Overdue Purchase Orders",
+							amount: stats.overDuePurchaseOrders,
+						},
+						{ label: "Overdue Sales Orders", amount: stats.overDueSalesOrders },
+					]}
 					icon={ExclamationTriangleIcon}
 					color="bg-red-500"
-					trend=""
 				/>
+				{/* <StatCard
+					title="📈Trend Context"
+					values={[
+						{
+							label: "Trend Context",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+						{
+							label: "▲ +12% from last week",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+					]}
+					icon={TruckIcon}
+					color="bg-purple-500"
+				/>
+				<StatCard
+					title="📈Inventory Metrics"
+					values={[
+						{
+							label: "Inventory Turnover Rate",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+						{
+							label: "Average Days in Inventory",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+						{
+							label: "Dead Stock",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+					]}
+					icon={CubeIcon}
+					color="bg-green-500"
+				/>
+				<StatCard
+					title="💰 Financial Metrics"
+					values={[
+						{
+							label: "Total Inventory Value",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+						{
+							label: "Cost of Goods Sold",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+						{
+							label: "Revenue??",
+							amount: stats.lowStockItems,
+							percentage: getPercentage(stats.lowStockItems, stats.totalItems),
+						},
+					]}
+					icon={CubeIcon}
+					color="bg-green-500"
+				/>
+				<StatCard
+					title="🧍 Supplier Metrics"
+					values={[{ label: "Active Suppliers", amount: stats.totalSuppliers }]}
+					icon={TruckIcon}
+					color="bg-purple-500"
+				/> */}
 			</div>
 
 			{/* Charts */}

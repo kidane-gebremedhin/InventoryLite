@@ -11,7 +11,6 @@ import type {
 import { deleteCacheByKeyPrefix, getCacheData, setCacheData } from "./redis";
 
 interface SearchParams {
-	tenantId: string;
 	selectedStatus: string;
 	searchTerm: string;
 	startIndex: number;
@@ -19,7 +18,6 @@ interface SearchParams {
 }
 
 export async function fetchDomains({
-	tenantId,
 	selectedStatus,
 	searchTerm,
 	startIndex,
@@ -27,9 +25,9 @@ export async function fetchDomains({
 }: SearchParams): Promise<ServerActionsResponse> {
 	const supabase = await createClient();
 
-	const cacheKey = `${RedisCacheKey.domains}_${tenantId}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
+	const cacheKey = `${RedisCacheKey.domains}_${selectedStatus}_${searchTerm}_${startIndex}_${endIndex}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		let query = supabase
 			.from(DATABASE_TABLE.domains)
 			.select("*", { count: "exact", head: false });
@@ -53,14 +51,12 @@ export async function fetchDomains({
 	return cachedData;
 }
 
-export async function fetchDomainOptions(
-	tenantId: string,
-): Promise<ServerActionsResponse> {
+export async function fetchDomainOptions(): Promise<ServerActionsResponse> {
 	const supabase = await createClient();
 
-	const cacheKey = `${RedisCacheKey.domains}_${tenantId}`;
+	const cacheKey = `${RedisCacheKey.domains}`;
 	const cachedData = await getCacheData(cacheKey);
-	if (!cachedData) {
+	if (!cachedData || cachedData.data?.length === 0) {
 		const { data, count, error } = await supabase
 			.from(DATABASE_TABLE.domains)
 			.select("id, name", { count: "exact", head: false })
@@ -86,8 +82,8 @@ export async function saveDomain(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.domains}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.domains}}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -105,8 +101,8 @@ export async function updateDomain(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.domains}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.domains}}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }
@@ -124,8 +120,8 @@ export async function updateDomainRecordStatus(
 		.select();
 
 	if (data && data.length > 0) {
-		const cacheKey = `${RedisCacheKey.domains}_${data[0].tenant_id}`;
-		deleteCacheByKeyPrefix(cacheKey);
+		const cacheKey = `${RedisCacheKey.domains}}`;
+		await deleteCacheByKeyPrefix(cacheKey);
 	}
 	return { data, error };
 }

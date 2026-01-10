@@ -14,6 +14,8 @@ DROP TYPE IF EXISTS RECORD_STATUS CASCADE;
 DROP TYPE IF EXISTS PAYMENT_METHOD CASCADE;
 DROP TYPE IF EXISTS CURRENCY_TYPE CASCADE;
 DROP TYPE IF EXISTS SUBSCRIPTION_STATUS CASCADE;
+DROP TYPE IF EXISTS BILLING_CYCLE CASCADE;
+DROP TYPE IF EXISTS SUBSCRIPTION_TIER CASCADE;
 DROP TYPE IF EXISTS TRANSACTION_DIRECTION CASCADE;
 DROP TYPE IF EXISTS FEEDBACK_CATEGORY CASCADE;
 DROP TYPE IF EXISTS FEEDBACK_STATUS CASCADE;
@@ -21,12 +23,15 @@ DROP TYPE IF EXISTS FEEDBACK_PRIORITY CASCADE;
 DROP TYPE IF EXISTS MANUAL_PAYMENT_STATUS CASCADE;
 DROP TYPE IF EXISTS PURCHASE_ORDER_STATUS CASCADE;
 DROP TYPE IF EXISTS SALES_ORDER_STATUS CASCADE;
+DROP TYPE IF EXISTS COMMISSION_TYPE CASCADE;
 --
 CREATE TYPE USER_ROLE AS ENUM('USER', 'TENANT_ADMIN', 'SUPER_ADMIN');
 CREATE TYPE RECORD_STATUS AS ENUM('active', 'archived');
 CREATE TYPE PAYMENT_METHOD AS ENUM('bank_transfer', 'payment_gateway');
 CREATE TYPE CURRENCY_TYPE AS ENUM('ETB', 'USD');
 CREATE TYPE SUBSCRIPTION_STATUS AS ENUM('free_trial', 'subscribed', 'unsubscribed', 'expired', 'terminated');
+CREATE TYPE BILLING_CYCLE AS ENUM('monthly', 'yearly');
+CREATE TYPE SUBSCRIPTION_TIER AS ENUM('standard');
 CREATE TYPE PURCHASE_ORDER_STATUS AS ENUM('pending', 'received', 'canceled');
 CREATE TYPE SALES_ORDER_STATUS AS ENUM('pending', 'fulfilled', 'canceled');
 CREATE TYPE TRANSACTION_DIRECTION AS ENUM('in', 'out');
@@ -35,12 +40,41 @@ CREATE TYPE FEEDBACK_STATUS AS ENUM('open', 'in_progress', 'resolved', 'closed')
 CREATE TYPE FEEDBACK_PRIORITY AS ENUM('low', 'medium', 'high', 'urgent');
 CREATE TYPE MANUAL_PAYMENT_STATUS AS ENUM('pending', 'approved', 'declined');
 CREATE TYPE INVITATION_STATUS AS ENUM('open', 'accepted', 'expired');
+CREATE TYPE COMMISSION_TYPE AS ENUM('percentage', 'fixed');
 
 -- DOMAINS TABLE
 CREATE TABLE IF NOT EXISTS public.domains (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     name VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
+    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- AFFILIATE_PARTNERS TABLE
+CREATE TABLE IF NOT EXISTS public.affiliate_partners (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    commission_type COMMISSION_TYPE NOT NULL,
+    commission_value DECIMAL(10,2) NOT NULL,
+    status RECORD_STATUS NOT NULL DEFAULT 'active',
+    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create a separate table to store tenant mappings that is exempt from RLS check to avoid recursive checks
+CREATE TABLE IF NOT EXISTS public.subscription_plans (
+    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
+    billing_cycle BILLING_CYCLE NOT NULL DEFAULT 'monthly',
+    subscription_tier SUBSCRIPTION_TIER NOT NULL DEFAULT 'standard',
+    currency_type CURRENCY_TYPE NOT NULL DEFAULT 'USD',
+    payment_amount DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (payment_amount >= 0),
     status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
@@ -56,12 +90,12 @@ CREATE TABLE IF NOT EXISTS public.tenants (
     domain_id UUID REFERENCES public.domains(id) ON DELETE CASCADE,
     price_id TEXT,
     payment_method PAYMENT_METHOD NOT NULL DEFAULT 'payment_gateway',
-    currency_type CURRENCY_TYPE NOT NULL DEFAULT 'USD',
     current_payment_expiry_date TIMESTAMP NOT NULL,
-    expected_payment_amount DECIMAL(10,2) NOT NULL CHECK (expected_payment_amount >= 0),
+    subscription_plan_id UUID REFERENCES public.subscription_plans(id) ON DELETE RESTRICT,
     subscription_status SUBSCRIPTION_STATUS NOT NULL DEFAULT 'free_trial',
     profile_complete BOOLEAN NOT NULL DEFAULT FALSE,
     description TEXT,
+    affiliate_partner_id UUID REFERENCES public.affiliate_partners(id) ON DELETE NO ACTION,
     status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -85,19 +119,6 @@ CREATE TABLE IF NOT EXISTS public.tenant_user_invites (
     token TEXT NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     status INVITATION_STATUS NOT NULL DEFAULT 'open',
-    created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
-    updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create a separate table to store tenant mappings that is exempt from RLS check to avoid recursive checks
-CREATE TABLE IF NOT EXISTS public.subscription_plans (
-    id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
-    currency_type CURRENCY_TYPE NOT NULL DEFAULT 'USD',
-    subscription_status SUBSCRIPTION_STATUS NOT NULL DEFAULT 'free_trial',
-    payment_amount DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (payment_amount >= 0),
-    status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -219,7 +240,7 @@ CREATE TABLE IF NOT EXISTS public.purchase_order_items (
     purchase_order_id UUID NOT NULL REFERENCES public.purchase_orders(id) ON DELETE CASCADE,
     store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE RESTRICT,
     inventory_item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE RESTRICT,
-    variant_id UUID NOT NULL REFERENCES public.variants(id) ON DELETE RESTRICT,
+    variant_id UUID REFERENCES public.variants(id) ON DELETE RESTRICT,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
@@ -269,7 +290,7 @@ CREATE TABLE IF NOT EXISTS public.sales_order_items (
     sales_order_id UUID NOT NULL REFERENCES public.sales_orders(id) ON DELETE CASCADE,
     store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE RESTRICT,
     inventory_item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE RESTRICT,
-    variant_id UUID NOT NULL REFERENCES public.variants(id) ON DELETE RESTRICT,
+    variant_id UUID REFERENCES public.variants(id) ON DELETE RESTRICT,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
@@ -328,6 +349,15 @@ CREATE TABLE IF NOT EXISTS public.manual_payments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- VIEWS
+CREATE VIEW public.inventory_items_view
+WITH (security_invoker = true)
+AS
+SELECT *,
+       quantity <= min_quantity AND quantity > 0 AS is_low_stock,
+       quantity > min_quantity AS is_in_stock
+FROM public.inventory_items;
+
 ------------------------------------------------------------------------------------------
 -- Helper function to get user's tenant without RLS recursion
 CREATE OR REPLACE FUNCTION public.user_tenant_id()
@@ -360,20 +390,13 @@ RETURNS TRIGGER AS $$
 DECLARE
     userRole public.USER_ROLE := 'USER';
     user_tenant_id UUID;
-    amount DECIMAL := 0;
-    currency public.CURRENCY_TYPE := 'USD';
+    subscriptionPlanId UUID;
 BEGIN
      -- First check if user is tenant admin or staff
      user_tenant_id := public.invited_tenant_id_by_email(NEW.email);
     IF user_tenant_id IS NULL THEN
-        IF (SELECT COUNT(*) FROM public.subscription_plans) > 0 THEN
-            -- Fetch subscription plan price
-            SELECT payment_amount, currency_type INTO amount, currency FROM public.subscription_plans 
-            WHERE status = 'active' AND subscription_status = 'subscribed' LIMIT 1;
-        END IF;
-
         -- Create a new tenant record
-        INSERT INTO public.tenants (email, name, current_payment_expiry_date, expected_payment_amount, currency_type) VALUES (NEW.email, NEW.email, NOW() + INTERVAL '7 days', amount, currency)
+        INSERT INTO public.tenants (email, name, current_payment_expiry_date, subscription_plan_id) VALUES (NEW.email, NEW.email, NOW() + INTERVAL '30 days', subscriptionPlanId)
         RETURNING id INTO user_tenant_id;
         -- Set user role as 'TENANT_ADMIN'
         userRole := 'TENANT_ADMIN';
@@ -427,10 +450,12 @@ RETURNS TABLE(
     domain_id UUID,
     price_id TEXT,
     payment_method PAYMENT_METHOD,
+    billing_cycle BILLING_CYCLE,
+    subscription_tier SUBSCRIPTION_TIER,
+    expected_payment_amount DECIMAL,
     currency_type CURRENCY_TYPE,
     subscription_status SUBSCRIPTION_STATUS,
     current_payment_expiry_date TIMESTAMP,
-    expected_payment_amount DECIMAL,
     profile_complete BOOLEAN,
     description TEXT,
     status RECORD_STATUS,
@@ -450,18 +475,22 @@ BEGIN
         t.domain_id, 
         t.price_id, 
         t.payment_method,
-        t.currency_type,
+        sp.billing_cycle,
+        sp.subscription_tier,
+        sp.payment_amount as expected_payment_amount, 
+        sp.currency_type,
         t.subscription_status,
         t.current_payment_expiry_date, 
-        t.expected_payment_amount, 
         t.profile_complete, 
         t.description, 
         t.status, 
         t.created_at,
         t.updated_at,
         utm.role
-    FROM public.tenants t INNER JOIN user_tenant_mappings utm
+    FROM public.tenants t INNER JOIN public.user_tenant_mappings utm
     ON utm.tenant_id = t.id
+    LEFT JOIN public.subscription_plans sp
+    ON t.subscription_plan_id = sp.id
     WHERE utm.user_id = current_user_id
     LIMIT 1;
 END;
@@ -535,15 +564,17 @@ CREATE INDEX idx_tenants_email ON public.tenants(email);
 CREATE INDEX idx_tenants_name ON public.tenants(name);
 CREATE INDEX idx_tenants_domain_id ON public.tenants(domain_id);
 CREATE INDEX idx_tenants_price_id ON public.tenants(price_id);
+CREATE INDEX idx_tenants_subscription_plan_id ON public.tenants(subscription_plan_id);
 CREATE INDEX idx_tenants_payment_method ON public.tenants(payment_method);
 CREATE INDEX idx_tenants_current_payment_expiry_date ON public.tenants(current_payment_expiry_date);
 CREATE INDEX idx_tenants_subscription_status ON public.tenants(subscription_status);
-CREATE INDEX idx_tenants_currency_type ON public.tenants(currency_type);
 CREATE INDEX idx_tenants_profile_complete ON public.tenants(profile_complete);
 CREATE INDEX idx_tenants_status ON public.tenants(status);
 CREATE INDEX idx_tenants_created_at ON public.tenants(created_at);
 CREATE INDEX idx_tenants_updated_at ON public.tenants(updated_at);
-CREATE INDEX idx_subscription_plans_subscription_status ON public.subscription_plans(subscription_status);
+CREATE INDEX idx_subscription_plans_billing_cycle ON public.subscription_plans(billing_cycle);
+CREATE INDEX idx_subscription_plans_subscription_tier ON public.subscription_plans(subscription_tier);
+CREATE INDEX idx_subscription_plans_currency_type ON public.subscription_plans(currency_type);
 CREATE INDEX idx_subscription_plans_status ON public.subscription_plans(status);
 CREATE INDEX idx_categories_tenant_id ON public.categories(tenant_id);
 CREATE INDEX idx_categories_name ON public.categories(name);
@@ -610,14 +641,36 @@ CREATE INDEX idx_inventory_item_variants_tenant_id ON public.inventory_item_vari
 CREATE INDEX idx_inventory_item_variants_inventory_item_id ON public.inventory_item_variants(inventory_item_id);
 CREATE INDEX idx_inventory_item_variants_variant_id ON public.inventory_item_variants(variant_id);
 CREATE INDEX idx_inventory_item_variants_status ON public.inventory_item_variants(status);
+CREATE INDEX idx_affiliate_partners_name ON public.affiliate_partners(name);
+CREATE INDEX idx_affiliate_partners_status ON public.affiliate_partners(status);
+CREATE INDEX idx_affiliate_partners_commission_type ON public.affiliate_partners(commission_type);
 
 -- Function to renew tenant subscription after saving manual payments
-CREATE OR REPLACE FUNCTION renew_tenant_subscription_to_manual_payments()
+CREATE OR REPLACE FUNCTION renew_tenant_subscription_on_manual_payments()
     RETURNS TRIGGER AS $$
+    DECLARE
+        subscriptionPlanId UUID;
+        billingCycle VARCHAR;
+        subscriptionTier VARCHAR;
+        paymentAmount DECIMAL;
+        interval INTERVAL;
     BEGIN
+        SELECT subscription_plan_id INTO subscriptionPlanId FROM public.tenants WHERE id = NEW.tenant_id LIMIT 1;
+
+        SELECT billing_cycle, subscription_tier, payment_amount INTO billingCycle, subscriptionTier, paymentAmount FROM public.subscription_plans WHERE id = subscriptionPlanId LIMIT 1;
+
+        IF billingCycle = 'monthly' THEN
+            interval = '30 days';
+        ELSIF billingCycle = 'yearly' THEN
+            interval = '1 year';
+        ELSE
+            RAISE EXCEPTION 'Invalid billing_cycle: %s. Failed to renew tenant subscription on manual payment, tenantId=%', billingCycle, NEW.tenant_id;
+            RETURN NEW;
+        END IF;
+
         UPDATE public.tenants SET 
             subscription_status = 'subscribed',
-            current_payment_expiry_date = NOW() + INTERVAL '30 days'
+            current_payment_expiry_date = NOW() + interval
         WHERE id = NEW.tenant_id;
 
         RETURN NEW;
@@ -728,11 +781,11 @@ CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_manual_payments
     FOR EACH ROW
     EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
-CREATE TRIGGER trigger_renew_tenant_subscription_to_manual_payments
+CREATE TRIGGER trigger_renew_tenant_subscription_on_manual_payments
     AFTER UPDATE OF status ON public.manual_payments
     FOR EACH ROW
     WHEN (NEW.status = 'approved')
-    EXECUTE FUNCTION public.renew_tenant_subscription_to_manual_payments();
+    EXECUTE FUNCTION public.renew_tenant_subscription_on_manual_payments();
 
 CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_domains
     BEFORE INSERT ON public.domains
@@ -741,6 +794,11 @@ CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_domains
 
 CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_tenant_user_invites
     BEFORE INSERT ON public.tenant_user_invites
+    FOR EACH ROW
+    EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
+
+CREATE TRIGGER trigger_add_tenant_id_and_created_by_info_to_affiliate_partners
+    BEFORE INSERT ON public.affiliate_partners
     FOR EACH ROW
     EXECUTE FUNCTION public.add_tenant_id_and_created_by_info_to_new_record();
 
@@ -786,6 +844,7 @@ CREATE TRIGGER update_feedback_updated_at BEFORE UPDATE ON public.feedback FOR E
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_manual_payments_updated_at BEFORE UPDATE ON public.manual_payments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 CREATE TRIGGER update_domains_updated_at BEFORE UPDATE ON public.domains FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
+CREATE TRIGGER update_affiliate_partners_updated_at BEFORE UPDATE ON public.affiliate_partners FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_and_updated_by_column();
 
 
 -- Function to update received_date when order_status = received
@@ -844,6 +903,7 @@ ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.manual_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenant_user_invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.affiliate_partners ENABLE ROW LEVEL SECURITY;
 
 
 -- REALTIME UPDATE
@@ -866,6 +926,7 @@ ALTER publication supabase_realtime add table public.feedback;
 ALTER publication supabase_realtime add table public.manual_payments;
 ALTER publication supabase_realtime add table public.domains;
 ALTER publication supabase_realtime add table public.tenant_user_invites;
+ALTER publication supabase_realtime add table public.affiliate_partners;
 
 -- CHECK IF SUPER_ADMIN
 CREATE OR REPLACE FUNCTION public.isSuperAdmin()
@@ -927,33 +988,38 @@ CREATE POLICY "user_tenant_mappings are viewable by tenant users" ON public.user
         auth.role() = 'authenticated'
     );
 
-/*
-CREATE POLICY "user_tenant_mappings are insertable by tenant users" ON public.user_tenant_mappings
-    FOR INSERT WITH CHECK (
-        auth.role() = 'authenticated' AND 
-        tenant_id = public.user_tenant_id()
-    );
-
-CREATE POLICY "user_tenant_mappings are updatable by tenant users" ON public.user_tenant_mappings
-    FOR UPDATE USING (
-        auth.role() = 'authenticated' AND 
-        tenant_id = public.user_tenant_id()
-    );
-    */
-
 -- SUBSCRIPTION_PLANS POLICIES
 CREATE POLICY "subscription_plans are viewable by authenticated users" ON public.subscription_plans
     FOR SELECT USING (
         auth.role() = 'authenticated'
     );
 
-CREATE POLICY "subscription_plans are insertable by super admin" ON public.subscription_plans
+CREATE POLICY "subscription_plans are insertable by super_admin" ON public.subscription_plans
     FOR INSERT WITH CHECK (
         auth.role() = 'authenticated' AND 
         public.isSuperAdmin()
     );
 
-CREATE POLICY "subscription_plans are updatable by super admin" ON public.subscription_plans
+CREATE POLICY "subscription_plans are updatable by super_admin" ON public.subscription_plans
+    FOR UPDATE USING (
+        auth.role() = 'authenticated' AND 
+        public.isSuperAdmin()
+    );
+
+-- AFFILIATE_PARTNERS POLICIES
+CREATE POLICY "affiliate_partners are viewable by super_admin" ON public.affiliate_partners
+    FOR SELECT USING (
+        auth.role() = 'authenticated' AND 
+        public.isSuperAdmin()
+    );
+
+CREATE POLICY "affiliate_partners are insertable by super_admin" ON public.affiliate_partners
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' AND 
+        public.isSuperAdmin()
+    );
+
+CREATE POLICY "affiliate_partners are updatable by super_admin" ON public.affiliate_partners
     FOR UPDATE USING (
         auth.role() = 'authenticated' AND 
         public.isSuperAdmin()
@@ -1311,15 +1377,6 @@ CREATE POLICY "User invites are insertable by superadmin users" ON public.tenant
 CREATE POLICY "User invites are updatable by superadmin users" ON public.tenant_user_invites
     FOR UPDATE USING (auth.role() = 'authenticated' AND tenant_id = public.user_tenant_id());
 
-/*
--- AUTH.USERS POLICIES
-CREATE POLICY "Auth.users are viewable by tenant admin" ON auth.users
-    FOR SELECT USING (auth.role() = 'authenticated' AND public.isTenantAdmin());
-
-CREATE POLICY "Auth.users can be deleted by tenant admin" ON auth.users
-    FOR DELETE USING (auth.role() = 'authenticated' AND public.isTenantAdmin());
-*/
-
 -- FUNCTIONS & TRIGGERS
 
 -- Function to sync inventory quantity to transactions
@@ -1387,9 +1444,9 @@ CREATE OR REPLACE FUNCTION public.delete_user_account()
         DELETE FROM public.categories WHERE tenant_id = user_tenant_id;
         DELETE FROM public.suppliers WHERE tenant_id = user_tenant_id;
         DELETE FROM public.customers WHERE tenant_id = user_tenant_id;
-        --DELETE FROM tenants WHERE id = user_tenant_id;
         DELETE FROM public.user_tenant_mappings WHERE tenant_id = user_tenant_id;
-        RETURN NEW;
+        DELETE FROM public.tenants WHERE id = user_tenant_id;
+        RETURN OLD;
     END;
     $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -1455,7 +1512,7 @@ BEGIN
     FOR i IN 0..jsonb_array_length(inventory_item_variants_data) - 1 LOOP
         DECLARE
             variantsData JSONB := inventory_item_variants_data -> i;
-            variantId UUID := (variantsData ->> 'variant_id')::UUID;
+            variantId UUID := NULLIF(variantsData ->> 'variant_id', '')::UUID;
             inventoryItemVariantId UUID := (variantsData ->> 'id')::UUID;
         BEGIN
             -- 3. Check if the item already exists by its ID.
@@ -1533,7 +1590,7 @@ BEGIN
             itemObj JSONB := purchase_order_items_data -> i;
             storeId UUID := (itemObj ->> 'store_id')::UUID;
             inventoryItemId UUID := (itemObj ->> 'inventory_item_id')::UUID;
-            variantId UUID := (itemObj ->> 'variant_id')::UUID;
+            variantId UUID := NULLIF(itemObj ->> 'variant_id', '')::UUID;
             itemQuantity INTEGER := (itemObj ->> 'quantity')::INTEGER;
             unitPrice DECIMAL := (itemObj ->> 'unit_price')::DECIMAL;
             itemId UUID := (itemObj ->> 'id')::UUID;
@@ -1616,7 +1673,7 @@ BEGIN
             itemObj JSONB := sales_order_items_data -> i;
             storeId UUID := (itemObj ->> 'store_id')::UUID;
             inventoryItemId UUID := (itemObj ->> 'inventory_item_id')::UUID;
-            variantId UUID := (itemObj ->> 'variant_id')::UUID;
+            variantId UUID := NULLIF(itemObj ->> 'variant_id', '')::UUID;
             itemQuantity INTEGER := (itemObj ->> 'quantity')::INTEGER;
             unitPrice DECIMAL := (itemObj ->> 'unit_price')::DECIMAL;
             itemId UUID := (itemObj ->> 'id')::UUID;
@@ -1884,59 +1941,116 @@ CREATE OR REPLACE FUNCTION public.generate_unfulfilled_sales_orders_report(
 
 
 -- Dashboard Stats
-CREATE OR REPLACE FUNCTION public.build_dashboard_stats()
+CREATE OR REPLACE FUNCTION public.build_dashboard_stats(
+    report_days_count INTEGER
+)
     RETURNS JSONB AS $$
     DECLARE
         totalItems INTEGER; 
         lowStockItems INTEGER; 
+        outStockItems INTEGER; 
+        totalSuppliers INTEGER; 
         pendingPurchaseOrders INTEGER;
         receivedPurchaseOrders INTEGER;
+        canceledPurchaseOrders INTEGER;
+        overDuePurchaseOrders INTEGER;
         pendingSalesOrders INTEGER;
         fulfilledSalesOrders INTEGER;
+        canceledSalesOrders INTEGER;
+        overDueSalesOrders INTEGER;
         result JSONB;
     BEGIN
-        SELECT count(*) INTO totalItems FROM public.inventory_items
+        SELECT count(DISTINCT id) INTO totalItems FROM public.inventory_items
         WHERE status = 'active';
 
-        SELECT count(*) INTO lowStockItems FROM public.inventory_items
+        SELECT count(DISTINCT id) INTO lowStockItems FROM public.inventory_items
         WHERE status = 'active' 
-        AND quantity <= min_quantity;
+        AND quantity > 0 AND quantity <= min_quantity;
 
-        SELECT count(*) INTO pendingPurchaseOrders FROM public.purchase_orders po
+        SELECT count(DISTINCT id) INTO outStockItems FROM public.inventory_items
+        WHERE status = 'active' 
+        AND quantity = 0;
+
+        SELECT count(DISTINCT id) INTO totalSuppliers FROM public.suppliers
+        WHERE status = 'active';
+
+        SELECT count(DISTINCT po.id) INTO pendingPurchaseOrders FROM public.purchase_orders po
             INNER JOIN public.purchase_order_items poi
             ON poi.purchase_order_id = po.id
             WHERE po.status = 'active' 
             AND poi.status = 'active' 
+            AND po.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND po.order_status = 'pending';
             
-        SELECT count(*) INTO receivedPurchaseOrders FROM public.purchase_orders po
+        SELECT count(DISTINCT po.id) INTO receivedPurchaseOrders FROM public.purchase_orders po
             INNER JOIN public.purchase_order_items poi
             ON poi.purchase_order_id = po.id
             WHERE po.status = 'active' 
             AND poi.status = 'active' 
+            AND po.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND po.order_status = 'received';
 
-        SELECT count(*) INTO pendingSalesOrders FROM public.sales_orders so
+        SELECT count(DISTINCT po.id) INTO canceledPurchaseOrders FROM public.purchase_orders po
+            INNER JOIN public.purchase_order_items poi
+            ON poi.purchase_order_id = po.id
+            WHERE po.status = 'active' 
+            AND poi.status = 'active' 
+            AND po.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
+            AND po.order_status = 'canceled';
+
+        SELECT count(DISTINCT po.id) INTO overDuePurchaseOrders FROM public.purchase_orders po
+            INNER JOIN public.purchase_order_items poi
+            ON poi.purchase_order_id = po.id
+            WHERE po.status = 'active' 
+            AND poi.status = 'active' 
+            AND (po.received_date IS NULL AND NOW() > po.expected_date) OR (po.received_date > po.expected_date)
+            AND po.order_status = 'pending';
+
+        SELECT count(DISTINCT so.id) INTO pendingSalesOrders FROM public.sales_orders so
             INNER JOIN public.sales_order_items soi
             ON soi.sales_order_id = so.id
             WHERE so.status = 'active' 
             AND soi.status = 'active' 
+            AND so.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND so.order_status = 'pending';
 
-        SELECT count(*) INTO fulfilledSalesOrders FROM public.sales_orders so
+        SELECT count(DISTINCT so.id) INTO fulfilledSalesOrders FROM public.sales_orders so
             INNER JOIN public.sales_order_items soi
             ON soi.sales_order_id = so.id
             WHERE so.status = 'active' 
             AND soi.status = 'active' 
+            AND so.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
             AND so.order_status = 'fulfilled';
         
+        SELECT count(DISTINCT so.id) INTO canceledSalesOrders FROM public.sales_orders so
+            INNER JOIN public.sales_order_items soi
+            ON soi.sales_order_id = so.id
+            WHERE so.status = 'active' 
+            AND soi.status = 'active' 
+            AND so.created_at >= NOW() - (report_days_count * INTERVAL '1 day')
+            AND so.order_status = 'canceled';
+
+        SELECT count(DISTINCT so.id) INTO overDueSalesOrders FROM public.sales_orders so
+            INNER JOIN public.sales_order_items soi
+            ON soi.sales_order_id = so.id
+            WHERE so.status = 'active' 
+            AND soi.status = 'active' 
+            AND (so.fulfilled_date IS NULL AND NOW() > so.expected_date) OR (so.fulfilled_date > so.expected_date)
+            AND so.order_status = 'pending';
+
         result = jsonb_build_object(
                     'totalItems', totalItems, 
+                    'totalSuppliers', totalSuppliers, 
                     'lowStockItems', lowStockItems, 
+                    'outStockItems', outStockItems,
                     'pendingPurchaseOrders', pendingPurchaseOrders, 
                     'receivedPurchaseOrders', receivedPurchaseOrders, 
+                    'canceledPurchaseOrders', canceledPurchaseOrders, 
+                    'overDuePurchaseOrders', overDuePurchaseOrders, 
                     'pendingSalesOrders', pendingSalesOrders, 
-                    'fulfilledSalesOrders', fulfilledSalesOrders
+                    'fulfilledSalesOrders', fulfilledSalesOrders,
+                    'canceledSalesOrders', canceledSalesOrders,
+                    'overDueSalesOrders', overDueSalesOrders
                 );
 
         RETURN result;
@@ -1945,7 +2059,9 @@ CREATE OR REPLACE FUNCTION public.build_dashboard_stats()
 
 
 -- Purchase Order monthly trends
-CREATE OR REPLACE FUNCTION public.purchase_order_monthly_trends()
+CREATE OR REPLACE FUNCTION public.purchase_order_monthly_trends(
+    report_days_count INTEGER
+)
 RETURNS TABLE(
     month_name TEXT,
     ordered_quantity BIGINT,
@@ -1966,7 +2082,7 @@ BEGIN
             ON poi.purchase_order_id = po.id
             WHERE po.status = 'active' 
             AND poi.status = 'active' 
-            AND po.created_at >= DATE_TRUNC('month', NOW() - INTERVAL '6 months')
+            AND po.created_at >= DATE_TRUNC('month', NOW() - (report_days_count * INTERVAL '1 day'))
     GROUP BY
         month_name
     ORDER BY
@@ -1975,7 +2091,9 @@ END;
 $$;
 
 -- Sales Order monthly trends
-CREATE OR REPLACE FUNCTION public.sales_order_monthly_trends()
+CREATE OR REPLACE FUNCTION public.sales_order_monthly_trends(
+    report_days_count INTEGER
+)
 RETURNS TABLE(
     month_name TEXT,
     ordered_quantity BIGINT,
@@ -1996,7 +2114,7 @@ BEGIN
         ON poi.sales_order_id = po.id
         WHERE po.status = 'active' 
         AND poi.status = 'active' 
-        AND po.created_at >= DATE_TRUNC('month', NOW() - INTERVAL '6 months')
+        AND po.created_at >= DATE_TRUNC('month', NOW() - (report_days_count * INTERVAL '1 day'))
     GROUP BY
         month_name
     ORDER BY
@@ -2008,11 +2126,73 @@ $$;
 SELECT cron.schedule(
   'expire-unpaid-accounts',
   -- Run every day at 2 AM
-  --'0 2 * * *',
-  '* * * * *',
+  '0 2 * * *',
   $$
     UPDATE public.tenants SET subscription_status = 'expired' 
     WHERE current_payment_expiry_date < NOW()
     AND subscription_status IN ('free_trial', 'subscribed');
   $$
 );
+
+CREATE OR REPLACE FUNCTION public.run_notify_upcoming_payment_due_cron()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_cron_api_key text;
+  v_payment_notification_api text;
+  v_payload jsonb;
+BEGIN
+  SELECT decrypted_secret INTO v_cron_api_key FROM vault.decrypted_secrets WHERE name = 'cron_api_key' LIMIT 1;
+  SELECT decrypted_secret INTO v_payment_notification_api FROM vault.decrypted_secrets WHERE name = 'payment_notification_api' LIMIT 1;
+
+  -- Use jsonb_agg to create an array of objects
+  SELECT jsonb_build_object(
+    'timestamp', now(),
+    'source', 'supabase_cron',
+    'data', (
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'email', t.email,
+          'tenantName', t.name,
+          'paymentAmount', sp.payment_amount,
+          'currencyType', sp.currency_type,
+          'dueDate', t.current_payment_expiry_date
+        )
+      )
+      FROM public.tenants t
+      INNER JOIN public.subscription_plans sp
+      ON t.subscription_plan_id = sp.id
+      WHERE t.current_payment_expiry_date < NOW() + INTERVAL '7 Days'
+    )
+  ) INTO v_payload;
+
+IF v_payload->>'data' IS NOT NULL THEN
+    PERFORM net.http_post(
+    url := v_payment_notification_api,
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || v_cron_api_key
+      ),
+      body := v_payload
+    );
+  END IF;
+END;
+$$;
+
+SELECT cron.schedule(
+  'notify-upcoming-payment-due',
+  '0 0 * * *',
+  'SELECT public.run_notify_upcoming_payment_due_cron();'
+);
+
+
+-- GRANT PERMISSIONS TO VIEWS
+GRANT SELECT ON public.inventory_items_view TO anon;
+GRANT SELECT ON public.inventory_items_view TO authenticated;
+
+ALTER VIEW public.inventory_items_view OWNER TO postgres;
+
+-- FINALLY, REFRESH SCHEMA
+NOTIFY pgrst, 'reload schema';

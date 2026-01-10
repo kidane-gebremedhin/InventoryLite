@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { APP_NAME } from "@/lib/app_config/config";
+import { FREE_PLAN_DURATION } from "@/lib/Constants";
 
 export default function CallToAction() {
 	return (
@@ -10,7 +11,8 @@ export default function CallToAction() {
 				</h2>
 				<p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90">
 					Join hundreds of businesses already optimizing their operations with{" "}
-					{APP_NAME}. Start your free trial today!
+					{APP_NAME}. Start your <strong>{FREE_PLAN_DURATION}</strong> free
+					trial today!
 				</p>
 				<Link
 					href="/pricing-plan"
