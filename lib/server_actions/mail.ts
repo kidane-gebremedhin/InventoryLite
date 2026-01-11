@@ -1,6 +1,6 @@
 "use server";
 import nodemailer from "nodemailer";
-import { APP_NAME, CONTACT_EMAIL } from "../app_config/config";
+import { APP_NAME, APP_EMAIL } from "../app_config/config";
 import { getCurrentDate } from "../helpers/Helper";
 import type { ServerActionsResponse } from "../types/Models";
 
@@ -56,7 +56,7 @@ export async function sendUserInvitationMail({
 			to: email,
 			subject: `New message from ${APP_NAME}`,
 			html: messageBody,
-			replyTo: CONTACT_EMAIL,
+			replyTo: APP_EMAIL,
 		});
 		data = { success: true, message: "Email sent successfully!" };
 		console.error("mail sent");
@@ -124,7 +124,7 @@ function emailInvitationTemplate({
             <hr style="margin:24px 0;" />
 
             <p style="font-size:12px; color:#9ca3af;">
-              © ${getCurrentDate()} ${APP_NAME}. All rights reserved| Contact us ${CONTACT_EMAIL}
+              © ${getCurrentDate()} ${APP_NAME}. All rights reserved| Contact us ${APP_EMAIL}
             </p>
           </td>
         </tr>
@@ -168,7 +168,7 @@ export async function sendUpcomingPaymentDueNotificationMail({
 			to: email,
 			subject: `Upcoming payment notification`,
 			html: messageBody,
-			replyTo: process.env.NEXT_PUBLIC_APP_EMAIL,
+			replyTo: APP_EMAIL,
 		});
 		data = {
 			success: true,
@@ -230,7 +230,7 @@ function emailUpcomingPaymentDueTemplate({
             <hr style="margin:24px 0;" />
 
             <p style="font-size:12px; color:#9ca3af;">
-              © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved| Contact us ${CONTACT_EMAIL}
+              © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved| Contact us ${APP_EMAIL}
             </p>
           </td>
         </tr>

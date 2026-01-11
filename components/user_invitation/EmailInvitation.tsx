@@ -1,15 +1,15 @@
-import { APP_NAME, CONTACT_EMAIL } from "@/lib/app_config/config";
+import { APP_NAME, APP_EMAIL } from "@/lib/app_config/config";
 
 export function EmailInvitation({
-	userName,
-	inviteLink,
-	expiryHours = 24,
+  userName,
+  inviteLink,
+  expiryHours = 24,
 }: {
-	userName: string;
-	inviteLink: string;
-	expiryHours?: number;
+  userName: string;
+  inviteLink: string;
+  expiryHours?: number;
 }) {
-	return `
+  return `
   <!DOCTYPE html>
   <html>
     <head>
@@ -54,7 +54,7 @@ export function EmailInvitation({
             <hr style="margin:24px 0;" />
 
             <p style="font-size:12px; color:#9ca3af;">
-              © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved | Contact us ${CONTACT_EMAIL}
+              © ${new Date().getFullYear()} ${APP_NAME}. All rights reserved | Contact us ${APP_EMAIL}
             </p>
           </td>
         </tr>
