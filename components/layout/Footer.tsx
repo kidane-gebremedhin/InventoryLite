@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { APP_NAME, CONTACT_EMAIL } from "@/lib/app_config/config";
+import { APP_NAME, APP_EMAIL } from "@/lib/app_config/config";
 import { ROUTE_PATH } from "@/lib/Enums";
 import { getCurrentDateTime } from "@/lib/helpers/Helper";
 import { LoadingProvider } from "../context_apis/LoadingProvider";
@@ -13,7 +13,7 @@ export default function Footer() {
 			<div className="container mx-auto px-4 text-center text-sm">
 				<p>
 					&copy; {getCurrentDateTime().getFullYear()} {APP_NAME}. All rights
-					reserved | Contact us {CONTACT_EMAIL}
+					reserved | Contact us {APP_EMAIL}
 				</p>
 				<div className="mt-2 space-x-4">
 					<Link
