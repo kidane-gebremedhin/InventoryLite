@@ -25,12 +25,7 @@ export default function Navbar() {
 						<div className="space-x-4">
 							<Link href={ROUTE_PATH.LANDING_PAGE}>Home</Link>
 							<Link href={ROUTE_PATH.PRICING_PLAN}>Pricing</Link>
-							<Link
-								href={ROUTE_PATH.PRODUCT_DEMO}
-								className="text-gray-600 hover:text-teal-600"
-							>
-								Demo
-							</Link>
+							<Link href={ROUTE_PATH.PRODUCT_DEMO}>Demo</Link>
 						</div>
 						<Link
 							href={ROUTE_PATH.SIGNIN}

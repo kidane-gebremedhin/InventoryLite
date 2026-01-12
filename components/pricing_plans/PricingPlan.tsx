@@ -119,7 +119,7 @@ export default function PricingPlan() {
 							<p className="text-base font-semibold leading-7 text-orange-300 text-10xl">
 								Pricing
 							</p>
-							<p className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
+							<p className="mt-2 text-2xl md:text-4xl font-bold tracking-tight sm:text-5xl">
 								Best plans for your modern businesses
 							</p>
 						</div>
@@ -142,7 +142,7 @@ export default function PricingPlan() {
 									{tier.name}
 								</h3>
 								<div className="mt-4 flex items-baseline gap-x-2">
-									<span className="text-5xl font-bold tracking-tight text-gray-900">
+									<span className="text-3xl md:text-5xl font-bold tracking-tight text-gray-900">
 										{tier.price !== FREE_PLAN_LABEL && (
 											<span className="text-base font-semibold leading-7 text-gray-600">
 												{app_prices[APP_ACTIVE_CURRENCY].icon}
@@ -182,10 +182,9 @@ export default function PricingPlan() {
 									}
 									aria-describedby={tier.id}
 									className={`mt-8 block rounded-md py-0 px-3 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition-all duration-300
-                    ${
-											tier.mostPopular
-												? "bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600"
-												: "text-green-600 ring-1 ring-inset ring-green-200 hover:ring-green-300 focus-visible:outline-green-600"
+                    ${tier.mostPopular
+											? "bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600"
+											: "text-green-600 ring-1 ring-inset ring-green-200 hover:ring-green-300 focus-visible:outline-green-600"
 										}`}
 								>
 									Get Started
