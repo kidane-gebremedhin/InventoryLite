@@ -35,7 +35,7 @@ export function Auth() {
 				</div>
 
 				<div className="text-center">
-					<p className="text-sm text-gray-500">
+					<p className="text-xs text-gray-500">
 						By signing in, you agree to the{" "}
 						<Link
 							target="_blank"
