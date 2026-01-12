@@ -22,10 +22,11 @@ export default function Navbar() {
 						<span className="text-xl font-bold text-gray-900">{APP_NAME}</span>
 					</Link>
 					<div className="flex items-center">
-						<div className="space-x-4">
+						<div className="space-x-2 md:space-x-4">
 							<Link href={ROUTE_PATH.LANDING_PAGE}>Home</Link>
 							<Link href={ROUTE_PATH.PRICING_PLAN}>Pricing</Link>
 							<Link href={ROUTE_PATH.PRODUCT_DEMO}>Demo</Link>
+							<Link target="_blank" href={"/mobile_apps/GebeyaStock-Android.apk"} download>Mobile App</Link>
 						</div>
 						<Link
 							href={ROUTE_PATH.SIGNIN}
