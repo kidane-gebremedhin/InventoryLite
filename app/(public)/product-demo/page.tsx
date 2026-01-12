@@ -17,8 +17,8 @@ export default function HomePage() {
 
 	// Optional: Define player options
 	const playerOptions: YouTubeProps["opts"] = {
-		height: "500",
-		width: "800",
+		height: "100%",
+		width: "100%",
 		playerVars: {
 			autoplay: 1, // Autoplay the video
 			// mute: 1, // Mute the audio
@@ -44,7 +44,7 @@ export default function HomePage() {
 	};
 
 	return (
-		<div className="flex min-h-screen flex-col items-center justify-center bg-gray-100">
+		<div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4">
 			<p className="text-lg text-gray-600 mb-6">
 				This demo will walk you through all the features of the application.
 			</p>
@@ -59,7 +59,7 @@ export default function HomePage() {
 						onStateChange={handleStateChange}
 					/>
 				) : (
-					<div className="w-[640px] h-[390px] bg-gray-200 animate-pulse flex items-center justify-center rounded-md">
+					<div className="bg-gray-200 animate-pulse flex items-center justify-center rounded-md">
 						<span className="text-gray-500">Loading video player...</span>
 					</div>
 				)}
