@@ -207,7 +207,8 @@ export const VALIDATION_ERRORS_MAPPING = {
 		userSubscriptionInfo: {
 			fields: {
 				name: {
-					displayError: "Selected name is taken, please select another name.",
+					displayError:
+						"Selected company name is taken, please select another company name.",
 				},
 			},
 		},

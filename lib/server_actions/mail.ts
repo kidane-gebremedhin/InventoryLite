@@ -1,29 +1,17 @@
 "use server";
 import nodemailer from "nodemailer";
-import { APP_NAME, APP_EMAIL } from "../app_config/config";
+import { APP_EMAIL, APP_NAME } from "../app_config/config";
 import { getCurrentDate } from "../helpers/Helper";
 import type { ServerActionsResponse } from "../types/Models";
 
-const transporter = () => {
-	/*
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        auth: {
-        user: process.env.GMAIL_USERNAME,
-        pass: process.env.GMAIL_PASSWORD,
-        },
-    })
-    */
-	return nodemailer.createTransport({
-		host: "sandbox.smtp.mailtrap.io",
-		port: 2525,
-		auth: {
-			user: "e7f239de8eb39d",
-			pass: "b69e0f25fb21f9",
-		},
-	});
-};
+const transporter = nodemailer.createTransport({
+	host: process.env.SMTP_SERVER,
+	port: process.env.SMTP_PORT,
+	auth: {
+		user: process.env.SMTP_EMAIL_USERNAME,
+		pass: process.env.SMTP_EMAIL_PASSWORD,
+	},
+});
 
 export async function sendUserInvitationMail({
 	email,
@@ -51,12 +39,12 @@ export async function sendUserInvitationMail({
 	});
 
 	try {
-		transporter().sendMail({
-			from: process.env.GMAIL_USERNAME,
+		transporter.sendMail({
+			from: process.env.SMTP_EMAIL_USERNAME,
 			to: email,
 			subject: `New message from ${APP_NAME}`,
 			html: messageBody,
-			replyTo: APP_EMAIL,
+			replyTo: process.env.SMTP_EMAIL_USERNAME,
 		});
 		data = { success: true, message: "Email sent successfully!" };
 		console.error("mail sent");
@@ -163,12 +151,12 @@ export async function sendUpcomingPaymentDueNotificationMail({
 	});
 
 	try {
-		transporter().sendMail({
-			from: process.env.GMAIL_USERNAME,
+		transporter.sendMail({
+			from: process.env.SMTP_EMAIL_USERNAME,
 			to: email,
 			subject: `Upcoming payment notification`,
 			html: messageBody,
-			replyTo: APP_EMAIL,
+			replyTo: process.env.SMTP_EMAIL_USERNAME,
 		});
 		data = {
 			success: true,

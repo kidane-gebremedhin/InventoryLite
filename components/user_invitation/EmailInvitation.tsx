@@ -1,15 +1,15 @@
-import { APP_NAME, APP_EMAIL } from "@/lib/app_config/config";
+import { APP_EMAIL, APP_NAME } from "@/lib/app_config/config";
 
 export function EmailInvitation({
-  userName,
-  inviteLink,
-  expiryHours = 24,
+	userName,
+	inviteLink,
+	expiryHours = 24,
 }: {
-  userName: string;
-  inviteLink: string;
-  expiryHours?: number;
+	userName: string;
+	inviteLink: string;
+	expiryHours?: number;
 }) {
-  return `
+	return `
   <!DOCTYPE html>
   <html>
     <head>

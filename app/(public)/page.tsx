@@ -8,7 +8,7 @@ const App = () => {
 			{/* Hero Section */}
 			<header className="bg-gradient-to-br from-green-500 to-teal-500 text-white py-20 md:py-32">
 				<div className="container mx-auto px-4 text-center">
-					<h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
+					<h1 className="text-2xl md:text-6xl font-extrabold leading-tight mb-6">
 						{APP_MOTO}
 					</h1>
 					<p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90">

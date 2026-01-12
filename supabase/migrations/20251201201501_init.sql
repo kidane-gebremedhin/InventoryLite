@@ -45,19 +45,20 @@ CREATE TYPE COMMISSION_TYPE AS ENUM('percentage', 'fixed');
 -- DOMAINS TABLE
 CREATE TABLE IF NOT EXISTS public.domains (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
-    name VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
     status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(name, status)
 );
 
 -- AFFILIATE_PARTNERS TABLE
 CREATE TABLE IF NOT EXISTS public.affiliate_partners (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
-    name VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
     commission_type COMMISSION_TYPE NOT NULL,
     commission_value DECIMAL(10,2) NOT NULL,
@@ -65,7 +66,8 @@ CREATE TABLE IF NOT EXISTS public.affiliate_partners (
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(name, status)
 );
 
 -- Create a separate table to store tenant mappings that is exempt from RLS check to avoid recursive checks
@@ -79,14 +81,15 @@ CREATE TABLE IF NOT EXISTS public.subscription_plans (
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(billing_cycle, subscription_tier, currency_type, status)
 );
 
 -- TENANTS TABLE
 CREATE TABLE IF NOT EXISTS public.tenants (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
     domain_id UUID REFERENCES public.domains(id) ON DELETE CASCADE,
     price_id TEXT,
     payment_method PAYMENT_METHOD NOT NULL DEFAULT 'payment_gateway',
@@ -98,7 +101,9 @@ CREATE TABLE IF NOT EXISTS public.tenants (
     affiliate_partner_id UUID REFERENCES public.affiliate_partners(id) ON DELETE NO ACTION,
     status RECORD_STATUS NOT NULL DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(name, status),
+    UNIQUE(email, status)
 );
 
 -- Create a separate table to store tenant mappings that is exempt from RLS check to avoid recursive checks
@@ -115,14 +120,15 @@ CREATE TABLE IF NOT EXISTS public.user_tenant_mappings (
 CREATE TABLE IF NOT EXISTS public.tenant_user_invites (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
     token TEXT NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     status INVITATION_STATUS NOT NULL DEFAULT 'open',
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(email, tenant_id, status)
 );
 
 -- STORES TABLE
@@ -136,7 +142,7 @@ CREATE TABLE IF NOT EXISTS public.stores (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(name, tenant_id)
+    UNIQUE(name, tenant_id, status)
 );
 
 -- CATEGORIES TABLE
@@ -150,7 +156,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(name, tenant_id)
+    UNIQUE(name, tenant_id, status)
 );
 
 -- INVENTORY_ITEMS TABLE (Updated to match application model)
@@ -169,8 +175,8 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(name, tenant_id),
-    UNIQUE(sku, tenant_id)
+    UNIQUE(name, tenant_id, status),
+    UNIQUE(sku, tenant_id, status)
 );
 
 -- VARIANTS TABLE
@@ -184,7 +190,7 @@ CREATE TABLE IF NOT EXISTS public.variants (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(name, tenant_id)
+    UNIQUE(name, tenant_id, status)
 );
 
 -- VARIANTS TABLE
@@ -198,7 +204,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_item_variants (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(inventory_item_id, variant_id, tenant_id)
+    UNIQUE(inventory_item_id, variant_id, tenant_id, status)
 );
 
 -- SUPPLIERS TABLE
@@ -214,7 +220,7 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(name, tenant_id)
+    UNIQUE(name, tenant_id, status)
 );
 
 -- PURCHASE_ORDERS TABLE
@@ -231,7 +237,7 @@ CREATE TABLE IF NOT EXISTS public.purchase_orders (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(po_number, tenant_id)
+    UNIQUE(po_number, tenant_id, status)
 );
 
 -- PURCHASE_ORDER_ITEMS TABLE
@@ -264,7 +270,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(name, tenant_id)
+    UNIQUE(name, tenant_id, status)
 );
 
 -- SALES_ORDERS TABLE
@@ -281,7 +287,7 @@ CREATE TABLE IF NOT EXISTS public.sales_orders (
     updated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE NO ACTION,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(so_number, tenant_id)
+    UNIQUE(so_number, tenant_id, status)
 );
 
 -- SALES_ORDER_ITEMS TABLE
@@ -396,7 +402,7 @@ BEGIN
      user_tenant_id := public.invited_tenant_id_by_email(NEW.email);
     IF user_tenant_id IS NULL THEN
         -- Create a new tenant record
-        INSERT INTO public.tenants (email, name, current_payment_expiry_date, subscription_plan_id) VALUES (NEW.email, NEW.email, NOW() + INTERVAL '30 days', subscriptionPlanId)
+        INSERT INTO public.tenants (email, name, current_payment_expiry_date, subscription_plan_id) VALUES (NEW.email, NEW.email, NOW() + INTERVAL '1 month', subscriptionPlanId)
         RETURNING id INTO user_tenant_id;
         -- Set user role as 'TENANT_ADMIN'
         userRole := 'TENANT_ADMIN';
@@ -444,9 +450,8 @@ CREATE OR REPLACE FUNCTION public.fetch_user_subscription_info(
 )
 RETURNS TABLE(
     tenant_id UUID,
-    tenant_name VARCHAR,
-    email VARCHAR,
     name VARCHAR,
+    email VARCHAR,
     domain_id UUID,
     price_id TEXT,
     payment_method PAYMENT_METHOD,
@@ -469,9 +474,8 @@ BEGIN
     RETURN QUERY
     SELECT 
         t.id as tenant_id, 
-        t.name as tenant_name, 
-        t.email, 
         t.name, 
+        t.email, 
         t.domain_id, 
         t.price_id, 
         t.payment_method,
@@ -653,14 +657,16 @@ CREATE OR REPLACE FUNCTION renew_tenant_subscription_on_manual_payments()
         billingCycle VARCHAR;
         subscriptionTier VARCHAR;
         paymentAmount DECIMAL;
+        currentPaymentExpiryDate TIMESTAMP;
+        nextPaymentExpiryDate TIMESTAMP;
         interval INTERVAL;
     BEGIN
-        SELECT subscription_plan_id INTO subscriptionPlanId FROM public.tenants WHERE id = NEW.tenant_id LIMIT 1;
+        SELECT subscription_plan_id, current_payment_expiry_date INTO subscriptionPlanId, currentPaymentExpiryDate FROM public.tenants WHERE id = NEW.tenant_id LIMIT 1;
 
         SELECT billing_cycle, subscription_tier, payment_amount INTO billingCycle, subscriptionTier, paymentAmount FROM public.subscription_plans WHERE id = subscriptionPlanId LIMIT 1;
 
         IF billingCycle = 'monthly' THEN
-            interval = '30 days';
+            interval = '1 month';
         ELSIF billingCycle = 'yearly' THEN
             interval = '1 year';
         ELSE
@@ -668,9 +674,16 @@ CREATE OR REPLACE FUNCTION renew_tenant_subscription_on_manual_payments()
             RETURN NEW;
         END IF;
 
+        --- Renewal logic
+        IF currentPaymentExpiryDate > NOW() THEN
+            nextPaymentExpiryDate = currentPaymentExpiryDate + interval;
+        ELSE
+            nextPaymentExpiryDate = NOW() + interval;
+        END IF;
+
         UPDATE public.tenants SET 
             subscription_status = 'subscribed',
-            current_payment_expiry_date = NOW() + interval
+            current_payment_expiry_date = nextPaymentExpiryDate
         WHERE id = NEW.tenant_id;
 
         RETURN NEW;

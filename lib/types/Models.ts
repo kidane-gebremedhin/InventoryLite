@@ -250,7 +250,7 @@ export interface ManualPayment {
 
 export interface UserInvitation {
 	id?: string;
-	tenant_name: string;
+	name: string;
 	email: string;
 	status?: string;
 	token: string;
@@ -376,9 +376,8 @@ export interface SalesOrderStatusPayload {
 
 export interface UserSubscriptionInfo {
 	email: string;
-	name: string;
 	tenant_id: string;
-	tenant_name: string;
+	name: string;
 	domain_id: string;
 	subscription_plan_id: string;
 	price_id: string;

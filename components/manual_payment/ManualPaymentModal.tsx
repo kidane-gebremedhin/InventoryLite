@@ -76,6 +76,26 @@ export function ManualPaymentModal({
 
 	if (!isOpen) return null;
 
+	if (!currentUser?.subscriptionInfo.currency_type) {
+		return (
+			<div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+				<div className="relative top-64 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+					<div className="flex justify-center items-center">
+						Account not configured yet, please complete your account setup to
+						continue.
+						<button
+							type="button"
+							onClick={onClose}
+							className="text-red-400 hover:text-red-600"
+						>
+							<XMarkIcon className="h-6 w-6" />
+						</button>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
 			<div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -125,6 +145,7 @@ export function ManualPaymentModal({
 								handleInputChange("reference_number", e.target.value)
 							}
 							className="input-field"
+							minLength={6}
 							autoFocus
 							required
 						/>

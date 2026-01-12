@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { APP_NAME, APP_EMAIL } from "@/lib/app_config/config";
+import { APP_EMAIL, APP_NAME } from "@/lib/app_config/config";
 import { ROUTE_PATH } from "@/lib/Enums";
 import { getCurrentDateTime } from "@/lib/helpers/Helper";
 import { LoadingProvider } from "../context_apis/LoadingProvider";
