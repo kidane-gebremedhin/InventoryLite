@@ -142,7 +142,7 @@ export default function PricingPlan() {
 									{tier.name}
 								</h3>
 								<div className="mt-4 flex items-baseline gap-x-2">
-									<span className="text-3xl md:text-5xl font-bold tracking-tight text-gray-900">
+									<span className="text-2xl md:text-5xl font-bold tracking-tight text-gray-900">
 										{tier.price !== FREE_PLAN_LABEL && (
 											<span className="text-base font-semibold leading-7 text-gray-600">
 												{app_prices[APP_ACTIVE_CURRENCY].icon}
@@ -174,7 +174,6 @@ export default function PricingPlan() {
 									))}
 								</ul>
 								<Link
-									target="_blank"
 									href={
 										APP_ACTIVE_CURRENCY === CurrencyType.ETB
 											? ROUTE_PATH.SIGNIN
