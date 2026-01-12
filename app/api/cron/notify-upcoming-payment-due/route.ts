@@ -5,7 +5,7 @@ import { sendUpcomingPaymentDueNotificationMail } from "@/lib/server_actions/mai
 export async function POST(req: Request) {
 	// 1. Verify Authorization Header
 	const authHeader = req.headers.get("Authorization");
-	if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+	if (authHeader !== `Bearer ${process.env.SUPABASE_CRON_SECRET}`) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 

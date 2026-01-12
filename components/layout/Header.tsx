@@ -7,10 +7,13 @@ import {
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FeedbackNotification } from "@/components/feedback/FeedbackNotification";
 import { ROUTE_PATH } from "@/lib/Enums";
-import { capitalizeFirstLetter } from "@/lib/helpers/Helper";
+import {
+	capitalizeFirstLetter,
+	formatDateToYYMMDD,
+} from "@/lib/helpers/Helper";
 import { LowStockLevelNotification } from "../notifications/LowStockLevelNotification";
 import { useAuthContext } from "../providers/AuthProvider";
 
@@ -19,6 +22,28 @@ export default function Header() {
 	const [loading, setLoading] = useState(false);
 	// Global States
 	const { currentUser, signOut } = useAuthContext();
+
+	// Create a ref for the container element
+	const dropdownRef = useRef(null);
+
+	useEffect(() => {
+		// Logic to detect if click was outside the ref
+		function handleClickOutside(event) {
+			if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+				setIsDropdownOpen(false);
+			}
+		}
+
+		// Bind the event listener
+		if (isDropdownOpen) {
+			document.addEventListener("mousedown", handleClickOutside);
+		}
+
+		// Clean up the listener
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, [isDropdownOpen]);
 
 	const handleSignOut = async () => {
 		setLoading(true);
@@ -56,7 +81,7 @@ export default function Header() {
 						<LowStockLevelNotification />
 					</button>
 
-					<div className="relative">
+					<div className="relative" ref={dropdownRef}>
 						<button
 							type="button"
 							onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -77,9 +102,32 @@ export default function Header() {
 
 						{isDropdownOpen && (
 							<div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-								<div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-									<div className="font-medium">{currentUser.fullName}</div>
-									<div className="text-gray-500">{currentUser.email}</div>
+								<div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100 text-center">
+									<div className="font-medium">
+										<strong>{currentUser?.fullName}</strong>
+									</div>
+									<div
+										className="text-orange-500 py-1"
+										style={{ textTransform: "capitalize" }}
+									>
+										{currentUser?.subscriptionInfo.subscription_status.replaceAll(
+											"_",
+											" ",
+										)}
+									</div>
+									<div className="text-gray-500">
+										Active until:{" "}
+										<u>
+											<strong>
+												<i>
+													{formatDateToYYMMDD(
+														currentUser?.subscriptionInfo
+															?.current_payment_expiry_date,
+													)}
+												</i>
+											</strong>
+										</u>
+									</div>
 								</div>
 								<div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
 									<Link href={ROUTE_PATH.SETTING} className="flex">

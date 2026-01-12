@@ -187,7 +187,7 @@ export default function UserInvitationPage() {
 		const { id, ...userInvitationWithNoId } = userInvitation;
 		try {
 			const { data, error } = await saveUserInvitation(
-				currentUser?.subscriptionInfo?.tenant_name,
+				currentUser?.subscriptionInfo?.name,
 				userInvitationWithNoId,
 			);
 			if (error) {

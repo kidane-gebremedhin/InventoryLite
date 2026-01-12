@@ -131,10 +131,14 @@ export default function ManualPaymentPage() {
 			currentUser?.subscriptionInfo?.subscription_status ===
 			SubscriptionStatus.EXPIRED
 		) {
-			const message = `Dear ${currentUser.subscriptionInfo.name}, your subscription is expired at ${formatDateToYYMMDD(currentUser?.subscriptionInfo?.current_payment_expiry_date)}.
-      Please make payment of ${currentUser.subscriptionInfo.currency_type}${currentUser.subscriptionInfo.expected_payment_amount} to renew your subscription and continue using the service.`;
+			const message = `Dear ${currentUser?.subscriptionInfo.name}, your subscription is expired at ${formatDateToYYMMDD(currentUser?.subscriptionInfo?.current_payment_expiry_date)}.
+      Please make payment of ${currentUser?.subscriptionInfo.currency_type}${currentUser?.subscriptionInfo.expected_payment_amount} to renew your subscription and continue using the service.`;
 			setSubscriptionMessage(message);
 			handleAdd();
+		} else {
+			const message = `Dear ${currentUser?.subscriptionInfo.name}, your subscription is valid until ${formatDateToYYMMDD(currentUser?.subscriptionInfo?.current_payment_expiry_date)}.
+      You can make advance payment of ${currentUser?.subscriptionInfo.currency_type}${currentUser?.subscriptionInfo.expected_payment_amount} to extend your subscription further and continue using the service.`;
+			setSubscriptionMessage(message);
 		}
 
 		// reset pagination
