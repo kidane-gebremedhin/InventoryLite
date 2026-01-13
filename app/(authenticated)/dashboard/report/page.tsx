@@ -840,8 +840,10 @@ export default function App() {
 		<div className="md:flex min-h-screen bg-white-900 text-gray-900">
 			{/* Sidebar */}
 			<div className="w-full md:w-1/5">
-				<div className="w-full text-6xl text-center pt-5 font-serif">KPI's</div>
-				<nav className="flex-1 space-y-1 px-0 pt-6">
+				<div className="w-full text-6xl text-center pt-5 mt-4 font-serif">
+					KPI's
+				</div>
+				<nav className="flex-1 space-y-1 px-0 pt-6 mt-24">
 					{reportTypes.map((report) => {
 						const isActive = selectedReport === report.type;
 						return (
