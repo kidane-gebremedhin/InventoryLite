@@ -53,21 +53,19 @@ export async function proxy(request: NextRequest) {
 		);
 
 		const { data } = await supabase.auth.getUser();
-		if (data) {
-			user = await fetchUserProfile(data.user);
-			if (user) {
-				supabaseResponse.cookies.set({
-					name: CookiesKey.ucookiesinfo,
-					value: JSON.stringify(user),
-					httpOnly: true,
-					secure: true,
-					sameSite: "strict",
-					path: "/",
-					maxAge: CACHE_TTL_USER_SUBSCRIPTION_INFO,
-				});
-			}
-			console.log("User details From DB");
+		user = await fetchUserProfile(data?.user);
+		if (user) {
+			supabaseResponse.cookies.set({
+				name: CookiesKey.ucookiesinfo,
+				value: JSON.stringify(user),
+				httpOnly: true,
+				secure: true,
+				sameSite: "strict",
+				path: "/",
+				maxAge: CACHE_TTL_USER_SUBSCRIPTION_INFO,
+			});
 		}
+		console.log("User details From DB");
 	} else {
 		user = JSON.parse(userSubscriptionInfo);
 		console.log("User details From Cookies");

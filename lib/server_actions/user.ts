@@ -23,7 +23,7 @@ import type {
 import { makeRpcCall } from "./rpc";
 
 export const fetchUserProfile = async (
-	user: SupabaseUser,
+	user: SupabaseUser | null,
 	useCache: boolean = false,
 ): Promise<User> => {
 	if (!user) return null;
