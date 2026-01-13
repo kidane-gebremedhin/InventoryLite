@@ -36,7 +36,7 @@ export function ConfirmationModal({
 							setLoading(true);
 							onConfirmationSuccess(id, orderStatus);
 						}}
-						className="btn-outline-error"
+						className="btn-outline-primary"
 					>
 						<div className="flex items-center">
 							<CheckIcon className="h-6 w-6" /> Confirm
