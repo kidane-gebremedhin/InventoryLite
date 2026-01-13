@@ -234,6 +234,7 @@ export enum ROUTE_PATH {
 	AFFILIATE_PARTNER = "/dashboard/affiliate-partner",
 	TENANT = "/dashboard/tenant",
 	ENABLE_COOKIES = "/dashboard/fallback/enable-cookies",
+	DEACTIVATED_ACCOUNT = "/dashboard/fallback/account-deactivated",
 }
 
 export enum SettingSection {
