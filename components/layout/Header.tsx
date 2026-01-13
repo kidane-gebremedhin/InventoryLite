@@ -51,7 +51,14 @@ export default function Header() {
 	};
 
 	if (loading || !currentUser) {
-		return null;
+		return (
+			<header
+				className="md:w-full bg-white shadow-sm border-b border-gray-200"
+				style={{ position: "fixed", zIndex: 2 }}
+			>
+				<div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8"></div>
+			</header>
+		);
 	}
 
 	return (

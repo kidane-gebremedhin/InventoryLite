@@ -126,7 +126,14 @@ export default function Sidebar() {
 		setOptions(navigationOptions());
 	}, [navigationOptions]);
 
-	if (!currentUser) return <MiniLoading />;
+	if (!currentUser)
+		return (
+			<div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+				<div className="flex flex-col flex-grow bg-white border-r border-gray-200">
+					<MiniLoading />
+				</div>
+			</div>
+		);
 
 	return (
 		<>
