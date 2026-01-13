@@ -181,9 +181,10 @@ export default function PricingPlan() {
 									}
 									aria-describedby={tier.id}
 									className={`mt-8 block rounded-md py-0 px-3 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 transition-all duration-300
-                    ${tier.mostPopular
-											? "bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600"
-											: "text-green-600 ring-1 ring-inset ring-green-200 hover:ring-green-300 focus-visible:outline-green-600"
+                    ${
+											tier.mostPopular
+												? "bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600"
+												: "text-green-600 ring-1 ring-inset ring-green-200 hover:ring-green-300 focus-visible:outline-green-600"
 										}`}
 								>
 									Get Started

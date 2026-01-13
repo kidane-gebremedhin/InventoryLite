@@ -26,7 +26,13 @@ export default function Navbar() {
 							<Link href={ROUTE_PATH.LANDING_PAGE}>Home</Link>
 							<Link href={ROUTE_PATH.PRICING_PLAN}>Pricing</Link>
 							<Link href={ROUTE_PATH.PRODUCT_DEMO}>Demo</Link>
-							<Link target="_blank" href={"/mobile_apps/GebeyaStock-Android.apk"} download>Mobile App</Link>
+							<Link
+								target="_blank"
+								href={"/mobile_apps/GebeyaStock-Android.apk"}
+								download
+							>
+								Mobile App
+							</Link>
 						</div>
 						<Link
 							href={ROUTE_PATH.SIGNIN}

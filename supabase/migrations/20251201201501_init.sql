@@ -487,7 +487,7 @@ BEGIN
         t.current_payment_expiry_date, 
         t.profile_complete, 
         t.description, 
-        t.status, 
+        utm.status, 
         t.created_at,
         t.updated_at,
         utm.role

@@ -8,6 +8,7 @@ import {
 import {
 	ConsentCookieStatus,
 	CookiesKey,
+	RecordStatus,
 	ROUTE_PATH,
 	SubscriptionStatus,
 	UserRole,
@@ -72,7 +73,7 @@ export async function proxy(request: NextRequest) {
 	}
 
 	// Redirect unauthenticated users to login page except for public ones
-	if (!PUBLIC_PATHS.includes(request.nextUrl.pathname)) {
+	if (!PUBLIC_PATHS.includes(request.nextUrl.pathname) || user?.subscriptionInfo?.status !== RecordStatus.ACTIVE) {
 		if (!user) {
 			return NextResponse.redirect(new URL(ROUTE_PATH.SIGNIN, request.url));
 		}
