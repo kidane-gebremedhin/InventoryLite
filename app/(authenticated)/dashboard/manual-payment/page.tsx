@@ -146,7 +146,14 @@ export default function ManualPaymentPage() {
 		// reset pagination
 		router.push(`?page=${currentPage}`);
 		loadManualPayments();
-	}, [isModalOpen, currentUser, currentPage, router, handleAdd, loadManualPayments]);
+	}, [
+		isModalOpen,
+		currentUser,
+		currentPage,
+		router,
+		handleAdd,
+		loadManualPayments,
+	]);
 
 	const handleEdit = (id: string) => {
 		const manualPayment = manualPayments.find(
@@ -169,9 +176,9 @@ export default function ManualPaymentPage() {
 					return manualPayment.id !== id
 						? manualPayment
 						: {
-							...manualPayment,
-							status: PaymentStatus.APPROVED,
-						};
+								...manualPayment,
+								status: PaymentStatus.APPROVED,
+							};
 				});
 
 				setManualPayments(updatedRecords);
@@ -197,9 +204,9 @@ export default function ManualPaymentPage() {
 					return manualPayment.id !== id
 						? manualPayment
 						: {
-							...manualPayment,
-							status: PaymentStatus.DECLINED,
-						};
+								...manualPayment,
+								status: PaymentStatus.DECLINED,
+							};
 				});
 
 				setManualPayments(updatedRecords);
@@ -439,20 +446,20 @@ export default function ManualPaymentPage() {
 										<td className="px-6 py-4 text-center">
 											{canSeeMore
 												? shortenText(
-													manualPayment.description,
-													MAX_TABLE_TEXT_LENGTH,
-												)
+														manualPayment.description,
+														MAX_TABLE_TEXT_LENGTH,
+													)
 												: manualPayment.description}
 											{manualPayment.description?.length >
 												MAX_TABLE_TEXT_LENGTH && (
-													<button
-														type="button"
-														onClick={() => setCanSeeMore(!canSeeMore)}
-														className="text-blue-300"
-													>
-														{canSeeMore ? "more" : "  less..."}
-													</button>
-												)}
+												<button
+													type="button"
+													onClick={() => setCanSeeMore(!canSeeMore)}
+													className="text-blue-300"
+												>
+													{canSeeMore ? "more" : "  less..."}
+												</button>
+											)}
 										</td>
 										<td className="px-6 py-4 text-center">
 											{formatDateToLocalDate(manualPayment.created_at)}
@@ -461,58 +468,58 @@ export default function ManualPaymentPage() {
 											<div className="flex justify-center space-x-2 items-center">
 												{(manualPayment.status === PaymentStatus.PENDING ||
 													currentUser?.subscriptionInfo?.role ===
-													UserRole.SUPER_ADMIN) && (
-														<ActionsMenu
-															actions={[
-																{
-																	id: manualPayment.id,
-																	hideOption:
-																		manualPayment.status !==
-																		PaymentStatus.PENDING,
-																	icon: <PencilIcon className="h-4 w-4" />,
-																	label: "Edit Details",
-																	class:
-																		"w-full text-primary-600 hover:text-primary-900",
-																	listener: handleEdit,
-																},
-																{
-																	id: manualPayment.id,
-																	hideOption:
-																		manualPayment.status ===
+														UserRole.SUPER_ADMIN) && (
+													<ActionsMenu
+														actions={[
+															{
+																id: manualPayment.id,
+																hideOption:
+																	manualPayment.status !==
+																	PaymentStatus.PENDING,
+																icon: <PencilIcon className="h-4 w-4" />,
+																label: "Edit Details",
+																class:
+																	"w-full text-primary-600 hover:text-primary-900",
+																listener: handleEdit,
+															},
+															{
+																id: manualPayment.id,
+																hideOption:
+																	manualPayment.status ===
 																		PaymentStatus.APPROVED ||
-																		currentUser?.subscriptionInfo?.role !==
+																	currentUser?.subscriptionInfo?.role !==
 																		UserRole.SUPER_ADMIN,
-																	icon: <CheckmarkIcon className="h-4 w-4" />,
-																	label: "Approve Payment",
-																	class:
-																		"w-full text-green-600 hover:text-yellow-900",
-																	listener: () => {
-																		setCurrentActiveId(manualPayment.id);
-																		setIsApprovePaymentConfirmationModalOpen(
-																			true,
-																		);
-																	},
+																icon: <CheckmarkIcon className="h-4 w-4" />,
+																label: "Approve Payment",
+																class:
+																	"w-full text-green-600 hover:text-yellow-900",
+																listener: () => {
+																	setCurrentActiveId(manualPayment.id);
+																	setIsApprovePaymentConfirmationModalOpen(
+																		true,
+																	);
 																},
-																{
-																	id: manualPayment.id,
-																	hideOption:
-																		manualPayment.status ===
+															},
+															{
+																id: manualPayment.id,
+																hideOption:
+																	manualPayment.status ===
 																		PaymentStatus.DECLINED ||
-																		currentUser?.subscriptionInfo?.role !==
+																	currentUser?.subscriptionInfo?.role !==
 																		UserRole.SUPER_ADMIN,
-																	icon: <TrashIcon className="h-4 w-4" />,
-																	label: "Decline Payment",
-																	class: "w-full text-red-600 hover:text-red-900",
-																	listener: () => {
-																		setCurrentActiveId(manualPayment.id);
-																		setIsDeclinePaymentConfirmationModalOpen(
-																			true,
-																		);
-																	},
+																icon: <TrashIcon className="h-4 w-4" />,
+																label: "Decline Payment",
+																class: "w-full text-red-600 hover:text-red-900",
+																listener: () => {
+																	setCurrentActiveId(manualPayment.id);
+																	setIsDeclinePaymentConfirmationModalOpen(
+																		true,
+																	);
 																},
-															]}
-														/>
-													)}
+															},
+														]}
+													/>
+												)}
 											</div>
 										</td>
 									</tr>
