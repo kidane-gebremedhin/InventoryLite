@@ -88,7 +88,7 @@ export function LowStockLevelNotification({
 			className={`relative p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 ${className}`}
 		>
 			<div className="mt-0">
-				<Tooltip text="Out of stock items">
+				<Tooltip text="Low/Out stock items">
 					<BellIcon className="h-6 w-6" />
 				</Tooltip>
 			</div>
