@@ -6,7 +6,8 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"lint": "biome check --write --error-on-warnings",
+		"lint": "biome check --write --error-on-warnings .",
+		"format": "biome format --write .",
 		"prepare": "husky"
 	},
 	"dependencies": {

@@ -127,6 +127,8 @@ export default function ManualPaymentPage() {
 	]);
 
 	useEffect(() => {
+		if (!isModalOpen) return;
+
 		if (
 			currentUser?.subscriptionInfo?.subscription_status ===
 			SubscriptionStatus.EXPIRED
@@ -144,7 +146,14 @@ export default function ManualPaymentPage() {
 		// reset pagination
 		router.push(`?page=${currentPage}`);
 		loadManualPayments();
-	}, [currentUser, currentPage, router, handleAdd, loadManualPayments]);
+	}, [
+		isModalOpen,
+		currentUser,
+		currentPage,
+		router,
+		handleAdd,
+		loadManualPayments,
+	]);
 
 	const handleEdit = (id: string) => {
 		const manualPayment = manualPayments.find(
