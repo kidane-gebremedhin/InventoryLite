@@ -47,9 +47,9 @@ export async function sendUserInvitationMail({
 			replyTo: process.env.SMTP_EMAIL_USERNAME,
 		});
 		data = { success: true, message: "Email sent successfully!" };
-		console.error("mail sent");
+		console.error("User invitation mail sent");
 	} catch (_error) {
-		console.error("mail error", error);
+		console.error("User invitation mail error", error);
 		error = { success: false, message: "Failed to send email." };
 	}
 
@@ -162,9 +162,9 @@ export async function sendUpcomingPaymentDueNotificationMail({
 			success: true,
 			message: "Payment due notification email sent successfully!",
 		};
-		console.error("mail sent");
+		console.error("Upcoming payment notification mail sent");
 	} catch (_error) {
-		console.error("mail error", error);
+		console.error("Upcoming payment notification mail error", error);
 		error = {
 			success: false,
 			message: "Failed to send payment due notification email.",
