@@ -351,28 +351,28 @@ export default function App() {
 			case ReportType.INVENTORY_TURNOVER:
 				return (
 					<div className="w-full overflow-x-scroll p-4">
-						<div className="w-[1000px]">
+						<div className="w-[900px]">
 							<h2 className="text-2xl font-bold mb-4 text-gray-800">
 								{/* Inventory Turnover Report */}
 								Most Selling Items
 							</h2>
-							<p className="mb-6 text-gray-600">
-								Items sorted by sale frequency (highest first).{" "}
-								{fulfilledDateStart && (
-									<span>
-										<b>Date:</b> <u>{formatDateToYYMMDD(fulfilledDateStart)}</u>
-									</span>
-								)}{" "}
-								{fulfilledDateEnd && (
-									<span>
-										<b>to</b> <u>{formatDateToYYMMDD(fulfilledDateEnd)}</u>
-									</span>
-								)}
-							</p>
-							<div className="w-full md:text-right md:items-right mb-4">
+							<div className="w-full flex mb-4">
+								<p className="mb-6 text-gray-600">
+									Sorted by sale frequency <i>(highest first)</i>.{" "}
+									{fulfilledDateStart && (
+										<span>
+											<u>{formatDateToYYMMDD(fulfilledDateStart)}</u>
+										</span>
+									)}{" "}
+									{fulfilledDateEnd && (
+										<span>
+											<b>to</b> <u>{formatDateToYYMMDD(fulfilledDateEnd)}</u>
+										</span>
+									)}
+								</p>
 								<button
 									type="button"
-									className="btn-outline-default px-4 py-1 text-sm h-7 rounded items-center"
+									className="ml-auto btn-outline-default px-4 py-1 text-sm h-7 rounded items-center"
 									onClick={() => {
 										setShowFilters(!showFilters);
 									}}
@@ -411,16 +411,16 @@ export default function App() {
 							<table className="min-w-full bg-white rounded-lg shadow-md">
 								<thead className="bg-gray-200">
 									<tr>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Item Name
 										</th>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Sale Frequency/Fulfilled Date
 										</th>
 									</tr>
 									{showFilters && (
 										<tr className="card">
-											<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 												<select
 													value={selectedInventoryItemId}
 													onChange={(e) => {
@@ -445,7 +445,7 @@ export default function App() {
 											</th>
 											<th
 												style={{ maxWidth: 30 }}
-												className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+												className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
 											>
 												<DatePicker
 													selected={fulfilledDateStart}
@@ -493,7 +493,7 @@ export default function App() {
 			case ReportType.CANCELED_PURCHASE_ORDERS:
 				return (
 					<div className="w-full overflow-x-scroll p-4">
-						<div className="w-[1000px]">
+						<div className="w-[900px]">
 							<h2 className="text-2xl font-bold mb-4 text-gray-800">
 								{
 									reportTypes.find(
@@ -502,27 +502,29 @@ export default function App() {
 									)?.name
 								}
 							</h2>
-							<p className="mb-6 text-gray-600">
-								Items sorted by{" "}
-								{selectedReport === ReportType.PENDING_SALES_ORDERS
-									? "demand"
-									: ""}{" "}
-								quantity (highest first).{" "}
-								{expectedDateStart && (
-									<span>
-										<b>Date:</b> <u>{formatDateToYYMMDD(expectedDateStart)}</u>
-									</span>
-								)}{" "}
-								{expectedDateEnd && (
-									<span>
-										<b>to</b> <u>{formatDateToYYMMDD(expectedDateEnd)}</u>
-									</span>
-								)}
-							</p>
-							<div className="w-full md:text-right md:items-right mb-4">
+
+							<div className="w-full flex mb-4">
+								<p className="mb-6 text-gray-600">
+									Items sorted by{" "}
+									{selectedReport === ReportType.PENDING_SALES_ORDERS
+										? "demand"
+										: ""}{" "}
+									quantity <i>(highest first)</i>.{" "}
+									{expectedDateStart && (
+										<span>
+											<b>Date:</b>{" "}
+											<u>{formatDateToYYMMDD(expectedDateStart)}</u>
+										</span>
+									)}{" "}
+									{expectedDateEnd && (
+										<span>
+											<b>to</b> <u>{formatDateToYYMMDD(expectedDateEnd)}</u>
+										</span>
+									)}
+								</p>
 								<button
 									type="button"
-									className="btn-outline-default px-4 py-1 text-sm h-7 rounded items-center"
+									className="ml-auto btn-outline-default px-4 py-1 text-sm h-7 rounded items-center"
 									onClick={() => {
 										setShowFilters(!showFilters);
 									}}
@@ -563,19 +565,19 @@ export default function App() {
 							<table className="min-w-full bg-white rounded-lg shadow-md">
 								<thead className="bg-gray-200">
 									<tr>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Item Name
 										</th>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Quantity
 										</th>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Expected Date
 										</th>
 									</tr>
 									{showFilters && (
 										<tr className="card">
-											<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 												<select
 													value={selectedInventoryItemId}
 													onChange={(e) => {
@@ -600,7 +602,7 @@ export default function App() {
 											</th>
 											<th
 												colSpan={2}
-												className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+												className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
 											>
 												<DatePicker
 													selected={expectedDateStart}
@@ -648,27 +650,28 @@ export default function App() {
 			case ReportType.INVENTORY_AGING:
 				return (
 					<div className="w-full overflow-x-scroll p-4">
-						<div className="w-[1000px]">
+						<div className="w-[900px]">
 							<h2 className="text-2xl font-bold mb-4 text-gray-800">
 								Inventory Aging Report
 							</h2>
-							<p className="mb-6 text-gray-600">
-								Items sorted by days in stock (oldest first).{" "}
-								{receivedDateStart && (
-									<span>
-										<b>Date:</b> <u>{formatDateToYYMMDD(receivedDateStart)}</u>
-									</span>
-								)}{" "}
-								{receivedDateEnd && (
-									<span>
-										<b>to</b> <u>{formatDateToYYMMDD(receivedDateEnd)}</u>
-									</span>
-								)}
-							</p>
-							<div className="w-full md:text-right md:items-right mb-4">
+
+							<div className="w-full flex mb-4">
+								<p className="mb-6 text-gray-600">
+									Sorted by days in stock <i>(oldest first)</i>.{" "}
+									{receivedDateStart && (
+										<span>
+											<u>{formatDateToYYMMDD(receivedDateStart)}</u>
+										</span>
+									)}{" "}
+									{receivedDateEnd && (
+										<span>
+											<b>to</b> <u>{formatDateToYYMMDD(receivedDateEnd)}</u>
+										</span>
+									)}
+								</p>
 								<button
 									type="button"
-									className="btn-outline-default px-4 py-1 text-sm h-7 rounded items-center"
+									className="ml-auto btn-outline-default px-4 py-1 text-sm h-7 rounded items-center"
 									onClick={() => {
 										setShowFilters(!showFilters);
 									}}
@@ -713,25 +716,25 @@ export default function App() {
 							<table className="min-w-full bg-white rounded-lg shadow-md">
 								<thead className="bg-gray-200">
 									<tr>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Item Name
 										</th>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Order Number
 										</th>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Quantity
 										</th>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Days in Stock
 										</th>
-										<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 											Received Date
 										</th>
 									</tr>
 									{showFilters && (
 										<tr className="card">
-											<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 												<select
 													value={selectedInventoryItemId}
 													onChange={(e) => {
@@ -754,7 +757,7 @@ export default function App() {
 													))}
 												</select>
 											</th>
-											<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
 												<div className="relative">
 													<MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
 													<input
@@ -774,11 +777,11 @@ export default function App() {
 													/>
 												</div>
 											</th>
-											<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-											<th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+											<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+											<th className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
 											<th
 												style={{ maxWidth: 300 }}
-												className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+												className="px-1 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
 											>
 												<DatePicker
 													selected={receivedDateStart}
@@ -840,10 +843,10 @@ export default function App() {
 		<div className="md:flex min-h-screen bg-white-900 text-gray-900">
 			{/* Sidebar */}
 			<div className="w-full md:w-1/5">
-				<div className="w-full text-6xl text-center pt-5 mt-4 font-serif">
+				<div className="w-full text-8xl text-center pt-5 mt-10 font-serif">
 					KPI's
 				</div>
-				<nav className="flex-1 space-y-1 px-0 pt-6 mt-24">
+				<nav className="flex-1 space-y-1 px-0 pt-6 mt-5">
 					{reportTypes.map((report) => {
 						const isActive = selectedReport === report.type;
 						return (
