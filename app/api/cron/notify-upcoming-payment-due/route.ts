@@ -6,9 +6,10 @@ export async function POST(req: Request) {
 	console.log("Cron 1", req);
 	// 1. Verify Authorization Header
 	const authHeader = req.headers.get("Authorization");
-	if (authHeader !== `Bearer ${process.env.SUPABASE_CRON_SECRET}`) {
-		return new Response("Unauthorized", { status: 401 });
-	}
+	console.log("Cron authHeader", authHeader);
+	// if (authHeader !== `Bearer ${process.env.SUPABASE_CRON_SECRET}`) {
+	// 	return new Response("Unauthorized", { status: 401 });
+	// }
 
 	try {
 		const bodyPlain: string = await req.text();
