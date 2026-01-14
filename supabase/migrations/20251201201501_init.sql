@@ -5,6 +5,11 @@ DROP EXTENSION IF EXISTS "pg_cron" CASCADE;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS "pg_cron" WITH SCHEMA public;
 
+CREATE EXTENSION IF NOT EXISTS "pg_net" WITH SCHEMA public;
+grant usage on schema net to postgres;
+grant all privileges on all tables in schema net to postgres;
+grant all privileges on all functions in schema net to postgres;
+
 ------------------------------------------------------------------------------------
 -- UP
 ------------------------------------------------------------------------------------
@@ -2177,7 +2182,7 @@ BEGIN
       FROM public.tenants t
       INNER JOIN public.subscription_plans sp
       ON t.subscription_plan_id = sp.id
-      WHERE t.current_payment_expiry_date < NOW() + INTERVAL '7 Days'
+      WHERE t.profile_complete IS TRUE AND t.current_payment_expiry_date < NOW() + INTERVAL '7 Days'
     )
   ) INTO v_payload;
 
