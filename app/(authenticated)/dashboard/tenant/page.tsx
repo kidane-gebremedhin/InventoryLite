@@ -287,10 +287,10 @@ export default function TenantPage() {
 										Curency
 									</th>
 									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Payment Due Date
+										Payment Amount
 									</th>
 									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Payment Amount
+										Payment Due Date
 									</th>
 									<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 										Affiliate Partner
@@ -419,14 +419,14 @@ export default function TenantPage() {
 										<td className="px-6 py-4">
 											<div>
 												<div className="text-sm font-medium text-gray-900">
-													{tenant.current_payment_expiry_date}
+													{tenant.subscription_plan?.payment_amount}
 												</div>
 											</div>
 										</td>
 										<td className="px-6 py-4">
 											<div>
 												<div className="text-sm font-medium text-gray-900">
-													{tenant.subscription_plan?.payment_amount}
+													{tenant.current_payment_expiry_date}
 												</div>
 											</div>
 										</td>
