@@ -470,7 +470,7 @@ export default function App() {
 													{report.item_name}
 												</td>
 												<td
-													className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900`}
+													className={`px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900`}
 												>
 													{report.sold_quantity}
 												</td>
