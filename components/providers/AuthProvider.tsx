@@ -110,12 +110,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	};
 
 	const signInWithGoogle = async () => {
-		await supabase.auth.signInWithOAuth({
-			provider: "google",
-			options: {
-				redirectTo: `${location.origin}${ROUTE_PATH.OAUTH_GOOGLE_WEBHOOK}`,
-			},
-		});
+		if (window.ReactNativeWebView) {
+			window.ReactNativeWebView.postMessage(
+				JSON.stringify({ type: "GOOGLE_LOGIN" }),
+			);
+		} else {
+			await supabase.auth.signInWithOAuth({
+				provider: "google",
+				options: {
+					redirectTo: `${location.origin}${ROUTE_PATH.OAUTH_GOOGLE_WEBHOOK}`,
+				},
+			});
+		}
 	};
 
 	const value = {
