@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 import { ROUTE_PATH } from "@/lib/Enums";
 import { acceptCookies, consentGiven } from "@/lib/helpers/Helper";
 import { useLoadingContext } from "../context_apis/LoadingProvider";
+import { useAuthContext } from "../providers/AuthProvider";
 
 export default function CookiesConsent() {
 	const [consent, setConsent] = useState(null);
 	const router = useRouter();
 	const { setLoading } = useLoadingContext();
+	const { currentUser } = useAuthContext();
 
 	useEffect(() => {
 		setConsent(consentGiven());
@@ -47,7 +49,9 @@ export default function CookiesConsent() {
 									await acceptCookies();
 									setConsent(true);
 									setLoading(true);
-									router.push(ROUTE_PATH.DASHBOARD);
+									if (currentUser?.subscriptionInfo?.profile_complete) {
+										router.push(ROUTE_PATH.DASHBOARD);
+									}
 								}}
 								className="px-6 py-3 bg-green-500 text-gray-900 font-bold rounded-lg hover:bg-green-600 transition duration-150 shadow-lg whitespace-nowrap"
 							>
