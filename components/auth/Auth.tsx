@@ -12,7 +12,7 @@ export function Auth() {
 	return (
 		<div className="space-y-6">
 			<div className="text-center">
-				<p className="text-gray-600 mt-2">𝙎𝒊𝙜𝒏 𝒊𝙣 𝙬𝒊𝙩𝒉 𝒚𝙤𝒖𝙧 𝙂𝒐𝙤𝒈𝙡𝒆 𝒂𝙘𝒄𝙤𝒖𝙣𝒕.</p>
+				<p className="text-gray-600 mt-2">Signin with your Google account.</p>
 			</div>
 
 			<div className="space-y-4">

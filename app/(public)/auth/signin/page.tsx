@@ -1,7 +1,7 @@
 "use client";
 
 import { Auth } from "@/components/auth/Auth";
-import { AuthProvider } from "@/components/providers/AuthProvider";
+import AuthOTP from "@/components/auth/AuthOTP";
 
 export default function HomePage() {
 	return (
@@ -16,9 +16,8 @@ export default function HomePage() {
 					</div>
 
 					<div className="card">
-						<AuthProvider>
-							<Auth />
-						</AuthProvider>
+						<AuthOTP />
+						<Auth />
 					</div>
 				</div>
 			</div>

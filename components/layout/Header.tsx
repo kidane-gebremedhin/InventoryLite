@@ -70,7 +70,11 @@ export default function Header() {
 				<div className="flex items-center">
 					<h2 className="text-lg font-semibold text-gray-900 pl-9 md:pl-0">
 						Welcome back,{" "}
-						{capitalizeFirstLetter(currentUser.fullName.split(" ")[0])}.
+						{capitalizeFirstLetter(
+							(currentUser.fullName?.split(" ") ||
+								currentUser.email.split("@"))[0],
+						)}
+						.
 					</h2>
 				</div>
 
@@ -111,7 +115,10 @@ export default function Header() {
 							<div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
 								<div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100 text-center">
 									<div className="font-medium">
-										<strong>{currentUser?.fullName}</strong>
+										<strong>
+											{currentUser?.fullName ||
+												currentUser.email?.split("@")[0]}
+										</strong>
 									</div>
 									<div
 										className="text-orange-500 py-1"

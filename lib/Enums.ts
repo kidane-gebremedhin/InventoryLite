@@ -205,6 +205,7 @@ export enum ROUTE_PATH {
 	// Public routes
 	LANDING_PAGE = "/",
 	SIGNIN = "/auth/signin",
+	OTP_SIGNIN_CALLBACK = "/auth/email-otp",
 	PRICING_PLAN = "/pricing-plan",
 	PRIVACY_POLICY = "/privacy-policy",
 	PRODUCT_DEMO = "/product-demo",

@@ -30,7 +30,7 @@ export const fetchUserProfile = async (
 
 	const userData: User = {
 		id: user.id,
-		fullName: user.user_metadata.full_name,
+		fullName: user.user_metadata.full_name || user.email?.split("@")[0],
 		email: user.email,
 		picturePicture: user.user_metadata.picture,
 		subscriptionInfo: await fetchUserSubscriptionInfo(user, useCache),
