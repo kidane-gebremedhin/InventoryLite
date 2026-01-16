@@ -71,8 +71,8 @@ export default function Header() {
 					<h2 className="text-lg font-semibold text-gray-900 pl-9 md:pl-0">
 						Welcome back,{" "}
 						{capitalizeFirstLetter(
-							(currentUser.fullName?.split(" ") ||
-								currentUser.email.split("@"))[0],
+							currentUser?.fullName?.split(" ")[0] ||
+								currentUser?.subscriptionInfo?.name,
 						)}
 						.
 					</h2>
@@ -117,14 +117,14 @@ export default function Header() {
 									<div className="font-medium">
 										<strong>
 											{currentUser?.fullName ||
-												currentUser.email?.split("@")[0]}
+												currentUser?.subscriptionInfo?.name?.split("@")[0]}
 										</strong>
 									</div>
 									<div
 										className="text-orange-500 py-1"
 										style={{ textTransform: "capitalize" }}
 									>
-										{currentUser?.subscriptionInfo.subscription_status.replaceAll(
+										{currentUser?.subscriptionInfo?.subscription_status?.replaceAll(
 											"_",
 											" ",
 										)}

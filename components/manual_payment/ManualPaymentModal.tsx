@@ -76,7 +76,7 @@ export function ManualPaymentModal({
 
 	if (!isOpen) return null;
 
-	if (!currentUser?.subscriptionInfo.currency_type) {
+	if (!currentUser?.subscriptionInfo?.currency_type) {
 		return (
 			<div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
 				<div className="relative top-64 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
