@@ -70,7 +70,9 @@ export default function SettingsPage() {
 								<input
 									type="text"
 									className="input-field mt-1"
-									defaultValue={currentUser.fullName}
+									defaultValue={
+										currentUser.fullName || currentUser.email?.split("@")[0]
+									}
 									disabled
 								/>
 								<p className="text-xs text-gray-500 mt-1">
