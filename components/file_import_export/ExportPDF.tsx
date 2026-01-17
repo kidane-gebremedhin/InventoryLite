@@ -39,7 +39,8 @@ export default function ExportPDF({
 			onClick={exportToPDF}
 			className="btn-outline-warning px-4 py-1 text-sm h-7 rounded items-center"
 		>
-			Export to PDF
+			<span className="hidden md:block">Export to PDF</span>
+			<span className="block md:hidden">PDF</span>
 		</button>
 	);
 }
