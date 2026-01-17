@@ -36,7 +36,7 @@ export default function Navbar() {
 						</div>
 						<Link
 							href={ROUTE_PATH.SIGNIN}
-							className="ml-auto md:ml-4 px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 transition-all duration-200"
+							className="text-[10px] xs:text-[10px] lg:text-sm ml-auto md:ml-4 xs:px-2 sm:px-2 md:px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 transition-all duration-200"
 						>
 							Sign In
 						</Link>

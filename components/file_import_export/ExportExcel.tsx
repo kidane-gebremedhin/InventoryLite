@@ -30,7 +30,8 @@ export default function ExportExcel({
 			onClick={exportToExcel}
 			className="btn-outline-success px-4 py-1 text-sm h-7 rounded items-center"
 		>
-			Export to Excel
+			<span className="hidden md:block">Export to Excel</span>
+			<span className="block md:hidden">Excel</span>
 		</button>
 	);
 }

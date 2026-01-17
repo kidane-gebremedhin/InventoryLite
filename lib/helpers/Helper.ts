@@ -195,7 +195,8 @@ export const formatDateToLocalDate = (dateStr?: string): string => {
 export const formatDateToYYMMDD = (date: Date | null): string => {
 	if (!date) return "";
 
-	const dateWithTimezone = new Date(getDateStringForDisplay(date));
+	//const dateWithTimezone = new Date(getDateStringForDisplay(date));
+	const dateWithTimezone = new Date(date);
 	// Note: getMonth is zero indexed
 	return `${dateWithTimezone.getDate()}-${dateWithTimezone.getMonth() + 1}-${dateWithTimezone.getFullYear()}`;
 };

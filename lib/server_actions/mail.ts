@@ -11,6 +11,8 @@ const transporter = nodemailer.createTransport({
 		user: process.env.SMTP_EMAIL_USERNAME,
 		pass: process.env.SMTP_EMAIL_PASSWORD,
 	},
+	connectionTimeout: 20000,
+	greetingTimeout: 10000,
 });
 
 export async function sendUserInvitationMail({
@@ -47,7 +49,7 @@ export async function sendUserInvitationMail({
 			replyTo: process.env.SMTP_EMAIL_USERNAME,
 		});
 		data = { success: true, message: "Email sent successfully!" };
-		console.error("User invitation mail sent");
+		console.log("User invitation mail sent");
 	} catch (_error) {
 		console.error("User invitation mail error", error);
 		error = { success: false, message: "Failed to send email." };
@@ -162,7 +164,7 @@ export async function sendUpcomingPaymentDueNotificationMail({
 			success: true,
 			message: "Payment due notification email sent successfully!",
 		};
-		console.error("Upcoming payment notification mail sent");
+		console.log("Upcoming payment notification mail sent");
 	} catch (_error) {
 		console.error("Upcoming payment notification mail error", error);
 		error = {
