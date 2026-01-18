@@ -39,7 +39,7 @@ export default function CompleteProfile() {
 
 	useEffect(() => {
 		const initialData: Partial<UserSubscriptionInfo> = {
-			name: currentUser?.subscriptionInfo?.name.split("@")[0],
+			name: "",
 			domain_id: currentUser?.subscriptionInfo?.domain_id || "",
 			subscription_plan_id:
 				currentUser?.subscriptionInfo?.subscription_plan_id || "",
@@ -130,8 +130,9 @@ export default function CompleteProfile() {
 
 			showSuccessToast("Profile updated.");
 			router.push(ROUTE_PATH.DASHBOARD);
-		} catch (_error) {
-			showErrorToast();
+		} catch (error) {
+			console.log("Profile updated error", error);
+			//showErrorToast();
 		} finally {
 			setLoading(false);
 		}

@@ -1,0 +1,42 @@
+services:
+#   nextapp:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     image: inventorylite:dev
+#     container_name: inventorylite_dev
+#     volumes:
+#       - .:/app
+#       - /app/node_modules
+#     ports:
+#       - "5000:3000"
+#     environment:
+#       NODE_ENV: production
+#       REDIS_URL: redis://redis:6379
+#     depends_on:
+#       - redis
+#   redis:
+#     image: redis:7-alpine
+#     ports:
+#       - "6379:6379"
+#     volumes:
+#       - redis_data:/data
+#     command: redis-server --appendonly yes
+
+# volumes:
+#   redis_data:
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inventorylite_dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+    
