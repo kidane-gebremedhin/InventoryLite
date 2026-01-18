@@ -229,13 +229,13 @@ export default function DashboardPage() {
 	return (
 		<div className="space-y-6">
 			<div className="w-full flex">
-				<div className="w-3/4">
+				<div className="w-2/3 md:w-3/4">
 					<h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
 					<p className="text-gray-600">
 						Overview of your inventory management system
 					</p>
 				</div>
-				<div className="w-1/4">
+				<div className="w-1/3 md:w-1/4">
 					<select
 						value={reportDaysCount}
 						onChange={(e) => setReportDaysCount(Number(e.target.value))}

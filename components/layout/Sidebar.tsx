@@ -12,11 +12,11 @@ import {
 	TruckIcon,
 	UserGroupIcon,
 	UsersIcon,
-	WindowIcon,
 	XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { FireIcon } from "@heroicons/react/24/solid";
 import { clsx } from "clsx";
+import { Grid2X2Icon, Grid3X3 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -35,8 +35,8 @@ export default function Sidebar() {
 		const paths = [
 			{ name: "Dashboard", href: ROUTE_PATH.DASHBOARD, icon: HomeIcon },
 			{ name: "Stores", href: ROUTE_PATH.STORE, icon: BuildingStorefrontIcon },
-			{ name: "Categories", href: ROUTE_PATH.CATEGORY, icon: WindowIcon },
-			{ name: "Variants", href: ROUTE_PATH.VARIANT, icon: CubeIcon },
+			{ name: "Categories", href: ROUTE_PATH.CATEGORY, icon: Grid2X2Icon },
+			{ name: "Variants", href: ROUTE_PATH.VARIANT, icon: Grid3X3 },
 			{
 				name: "Inventory Items",
 				href: ROUTE_PATH.INVENTORY_ITEM,
@@ -45,7 +45,7 @@ export default function Sidebar() {
 			{
 				name: "Suppliers",
 				href: ROUTE_PATH.SUPPLIER,
-				icon: BuildingStorefrontIcon,
+				icon: UserGroupIcon,
 			},
 			{
 				name: "Purchase Orders",

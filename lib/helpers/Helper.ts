@@ -195,10 +195,10 @@ export const formatDateToLocalDate = (dateStr?: string): string => {
 export const formatDateToYYMMDD = (date: Date | null): string => {
 	if (!date) return "";
 
-	//const dateWithTimezone = new Date(getDateStringForDisplay(date));
-	const dateWithTimezone = new Date(date);
+	const dateWithTimezone = new Date(getDateStringForDisplay(date));
+
 	// Note: getMonth is zero indexed
-	return `${dateWithTimezone.getDate()}-${dateWithTimezone.getMonth() + 1}-${dateWithTimezone.getFullYear()}`;
+	return `${dateWithTimezone.getDate()}/${dateWithTimezone.getMonth() + 1}/${dateWithTimezone.getFullYear()}`;
 };
 
 export const getCurrentDateTime = (date?: Date): Date => {
@@ -210,9 +210,9 @@ export const getCurrentDate = (): string => {
 	const dateTime = getCurrentDateTime();
 	return (
 		dateTime.getDate() +
-		"-" +
+		"/" +
 		dateTime.getMonth() +
-		"-" +
+		"/" +
 		dateTime.getFullYear()
 	);
 };

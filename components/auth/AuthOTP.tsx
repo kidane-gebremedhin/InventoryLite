@@ -85,6 +85,8 @@ export default function EmailOtpLogin() {
 				<div className="w-full text-center">
 					<p className="pb-2">
 						We have sent OTP to: <strong>{email}</strong>
+						<br />
+						OTP will expire in 10 minutes
 					</p>
 					<div className="w-full p-1">
 						<input

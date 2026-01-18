@@ -7,7 +7,7 @@ import { ROUTE_PATH } from "@/lib/Enums";
 
 export default function HomePage() {
 	return (
-		<div className="h-[420px] md:h-[700px] bg-gradient-to-tr from-green-500 to-teal-500 py-6 md:py-16 text-white">
+		<div className="h-[420px] h-[700px] bg-gradient-to-tr from-green-500 to-teal-500 py-6 md:py-16 text-white">
 			<div className="container mx-auto px-4">
 				<div className="max-w-md mx-auto">
 					<div className="text-center mb-8">
