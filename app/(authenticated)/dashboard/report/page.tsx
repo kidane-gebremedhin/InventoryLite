@@ -377,7 +377,8 @@ export default function App() {
 										setShowFilters(!showFilters);
 									}}
 								>
-									<b>Show Filters</b>
+									<b className="hidden md:block">Show Filters</b>
+									<b className="block md:hidden">Filters</b>
 								</button>
 								<span className="px-1"></span>
 								<ExportExcel

@@ -83,20 +83,20 @@ export function LowStockLevelNotification({
 	const lowStockCount = stats.outStockItems + stats.lowStockItems;
 
 	return (
-		<Link
-			href={ROUTE_PATH.INVENTORY_ITEM}
-			className={`relative p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 ${className}`}
-		>
-			<div className="mt-0">
-				<Tooltip text="Low/Out stock items">
+		<div className="mt-0">
+			<Tooltip text="Low/Out stock items">
+				<Link
+					href={ROUTE_PATH.INVENTORY_ITEM}
+					className={`relative p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 ${className}`}
+				>
 					<BellIcon className="h-6 w-6" />
-				</Tooltip>
-			</div>
-			{lowStockCount > 0 && (
-				<span className="absolute top-4 -right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-					{lowStockCount > 9 ? "9+" : lowStockCount}
-				</span>
-			)}
-		</Link>
+					{lowStockCount > 0 && (
+						<span className="absolute top-4 -right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+							{lowStockCount > 9 ? "9+" : lowStockCount}
+						</span>
+					)}
+				</Link>
+			</Tooltip>
+		</div>
 	);
 }
