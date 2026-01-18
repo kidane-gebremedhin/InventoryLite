@@ -2,7 +2,8 @@
 
 import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { useCallback, useEffect, useState } from "react";
+import { SaveIcon } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DECIMAL_REGEX, VALIDATION_ERRORS_MAPPING } from "@/lib/Constants";
 import { PurchaseOrderStatus, RecordStatus } from "@/lib/Enums";
 import {
@@ -64,6 +65,7 @@ export default function PurchaseOrderModal({
 		PurchaseOrderItem[]
 	>([]);
 	const [supplierOptions, setSupplierOptions] = useState<Supplier[]>([]);
+	const newSupplierField = useRef(null);
 
 	const resetForm = useCallback(() => {
 		setFormData({
@@ -187,6 +189,12 @@ export default function PurchaseOrderModal({
 	};
 
 	const handleCreateNewSupplier = async () => {
+		if (!newSupplierName) {
+			showErrorToast("Supplier name is required");
+			newSupplierField.current?.focus();
+			return;
+		}
+
 		try {
 			setIsAddingSupplier(true);
 			const { data, error } = await saveSupplier({ name: newSupplierName });
@@ -267,7 +275,8 @@ export default function PurchaseOrderModal({
 										className="h-5 w-5 mr-1 ml-auto cursor-pointer text-gray-900 hover:text-green-600 transition"
 										strokeWidth={2.5}
 										onClick={() => {
-											setAddNewSupplier(true);
+											setNewSupplierName("");
+											setAddNewSupplier(!addNewSupplier);
 										}}
 									/>
 								</div>
@@ -275,22 +284,29 @@ export default function PurchaseOrderModal({
 							{!isAddingSupplier ? (
 								<div>
 									{addNewSupplier ? (
-										<input
-											type="text"
-											value={newSupplierName}
-											onChange={(e) => setNewSupplierName(e.target.value)}
-											onKeyDown={(e) => {
-												if (e.key === "Enter") {
-													e.preventDefault();
-													e.stopPropagation();
-													handleCreateNewSupplier();
-												}
-											}}
-											className="input-field"
-											autoFocus
-											placeholder="Enter supplier & press ENTER"
-											required
-										/>
+										<div className="flex">
+											<input
+												ref={newSupplierField}
+												type="text"
+												value={newSupplierName}
+												onChange={(e) => setNewSupplierName(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														e.preventDefault();
+														e.stopPropagation();
+														handleCreateNewSupplier();
+													}
+												}}
+												className="input-field"
+												autoFocus
+												placeholder="Enter supplier & press ENTER"
+												required
+											/>
+											<SaveIcon
+												className="m-2 cursor-pointer"
+												onClick={handleCreateNewSupplier}
+											/>
+										</div>
 									) : (
 										<select
 											value={formData.supplier_id}

@@ -2,7 +2,8 @@
 
 import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { useCallback, useEffect, useState } from "react";
+import { SaveIcon } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DECIMAL_REGEX, VALIDATION_ERRORS_MAPPING } from "@/lib/Constants";
 import { RecordStatus, SalesOrderStatus } from "@/lib/Enums";
 import {
@@ -62,6 +63,8 @@ export default function SalesOrderModal({
 	const [newCustomerName, setNewCustomerName] = useState<string>("");
 	const [salesOrderItems, setSalesOrderItems] = useState<SalesOrderItem[]>([]);
 	const [customerOptions, setCustomerOptions] = useState<Customer[]>([]);
+
+	const newCustomerField = useRef(null);
 
 	const resetForm = useCallback(() => {
 		setFormData({
@@ -179,6 +182,12 @@ export default function SalesOrderModal({
 	};
 
 	const handleCreateNewCustomer = async () => {
+		if (!newCustomerName) {
+			showErrorToast("Customer name is required");
+			newCustomerField.current?.focus();
+			return;
+		}
+
 		try {
 			setIsAddingCustomer(true);
 			const { data, error } = await saveCustomer({ name: newCustomerName });
@@ -258,7 +267,8 @@ export default function SalesOrderModal({
 										className="h-5 w-5 mr-1 ml-auto cursor-pointer text-gray-900 hover:text-green-600 transition"
 										strokeWidth={2.5}
 										onClick={() => {
-											setAddNewCustomer(true);
+											setNewCustomerName("");
+											setAddNewCustomer(!addNewCustomer);
 										}}
 									/>
 								</div>
@@ -266,22 +276,29 @@ export default function SalesOrderModal({
 							{!isAddingCustomer ? (
 								<div>
 									{addNewCustomer ? (
-										<input
-											type="text"
-											value={newCustomerName}
-											onChange={(e) => setNewCustomerName(e.target.value)}
-											onKeyDown={(e) => {
-												if (e.key === "Enter") {
-													e.preventDefault();
-													e.stopPropagation();
-													handleCreateNewCustomer();
-												}
-											}}
-											className="input-field"
-											autoFocus
-											placeholder="Enter customer & press ENTER"
-											required
-										/>
+										<div className="flex">
+											<input
+												ref={newCustomerField}
+												type="text"
+												value={newCustomerName}
+												onChange={(e) => setNewCustomerName(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														e.preventDefault();
+														e.stopPropagation();
+														handleCreateNewCustomer();
+													}
+												}}
+												className="input-field"
+												autoFocus
+												placeholder="Enter customer & press ENTER"
+												required
+											/>
+											<SaveIcon
+												className="m-2 cursor-pointer"
+												onClick={handleCreateNewCustomer}
+											/>
+										</div>
 									) : (
 										<select
 											value={formData.customer_id}

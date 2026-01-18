@@ -71,8 +71,8 @@ export default function Header() {
 					<h2 className="text-lg font-semibold text-gray-900 pl-9 md:pl-0">
 						Welcome back,{" "}
 						{capitalizeFirstLetter(
-							currentUser?.fullName?.split(" ")[0] ||
-								currentUser?.subscriptionInfo?.name,
+							currentUser?.subscriptionInfo?.name ||
+								currentUser?.fullName?.split(" ")[0],
 						)}
 						.
 					</h2>
@@ -116,8 +116,8 @@ export default function Header() {
 								<div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100 text-center">
 									<div className="font-medium">
 										<strong>
-											{currentUser?.fullName ||
-												currentUser?.subscriptionInfo?.name?.split("@")[0]}
+											{currentUser?.subscriptionInfo?.name ||
+												currentUser?.fullName?.split("@")[0]}
 										</strong>
 									</div>
 									<div
